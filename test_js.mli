@@ -18,7 +18,6 @@ module Element : sig
   type t = private Ojs.t
 
   val appendChild: t -> t -> unit
-
   val set_innerHTML: t -> string -> unit
   val innerHTML: t -> string
 

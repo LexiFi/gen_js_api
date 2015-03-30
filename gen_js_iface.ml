@@ -13,6 +13,44 @@ open Parsetree
 open Longident
 open Ast_helper
 
+(** Errors *)
+
+type error =
+  | Expression_expected
+  | Identifier_expected
+  | Invalid_expression
+  | Multiple_binding_declarations
+  | Binding_type_mismatch
+  | No_default_binding
+
+exception Error of Location.t * error
+
+let error loc err = raise (Error (loc, err))
+
+let print_error ppf = function
+  | Expression_expected ->
+      Format.fprintf ppf "Expression expected"
+  | Identifier_expected ->
+      Format.fprintf ppf "String literal expected"
+  | Invalid_expression ->
+      Format.fprintf ppf "Invalid expression"
+  | Multiple_binding_declarations ->
+      Format.fprintf ppf "Multiple binding declarations"
+  | Binding_type_mismatch ->
+      Format.fprintf ppf "Binding declaration and type are not compatible"
+  | No_default_binding ->
+      Format.fprintf ppf "Cannot determine default binding"
+
+let () =
+  Location.register_error_of_exn
+    (function
+      | Error (loc, err) -> Some (Location.error_of_printer loc print_error err)
+      | _ -> None
+    )
+
+
+(** AST *)
+
 type typ =
   | String
   | Int
@@ -38,7 +76,9 @@ type valdef =
 type decl =
   | Module of string * decl list
   | JsType of string
-  | Val of string * typ * valdef
+  | Val of string * typ * valdef * Location.t
+
+(** Parsing *)
 
 let rec parse_expr e =
   match e.pexp_desc with
@@ -50,17 +90,12 @@ let rec parse_expr e =
          List.map
            (function
              | (Nolabel, e) -> parse_expr e
-             | _ ->
-                 Format.printf "%aCannot parse this expression.@."
-                   Location.print_error e.pexp_loc;
-                 exit 2
+             | _ -> error e.pexp_loc Invalid_expression
            )
            args
         )
   | _ ->
-      Format.printf "%aCannot parse this expression.@."
-        Location.print_error e.pexp_loc;
-      exit 2
+     error e.pexp_loc Invalid_expression
 
 let rec parse_typ ty =
   match ty.ptyp_desc with
@@ -99,7 +134,7 @@ let drop_prefix ~prefix s =
   | Some x -> x
   | None -> assert false
 
-let auto s ty =
+let auto loc s ty =
   match ty with
   | Arrow ([Name _], _) ->
       PropGet s
@@ -115,26 +150,51 @@ let auto s ty =
       FunCall s
 
   | _ ->
-      assert false
+      error loc No_default_binding
+
+let id_of_expr = function
+  | {pexp_desc=Pexp_constant (Const_string (s, _)); _}
+  | {pexp_desc=Pexp_ident {txt=Lident s;_}; _}
+  | {pexp_desc=Pexp_construct ({txt=Lident s;_}, None); _} -> s
+  | e -> error e.pexp_loc Identifier_expected
+
+let expr_of_stritem = function
+  | {pstr_desc=Pstr_eval (e, _); _} -> e
+  | p -> error p.pstr_loc Expression_expected
+
+let expr_of_payload loc = function
+  | PStr [x] -> expr_of_stritem x
+  | _ -> error loc Expression_expected
 
 let parse_valdecl loc s ty attrs =
   let parse_attr defs (k, v) =
+    let opt_name () =
+      match v with
+      | PStr [] -> s (* default *)
+      | e -> id_of_expr (expr_of_payload k.loc e)
+    in
     match k.txt, v with
-    | "js.cast", PStr [] ->
+    | "js.cast", _ ->
         Cast :: defs
-    | "js.expr", PStr [{pstr_desc=Pstr_eval (e, _)}] ->
-        Expr (parse_expr e) :: defs
+    | "js.expr", e ->
+        Expr (parse_expr (expr_of_payload k.loc e)) :: defs
+    | "js.get", _ ->
+        PropGet (opt_name ()) :: defs
+    | "js.set", _ ->
+        PropSet (opt_name ()) :: defs
+    | "js.meth", _ ->
+        MethCall (opt_name ()) :: defs
+    | "js.func", _ ->
+        FunCall (opt_name ()) :: defs
     | _ ->
         defs
   in
   let defs = List.fold_left parse_attr [] attrs in
   match defs with
   | [x] -> x
-  | [] -> auto s ty
+  | [] -> auto loc s ty
   | _ ->
-      Format.printf "%aMultiple js declarations.@."
-        Location.print_error loc;
-      exit 2
+      error loc Multiple_binding_declarations
 
 let rec parse_sig_item s =
   match s.psig_desc with
@@ -142,7 +202,9 @@ let rec parse_sig_item s =
       let name = pval_name.txt in
       let ty = parse_typ pval_type in
       Val (name, ty,
-           parse_valdecl pval_loc name ty pval_attributes)
+           parse_valdecl pval_loc name ty pval_attributes,
+           pval_loc
+          )
   | Psig_type (_,
                [ {ptype_name; ptype_params = [];
                   ptype_cstrs = [];
@@ -161,6 +223,8 @@ let rec parse_sig_item s =
 
 and parse_sig s =
   List.map parse_sig_item s
+
+(** Code generation *)
 
 let ojs s =  mknoloc (Ldot (Lident "Ojs", s))
 let var x = Exp.ident (mknoloc (Lident x))
@@ -270,71 +334,70 @@ and gen_decl env = function
   | Module (s, decls) ->
       [ Str.module_ (Mb.mk (mknoloc s) (Mod.structure (gen_decls env decls))) ]
 
-  | Val (s, ty, decl) ->
-      let call s ty_this ty_args ty_res =
-        let args = gen_args ty_args in
-        let res =
-          app
-            (Exp.ident (ojs (if ty_res = Unit then "call_unit" else "call")))
-            [
-              ml2js ty_this (var "this");
-              str s;
-              Exp.array (List.map snd args)
-            ]
-        in
-        let res = map_res res ty_res in
-        fun_ "this"
-          ((if ty_args = [] then fun_unit else func (List.map fst args)) res)
-      in
-      let d =
-        match decl, ty with
-        | Cast, Arrow ([Name _ as ty_arg], (Name _ as ty_res)) ->
-            (* cast *)
-            fun_ "this" (js2ml ty_res (ml2js ty_arg (var "this")))
-        | PropGet s, Arrow ([ty_this], ty_res) ->
-            (* property getter *)
-            let res = app (Exp.ident (ojs "get")) [ml2js ty_this (var "this"); str s] in
-            fun_ "this" (js2ml ty_res res)
-        | PropSet s, Arrow ([Name _ as ty_this; ty_arg], Unit) ->
-            (* property setter *)
-            let res =
-              app (Exp.ident (ojs "set"))
-                [
-                  ml2js ty_this (var "this");
-                  str s;
-                  ml2js ty_arg (var "arg")
-                ]
-            in
-            fun_ "this" (fun_ "arg" res)
-        | MethCall s, Arrow (ty_this :: ty_args, ty_res) ->
-            call s ty_this (map_args ty_args) ty_res
-        | FunCall s, Arrow (ty_args, ty_res) ->
-            let ty_args = map_args ty_args in
-            let args = gen_args ty_args in
-            let res =
-              app (Exp.ident (ojs (if ty_res=Unit then "apply_unit" else "apply")))
-                [
-                  app (Exp.ident (ojs "variable")) [str s];
-                  Exp.array (List.map snd args)
-                ]
-            in
-            let res = map_res res ty_res in
-            (if ty_args = [] then fun_unit else func (List.map fst args)) res
-
-        | Expr e, Arrow (ty_args, ty_res) ->
-            let ty_args = map_args ty_args in
-            let args = gen_args ty_args in
-            let res = map_res (gen_expr args e) ty_res in
-            (if ty_args = [] then fun_unit else func (List.map fst args)) res
-        | Expr e, ty ->
-            js2ml ty (gen_expr [] e)
-        | _ ->
-            assert false
-(*
-            Exp.extension (mknoloc "unknown", PStr [])
-*)
-      in
+  | Val (s, ty, decl, loc) ->
+      let d = gen_def loc decl ty in
       [ def s (gen_typ ty) d ]
+
+and gen_def loc decl ty =
+  match decl, ty with
+  | Cast, Arrow ([Name _ as ty_arg], (Name _ as ty_res)) ->
+      fun_ "this" (js2ml ty_res (ml2js ty_arg (var "this")))
+
+  | PropGet s, Arrow ([ty_this], ty_res) ->
+      let res = app (Exp.ident (ojs "get")) [ml2js ty_this (var "this"); str s] in
+      fun_ "this" (js2ml ty_res res)
+
+  | PropSet s, Arrow ([Name _ as ty_this; ty_arg], Unit) ->
+      let res =
+        app (Exp.ident (ojs "set"))
+          [
+            ml2js ty_this (var "this");
+            str s;
+            ml2js ty_arg (var "arg")
+          ]
+      in
+      fun_ "this" (fun_ "arg" res)
+
+  | MethCall s, Arrow (ty_this :: ty_args, ty_res) ->
+      let ty_args = map_args ty_args in
+      let args = gen_args ty_args in
+      let res =
+        app
+          (Exp.ident (ojs (if ty_res = Unit then "call_unit" else "call")))
+          [
+            ml2js ty_this (var "this");
+            str s;
+            Exp.array (List.map snd args)
+          ]
+      in
+      let res = map_res res ty_res in
+      fun_ "this"
+        ((if args = [] then fun_unit else func (List.map fst args)) res)
+
+  | FunCall s, Arrow (ty_args, ty_res) ->
+      let ty_args = map_args ty_args in
+      let args = gen_args ty_args in
+      let res =
+        app (Exp.ident (ojs (if ty_res=Unit then "apply_unit" else "apply")))
+          [
+            app (Exp.ident (ojs "variable")) [str s];
+            Exp.array (List.map snd args)
+          ]
+      in
+      let res = map_res res ty_res in
+      (if ty_args = [] then fun_unit else func (List.map fst args)) res
+
+  | Expr e, Arrow (ty_args, ty_res) ->
+      let ty_args = map_args ty_args in
+      let args = gen_args ty_args in
+      let res = map_res (gen_expr args e) ty_res in
+      (if ty_args = [] then fun_unit else func (List.map fst args)) res
+
+  | Expr e, ty ->
+      js2ml ty (gen_expr [] e)
+
+  | _ ->
+      error loc Binding_type_mismatch
 
 and gen_expr ids = function
   | Call (Id "call", obj :: Str meth :: args) ->
@@ -356,8 +419,10 @@ and gen_expr ids = function
       Exp.extension (mknoloc "unknown", PStr [])
 *)
 
+(** Main *)
 
-let () =
+
+let main () =
   let ocaml_ast =
     Pparse.parse_interface Format.err_formatter
       ~tool_name:"gen_js_iface"
@@ -367,3 +432,9 @@ let () =
   let str_ast = gen_decls () decls in
   Format.printf "%a@." Pprintast.structure str_ast
 
+
+let () =
+  try main ()
+  with exn ->
+    Format.eprintf "%a@." Location.report_exception exn;
+    exit 2
