@@ -29,7 +29,10 @@ type expr =
 
 type valdef =
   | Cast
-  | Auto
+  | PropGet of string
+  | PropSet of string
+  | MethCall of string
+  | FunCall of string
   | Expr of expr
 
 type decl =
@@ -82,23 +85,52 @@ let rec parse_typ ty =
         Location.print_error ty.ptyp_loc;
       exit 2
 
+let check_prefix ~prefix s =
+  let l = String.length prefix in
+  if l <= String.length s && String.sub s 0 l = prefix
+  then
+    Some (String.sub s l (String.length s - l))
+  else
+    None
 
-let parse_valdecl loc attrs =
-  let cast = ref false in
-  let expr = ref None in
-  List.iter
-    (fun (k, v) ->
-       match k.txt, v with
-       | "js.cast", PStr [] -> cast := true
-       | "js.expr", PStr [{pstr_desc=Pstr_eval (e, _)}] ->
-           expr := Some (parse_expr e)
-       | _ -> ()
-    )
-    attrs;
-  match !cast, !expr with
-  | true, None -> Cast
-  | false, Some e -> Expr e
-  | false, None -> Auto
+let has_prefix ~prefix s = check_prefix ~prefix s <> None
+let drop_prefix ~prefix s =
+  match check_prefix ~prefix s with
+  | Some x -> x
+  | None -> assert false
+
+let auto s ty =
+  match ty with
+  | Arrow ([Name _], _) ->
+      PropGet s
+
+  | Arrow ([Name _; _], Unit)
+    when has_prefix ~prefix:"set_" s ->
+      PropSet (drop_prefix ~prefix:"set_" s)
+
+  | Arrow (Name _ :: _, _) ->
+      MethCall s
+
+  | Arrow _ ->
+      FunCall s
+
+  | _ ->
+      assert false
+
+let parse_valdecl loc s ty attrs =
+  let parse_attr defs (k, v) =
+    match k.txt, v with
+    | "js.cast", PStr [] ->
+        Cast :: defs
+    | "js.expr", PStr [{pstr_desc=Pstr_eval (e, _)}] ->
+        Expr (parse_expr e) :: defs
+    | _ ->
+        defs
+  in
+  let defs = List.fold_left parse_attr [] attrs in
+  match defs with
+  | [x] -> x
+  | [] -> auto s ty
   | _ ->
       Format.printf "%aMultiple js declarations.@."
         Location.print_error loc;
@@ -107,7 +139,10 @@ let parse_valdecl loc attrs =
 let rec parse_sig_item s =
   match s.psig_desc with
   | Psig_value {pval_prim = []; pval_name; pval_type; pval_attributes; pval_loc; _} ->
-      Val (pval_name.txt, parse_typ pval_type, parse_valdecl pval_loc pval_attributes)
+      let name = pval_name.txt in
+      let ty = parse_typ pval_type in
+      Val (name, ty,
+           parse_valdecl pval_loc name ty pval_attributes)
   | Psig_type (_,
                [ {ptype_name; ptype_params = [];
                   ptype_cstrs = [];
@@ -221,14 +256,6 @@ let map_args = function
   | [Unit] -> []
   | args -> args
 
-let check_prefix ~prefix s =
-  let l = String.length prefix in
-  if l <= String.length s && String.sub s 0 l = prefix
-  then
-    Some (String.sub s l (String.length s - l))
-  else
-    None
-
 let rec gen_decls env si =
   List.concat (List.map (gen_decl env) si)
 
@@ -244,7 +271,7 @@ and gen_decl env = function
       [ Str.module_ (Mb.mk (mknoloc s) (Mod.structure (gen_decls env decls))) ]
 
   | Val (s, ty, decl) ->
-      let call ty_this ty_args ty_res =
+      let call s ty_this ty_args ty_res =
         let args = gen_args ty_args in
         let res =
           app
@@ -259,30 +286,29 @@ and gen_decl env = function
         fun_ "this"
           ((if ty_args = [] then fun_unit else func (List.map fst args)) res)
       in
-      let setter = check_prefix ~prefix:"set_" s in
       let d =
         match decl, ty with
         | Cast, Arrow ([Name _ as ty_arg], (Name _ as ty_res)) ->
             (* cast *)
             fun_ "this" (js2ml ty_res (ml2js ty_arg (var "this")))
-        | Auto, Arrow ([Name _ as ty_this], ty_res) ->
+        | PropGet s, Arrow ([ty_this], ty_res) ->
             (* property getter *)
             let res = app (Exp.ident (ojs "get")) [ml2js ty_this (var "this"); str s] in
             fun_ "this" (js2ml ty_res res)
-        | Auto, Arrow ([Name _ as ty_this; ty_arg], Unit) when setter <> None ->
+        | PropSet s, Arrow ([Name _ as ty_this; ty_arg], Unit) ->
             (* property setter *)
             let res =
               app (Exp.ident (ojs "set"))
                 [
                   ml2js ty_this (var "this");
-                  str (match setter with Some x -> x | None -> assert false);
+                  str s;
                   ml2js ty_arg (var "arg")
                 ]
             in
             fun_ "this" (fun_ "arg" res)
-        | Auto, Arrow ((Name _ as ty_this) :: ty_args, ty_res) ->
-            call ty_this (map_args ty_args) ty_res
-        | Auto, Arrow (ty_args, ty_res) ->
+        | MethCall s, Arrow (ty_this :: ty_args, ty_res) ->
+            call s ty_this (map_args ty_args) ty_res
+        | FunCall s, Arrow (ty_args, ty_res) ->
             let ty_args = map_args ty_args in
             let args = gen_args ty_args in
             let res =
