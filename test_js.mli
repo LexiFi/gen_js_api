@@ -11,6 +11,19 @@
 
  - val xxx : t -> T1 -> ... -> Tn -> T
    Call method "xxx" on object of type "t" with n arguments
+
+ - val xxx_to_js : xxx -> Ojs.t
+   Upcast
+
+ - val xxx_of_js : Ojs.t -> xxx
+   Downcast
+
+ - val xxx : T1 -> ... -> Tn -> T
+   Call global function xxx (assumes T1 is not a named type).
+
+ - val xxx : t
+   Global variable xxx
+
 *)
 
 
@@ -61,10 +74,8 @@ end
 module Window : sig
   type t = private Ojs.t
 
-(*
-  val __: t
-    [@@js.expr global "window"]
-*)
+  val t_of_js: Ojs.t -> t
+  val t_to_js: t -> Ojs.t
 
   val document: t -> Document.t
 end

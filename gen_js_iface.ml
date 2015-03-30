@@ -126,19 +126,42 @@ let check_prefix ~prefix s =
     None
 
 let has_prefix ~prefix s = check_prefix ~prefix s <> None
+
 let drop_prefix ~prefix s =
   match check_prefix ~prefix s with
   | Some x -> x
   | None -> assert false
 
+
+let check_suffix ~suffix s =
+  let l = String.length suffix in
+  if l <= String.length s && String.sub s (String.length s - l) l = suffix
+  then
+    Some (String.sub s 0 (String.length s - l))
+  else
+    None
+
+let has_suffix ~suffix s = check_suffix ~suffix s <> None
+
+let drop_suffix ~suffix s =
+  match check_suffix ~suffix s with
+  | Some x -> x
+  | None -> assert false
+
 let auto loc s ty =
   match ty with
+  | Arrow ([Name t], Js) when check_suffix ~suffix:"_to_js" s = Some t ->
+      Cast
+
+  | Arrow ([Js], Name t) when check_suffix ~suffix:"_of_js" s = Some t ->
+      Cast
+
   | Arrow ([Name _], _) ->
       PropGet s
 
-  | Arrow ([Name _; _], Unit)
-    when has_prefix ~prefix:"set_" s ->
+  | Arrow ([Name _; _], Unit) when has_prefix ~prefix:"set_" s ->
       PropSet (drop_prefix ~prefix:"set_" s)
+
 
   | Arrow (Name _ :: _, _) ->
       MethCall s
@@ -221,7 +244,7 @@ and parse_sig s =
 (** Code generation *)
 
 let ojs s =  mknoloc (Ldot (Lident "Ojs", s))
-let var x = Exp.ident (mknoloc (Lident x))
+let var x = Exp.ident (mknoloc (Longident.parse x))
 let app f args = Exp.apply f (List.map (fun e -> (Nolabel, e)) args)
 let str s = Exp.constant (Const_string (s, None))
 let fun_ s e = Exp.fun_ Nolabel None (Pat.var (mknoloc s)) e
@@ -321,9 +344,11 @@ and gen_decl env = function
   | JsType t ->
       let lid = ojs "t" in
       [
-        Str.type_ Recursive [ Type.mk (mknoloc t) ~manifest:(Typ.constr lid []) ];
-        def (t ^ "_of_js") (gen_typ (Arrow ([Js], Name t))) (fun_ "this" (var "this"));
-        def (t ^ "_to_js") (gen_typ (Arrow ([Name t], Js))) (fun_ "this" (var "this"));
+        Str.type_ Recursive [ Type.mk (mknoloc t) ~priv:Private ~manifest:(Typ.constr lid []) ];
+        def (t ^ "_of_js") (gen_typ (Arrow ([Js], Name t)))
+          (var "Obj.magic");
+        def (t ^ "_to_js") (gen_typ (Arrow ([Name t], Js)))
+          (var "Obj.magic");
       ]
   | Module (s, decls) ->
       [ Str.module_ (Mb.mk (mknoloc s) (Mod.structure (gen_decls env decls))) ]
@@ -334,7 +359,7 @@ and gen_decl env = function
 
 and gen_def loc decl ty =
   match decl, ty with
-  | Cast, Arrow ([Name _ as ty_arg], (Name _ as ty_res)) ->
+  | Cast, Arrow ([ty_arg], ty_res) ->
       fun_ "this" (js2ml ty_res (ml2js ty_arg (var "this")))
 
   | PropGet s, Arrow ([ty_this], ty_res) ->
