@@ -21,6 +21,8 @@ type error =
   | Invalid_expression
   | Multiple_binding_declarations
   | Binding_type_mismatch
+  | Cannot_parse_type
+  | Cannot_parse_sigitem
 
 exception Error of Location.t * error
 
@@ -37,6 +39,10 @@ let print_error ppf = function
       Format.fprintf ppf "Multiple binding declarations"
   | Binding_type_mismatch ->
       Format.fprintf ppf "Binding declaration and type are not compatible"
+  | Cannot_parse_type ->
+      Format.fprintf ppf "Cannot parse type"
+  | Cannot_parse_sigitem ->
+      Format.fprintf ppf "Cannot parse signature item"
 
 let () =
   Location.register_error_of_exn
@@ -113,9 +119,7 @@ let rec parse_typ ty =
       | s -> Name s
       end
   | _ ->
-      Format.printf "%aCannot parse this type.@."
-        Location.print_error ty.ptyp_loc;
-      exit 2
+      error ty.ptyp_loc Cannot_parse_type
 
 let check_prefix ~prefix s =
   let l = String.length prefix in
@@ -234,9 +238,7 @@ let rec parse_sig_item s =
   | Psig_module {pmd_name; pmd_type = {pmty_desc = Pmty_signature si; _}; _} ->
       Module (pmd_name.txt, parse_sig si)
   | _ ->
-      Format.printf "%aCannot parse this signature item.@."
-        Location.print_error s.psig_loc;
-      exit 2
+      error s.psig_loc Cannot_parse_sigitem
 
 and parse_sig s =
   List.map parse_sig_item s
