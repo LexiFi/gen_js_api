@@ -21,6 +21,9 @@ implementation.  The input signature must have a certain shape and its
 declarations are annotated to specify to which JS element they
 correspond.
 
+Low-level binding
+-----------------
+
 The generated binding code is built on top of a `Ojs.t` type, which
 corresponds roughly to js_of_ocaml's `Js.Unsafe.any` type -- that is,
 an opaque type that represents arbitrary JS values -- but with
@@ -32,6 +35,10 @@ of changes in js_of_ocaml's encoding of OCaml values, or because an
 entirely different technology is used, such as an OCaml bytecode
 interpreter written in Javascript or a Javascript engine linked with
 native OCaml code).
+
+
+gen_js_api interfaces
+---------------------
 
 
 Interfaces processed by gen_js_api can currently contain:
@@ -80,9 +87,86 @@ Interfaces processed by gen_js_api can currently contain:
     val f: tyexpr
     ````
 
-    This produce in the implementation a definition for such a value,
+    This produces in the implementation a definition for such a value,
     whose content depends on three elements: the name of the value
-    (`f` in the example), its declared types (`tyexpr`), and possible
+    (`f` in the example), its declared type (`tyexpr`), and possible
     `[@@js.xxx]` attributes attached to the declaration in the interface.
 
-    TODO: document the convention.
+    The next section documents possible forms for value declarations.
+
+
+Value bindings
+--------------
+
+- Method call:
+
+  ````
+  val myMethod: t -> T1 -> ... -> Tn -> T
+  [@@js.call]
+  ````
+
+  Calling the function on a first argument `o` of type `t` corresponds
+  to calling the method `myMethod` on the underlying JS object, with
+  other arguments passed to it.
+
+  By default, the name of the method on the JS side is derived from
+  the name of of the OCaml value (`myMethod` above).  It is possible
+  to specify a custom name explicitly, for instance for case where
+  the JS name is not a valid OCaml (lowercase-)identifier, or to support
+  overloading (exposing multiple OCaml functions that correspond to
+  different types given to the same JS method):
+
+
+  ````
+  val myMethod: t -> T1 -> ... -> Tn -> T
+  [@@js.call "JavascriptMethodName"]
+  ````
+
+- Global value:
+
+  ````
+  val x: t
+  [@@js.global]
+  ```
+
+  This creates an OCaml value that correspond to a globally accessible
+  Javascript value.  This is used both to access global objects (e.g.
+  the `window` object) or global functions (e.g. `alert`).  It is also
+  possible to specify a custom name for the Javascript variable:
+
+  ````
+  val x: t
+  [@@js.global "JavascriptValueName"]
+  ````
+
+  Example:
+  ````
+  val alert: string -> unit
+  [@@js.global]
+  ````
+
+- Property getter
+
+  TODO
+
+- Property setter
+
+  TODO
+
+- Cast
+
+  TODO
+
+- Custom expressions
+
+  TODO
+
+
+Automatic binding
+-----------------
+
+Some conventions, based on the declared value names and their types,
+allow to get rid of the explicit `[@@js.xxx]` attribute in most cases.
+Here are the rules, applied in order:
+
+  TODO
