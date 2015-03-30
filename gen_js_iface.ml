@@ -21,7 +21,6 @@ type error =
   | Invalid_expression
   | Multiple_binding_declarations
   | Binding_type_mismatch
-  | No_default_binding
 
 exception Error of Location.t * error
 
@@ -38,8 +37,6 @@ let print_error ppf = function
       Format.fprintf ppf "Multiple binding declarations"
   | Binding_type_mismatch ->
       Format.fprintf ppf "Binding declaration and type are not compatible"
-  | No_default_binding ->
-      Format.fprintf ppf "Cannot determine default binding"
 
 let () =
   Location.register_error_of_exn
@@ -70,7 +67,7 @@ type valdef =
   | PropGet of string
   | PropSet of string
   | MethCall of string
-  | FunCall of string
+  | Global of string
   | Expr of expr
 
 type decl =
@@ -146,11 +143,8 @@ let auto loc s ty =
   | Arrow (Name _ :: _, _) ->
       MethCall s
 
-  | Arrow _ ->
-      FunCall s
-
   | _ ->
-      error loc No_default_binding
+      Global s
 
 let id_of_expr = function
   | {pexp_desc=Pexp_constant (Const_string (s, _)); _}
@@ -184,8 +178,8 @@ let parse_valdecl loc s ty attrs =
         PropSet (opt_name ()) :: defs
     | "js.meth", _ ->
         MethCall (opt_name ()) :: defs
-    | "js.func", _ ->
-        FunCall (opt_name ()) :: defs
+    | "js.global", _ ->
+        Global (opt_name ()) :: defs
     | _ ->
         defs
   in
@@ -374,7 +368,7 @@ and gen_def loc decl ty =
       fun_ "this"
         ((if args = [] then fun_unit else func (List.map fst args)) res)
 
-  | FunCall s, Arrow (ty_args, ty_res) ->
+  | Global s, Arrow (ty_args, ty_res) ->
       let ty_args = map_args ty_args in
       let args = gen_args ty_args in
       let res =
@@ -386,6 +380,10 @@ and gen_def loc decl ty =
       in
       let res = map_res res ty_res in
       (if ty_args = [] then fun_unit else func (List.map fst args)) res
+
+  | Global s, ty_res ->
+      let res = app (Exp.ident (ojs "variable")) [str s] in
+      js2ml ty_res res
 
   | Expr e, Arrow (ty_args, ty_res) ->
       let ty_args = map_args ty_args in

@@ -1,6 +1,6 @@
 open Test_js
 
-let doc = Window.document Window.__
+let doc = Window.document window
 
 let elt name ?(attrs = []) ?onclick subs =
   let e = Document.createElement doc name in
@@ -24,7 +24,6 @@ let () =
 (*
   Printf.printf "%0.2f\n" 3.1415;
 *)
-  let doc = Window.document Window.__ in
 (*
   Document.set_title doc "MyTitle";
   Document.set_title doc (Document.title doc ^ " :-)");

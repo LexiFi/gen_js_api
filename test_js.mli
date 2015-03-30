@@ -61,11 +61,15 @@ end
 module Window : sig
   type t = private Ojs.t
 
+(*
   val __: t
     [@@js.expr global "window"]
+*)
 
   val document: t -> Document.t
 end
+
+val window: Window.t
 
 val alert: string -> unit
 val setTimeout: (unit -> unit) -> int -> unit
