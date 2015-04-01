@@ -370,8 +370,7 @@ and gen_funs_record lbls =
   in
   let lbls = List.map prepare_label lbls in
   let of_js (ml, js, ty) =
-    ml,
-    js2ml ty (app (Exp.ident (ojs "get")) [var "x"; js])
+    ml, js2ml ty (app (Exp.ident (ojs "get")) [var "x"; js])
   in
   let to_js (ml, js, ty) =
     Exp.tuple [js; ml2js ty (Exp.field (var "x") ml)]
