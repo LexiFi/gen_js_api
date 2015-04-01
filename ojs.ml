@@ -25,8 +25,10 @@ let apply f x = Js.Unsafe.fun_call f x
 let apply_unit f x = ignore (apply f x)
 
 let get = Js.Unsafe.get
-
 let set = Js.Unsafe.set
+
+let obj = Js.Unsafe.obj
+
 
 let array_get t i = Obj.magic (Js.array_get (Obj.magic t) i)
 
@@ -34,5 +36,8 @@ let to_array f objs =
   Array.init
     (to_int (get objs "length"))
     (fun i -> f (array_get objs i))
+
+let of_array _f _arr =
+  assert false
 
 let variable = Js.Unsafe.variable

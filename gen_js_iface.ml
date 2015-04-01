@@ -78,7 +78,7 @@ type valdef =
 
 type decl =
   | Module of string * decl list
-  | JsType of string
+  | Type of rec_flag * Parsetree.type_declaration list
   | Val of string * typ * valdef * Location.t
 
 (** Parsing *)
@@ -226,6 +226,9 @@ let rec parse_sig_item s =
            parse_valdecl pval_loc name ty pval_attributes,
            pval_loc
           )
+  | Psig_type (rec_flag, decls) ->
+      Type (rec_flag, decls)
+(*
   | Psig_type (_,
                [ {ptype_name; ptype_params = [];
                   ptype_cstrs = [];
@@ -235,6 +238,7 @@ let rec parse_sig_item s =
                   _}
                ]) when parse_typ ty = Js ->
       JsType ptype_name.txt
+*)
   | Psig_module {pmd_name; pmd_type = {pmty_desc = Pmty_signature si; _}; _} ->
       Module (pmd_name.txt, parse_sig si)
   | _ ->
@@ -294,9 +298,14 @@ and ml2js ty exp =
       app (Exp.ident (mknoloc (Longident.parse (s ^ "_to_js")))) [exp]
   | Arrow ([Unit], Unit) ->
       app (Exp.ident (ojs "of_unit_fun")) [exp]
-(*
-      Exp.coerce exp (Some (gen_typ ty)) (gen_typ Js)
-*)
+  | Array ty ->
+      app
+        (Exp.ident (ojs "of_array"))
+        [
+          fun_ "elt" (ml2js ty (var "elt"));
+          exp
+        ]
+
   | _ ->
       assert false
 (*
@@ -342,7 +351,75 @@ let map_args = function
 let rec gen_decls env si =
   List.concat (List.map (gen_decl env) si)
 
+and gen_funs p =
+  let name = p.ptype_name.txt in
+  let of_js, to_js =
+    match p.ptype_manifest with
+    | Some ty ->
+        let ty = parse_typ ty in
+        fun_ "x" (js2ml ty (var "x")),
+        fun_ "x" (ml2js ty (var "x"))
+    | None ->
+        match p.ptype_kind with
+        | Ptype_record lbls ->
+            let lbls =
+              List.map
+                (fun l ->
+                   mknoloc (Lident l.pld_name.txt), (* OCaml label *)
+                   str l.pld_name.txt, (* JS name *)
+                   parse_typ l.pld_type
+                )
+                lbls
+            in
+            fun_ "x"
+              (Exp.record
+                 (List.map
+                    (fun (ml, js, ty) ->
+                       ml,
+                       js2ml ty (app (Exp.ident (ojs "get")) [var "x"; js])
+                    )
+                    lbls
+                 )
+                 None
+              ),
+            fun_ "x"
+              (app (Exp.ident (ojs "obj"))
+                 [Exp.array
+                    (List.map
+                       (fun (ml, js, ty) ->
+                          Exp.tuple
+                            [
+                              js;
+                              ml2js ty (Exp.field (var "x") ml);
+                            ]
+                       )
+                       lbls
+                    )
+                 ]
+              )
+        | _ ->
+            error p.ptype_loc Cannot_parse_type
+  in
+  [
+    Vb.mk
+      (Pat.constraint_
+         (Pat.var (mknoloc (name ^ "_of_js")))
+         (gen_typ (Arrow ([Js], Name name))))
+      of_js;
+    Vb.mk
+      (Pat.constraint_
+         (Pat.var (mknoloc (name ^ "_to_js")))
+         (gen_typ (Arrow ([Name name], Js))))
+      to_js
+  ]
+
+
 and gen_decl env = function
+  | Type (rec_flag, decls) ->
+      let decls = List.map (fun t -> {t with ptype_private = Public}) decls in
+      let funs = List.concat (List.map gen_funs decls) in
+      [ Str.type_ rec_flag decls; Str.value rec_flag funs ]
+(*
   | JsType t ->
       let lid = ojs "t" in
       [
@@ -352,6 +429,7 @@ and gen_decl env = function
         def (t ^ "_to_js") (gen_typ (Arrow ([Name t], Js)))
           (var "Obj.magic");
       ]
+*)
   | Module (s, decls) ->
       [ Str.module_ (Mb.mk (mknoloc s) (Mod.structure (gen_decls env decls))) ]
 

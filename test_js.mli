@@ -84,3 +84,8 @@ val window: Window.t
 
 val alert: string -> unit
 val setTimeout: (unit -> unit) -> int -> unit
+
+
+type myType = { x : a; y : b }
+and a = int
+and b = { s : string; i : int }
