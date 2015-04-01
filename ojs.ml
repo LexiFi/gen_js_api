@@ -40,4 +40,15 @@ let to_array f objs =
 let of_array _f _arr =
   assert false
 
+let to_option f x =
+  if Js.Opt.test (Obj.magic x) && Js.Optdef.test (Obj.magic x) then
+    Some (f x)
+  else
+    None
+
+let of_option f = function
+  | Some x -> f x
+  | None -> Obj.magic (Js.null)
+
+
 let variable = Js.Unsafe.variable

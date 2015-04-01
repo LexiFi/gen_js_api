@@ -87,5 +87,5 @@ val setTimeout: (unit -> unit) -> int -> unit
 
 
 type myType = { x : a; y : b [@js "Y"]}
-and a = int
+and a = int option
 and b = { s : string; i : int }

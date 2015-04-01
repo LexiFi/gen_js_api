@@ -35,4 +35,9 @@ val array_get: t -> int -> t
 val to_array: (t -> 'a) -> t -> 'a array
 val of_array: ('a -> t) -> 'a array -> t
 
+val to_option: (t -> 'a) -> t -> 'a option
+    (** Both [null] and [undefined] are mapped to [None]. *)
+val of_option: ('a -> t) -> 'a option -> t
+  (** [None] is mapped to [null]. *)
+
 val variable: string -> t

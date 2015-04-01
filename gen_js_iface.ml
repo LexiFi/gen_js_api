@@ -59,6 +59,7 @@ type typ =
   | Int
   | Arrow of typ list * typ
   | Array of typ
+  | Option of typ
   | Unit
   | Js
   | Name of string
@@ -110,6 +111,8 @@ let rec parse_typ ty =
       end
   | Ptyp_constr ({txt = Lident "array"}, [t1]) ->
       Array (parse_typ t1)
+  | Ptyp_constr ({txt = Lident "option"}, [t1]) ->
+      Option (parse_typ t1)
   | Ptyp_constr ({txt = lid}, []) ->
       begin match String.concat "." (Longident.flatten lid) with
       | "string" -> String
@@ -274,12 +277,9 @@ let rec js2ml ty exp =
   | Name s ->
       app (Exp.ident (mknoloc (Longident.parse (s ^ "_of_js")))) [exp]
   | Array ty ->
-      app
-        (Exp.ident (ojs "to_array"))
-        [
-          fun_ "elt" (js2ml ty (var "elt"));
-          exp
-        ]
+      app (Exp.ident (ojs "to_array")) [fun_ "elt" (js2ml ty (var "elt")); exp]
+  | Option ty ->
+      app (Exp.ident (ojs "to_option")) [fun_ "elt" (js2ml ty (var "elt")); exp]
   | _ ->
       assert false
 (*
@@ -299,13 +299,9 @@ and ml2js ty exp =
   | Arrow ([Unit], Unit) ->
       app (Exp.ident (ojs "of_unit_fun")) [exp]
   | Array ty ->
-      app
-        (Exp.ident (ojs "of_array"))
-        [
-          fun_ "elt" (ml2js ty (var "elt"));
-          exp
-        ]
-
+      app (Exp.ident (ojs "of_array")) [fun_ "elt" (ml2js ty (var "elt")); exp]
+  | Option ty ->
+      app (Exp.ident (ojs "of_option")) [fun_ "elt" (ml2js ty (var "elt")); exp]
   | _ ->
       assert false
 (*
@@ -330,6 +326,8 @@ and gen_typ = function
         (gen_typ t2)
   | Array ty ->
       Typ.constr (mknoloc (Lident "array")) [gen_typ ty]
+  | Option ty ->
+      Typ.constr (mknoloc (Lident "option")) [gen_typ ty]
 
 let gen_args ty_args =
   List.mapi
