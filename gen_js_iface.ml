@@ -352,66 +352,46 @@ let rec gen_decls env si =
   List.concat (List.map (gen_decl env) si)
 
 and gen_funs_record lbls =
-  let lbls =
-    List.map
-      (fun l ->
-         let js = ref l.pld_name.txt in
-         List.iter
-           (fun (k, v) ->
-              match k.txt with
-              | "js" ->
-                  js := id_of_expr (expr_of_payload k.loc v)
-              | _ ->
-                  ()
-           )
-           l.pld_attributes;
-
-         mknoloc (Lident l.pld_name.txt), (* OCaml label *)
-         str !js, (* JS name *)
-         parse_typ l.pld_type
+  let prepare_label l =
+    let js = ref l.pld_name.txt in
+    List.iter
+      (fun (k, v) ->
+         match k.txt with
+         | "js" ->
+             js := id_of_expr (expr_of_payload k.loc v)
+         | _ ->
+             ()
       )
-      lbls
+      l.pld_attributes;
+
+    mknoloc (Lident l.pld_name.txt), (* OCaml label *)
+    str !js, (* JS name *)
+    parse_typ l.pld_type
   in
-  fun_ "x"
-    (Exp.record
-       (List.map
-          (fun (ml, js, ty) ->
-             ml,
-             js2ml ty (app (Exp.ident (ojs "get")) [var "x"; js])
-          )
-          lbls
-       )
-       None
-    ),
-  fun_ "x"
-    (app (Exp.ident (ojs "obj"))
-       [Exp.array
-          (List.map
-             (fun (ml, js, ty) ->
-                Exp.tuple
-                  [
-                    js;
-                    ml2js ty (Exp.field (var "x") ml);
-                  ]
-             )
-             lbls
-          )
-       ]
-    )
+  let lbls = List.map prepare_label lbls in
+  let of_js (ml, js, ty) =
+    ml,
+    js2ml ty (app (Exp.ident (ojs "get")) [var "x"; js])
+  in
+  let to_js (ml, js, ty) =
+    Exp.tuple [js; ml2js ty (Exp.field (var "x") ml)]
+  in
+
+  fun_ "x" (Exp.record (List.map of_js lbls) None),
+  fun_ "x" (app (Exp.ident (ojs "obj")) [Exp.array (List.map to_js lbls)])
 
 and gen_funs p =
   let name = p.ptype_name.txt in
   let of_js, to_js =
-    match p.ptype_manifest with
-    | Some ty ->
+    match p.ptype_manifest, p.ptype_kind with
+    | Some ty, Ptype_abstract ->
         let ty = parse_typ ty in
         fun_ "x" (js2ml ty (var "x")),
         fun_ "x" (ml2js ty (var "x"))
-    | None ->
-        match p.ptype_kind with
-        | Ptype_record lbls -> gen_funs_record lbls
-        | _ ->
-            error p.ptype_loc Cannot_parse_type
+    | _, Ptype_record lbls ->
+        gen_funs_record lbls
+    | _ ->
+        error p.ptype_loc Cannot_parse_type
   in
   [
     Vb.mk
@@ -432,17 +412,6 @@ and gen_decl env = function
       let decls = List.map (fun t -> {t with ptype_private = Public}) decls in
       let funs = List.concat (List.map gen_funs decls) in
       [ Str.type_ rec_flag decls; Str.value rec_flag funs ]
-(*
-  | JsType t ->
-      let lid = ojs "t" in
-      [
-        Str.type_ Recursive [ Type.mk (mknoloc t) ~priv:Private ~manifest:(Typ.constr lid []) ];
-        def (t ^ "_of_js") (gen_typ (Arrow ([Js], Name t)))
-          (var "Obj.magic");
-        def (t ^ "_to_js") (gen_typ (Arrow ([Name t], Js)))
-          (var "Obj.magic");
-      ]
-*)
   | Module (s, decls) ->
       [ Str.module_ (Mb.mk (mknoloc s) (Mod.structure (gen_decls env decls))) ]
 
