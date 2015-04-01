@@ -86,6 +86,6 @@ val alert: string -> unit
 val setTimeout: (unit -> unit) -> int -> unit
 
 
-type myType = { x : a; y : b }
+type myType = { x : a; y : b [@js "Y"]}
 and a = int
 and b = { s : string; i : int }

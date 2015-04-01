@@ -351,6 +351,54 @@ let map_args = function
 let rec gen_decls env si =
   List.concat (List.map (gen_decl env) si)
 
+and gen_funs_record lbls =
+  let lbls =
+    List.map
+      (fun l ->
+         let js = ref l.pld_name.txt in
+         List.iter
+           (fun (k, v) ->
+              match k.txt with
+              | "js" ->
+                  js := id_of_expr (expr_of_payload k.loc v)
+              | _ ->
+                  ()
+           )
+           l.pld_attributes;
+
+         mknoloc (Lident l.pld_name.txt), (* OCaml label *)
+         str !js, (* JS name *)
+         parse_typ l.pld_type
+      )
+      lbls
+  in
+  fun_ "x"
+    (Exp.record
+       (List.map
+          (fun (ml, js, ty) ->
+             ml,
+             js2ml ty (app (Exp.ident (ojs "get")) [var "x"; js])
+          )
+          lbls
+       )
+       None
+    ),
+  fun_ "x"
+    (app (Exp.ident (ojs "obj"))
+       [Exp.array
+          (List.map
+             (fun (ml, js, ty) ->
+                Exp.tuple
+                  [
+                    js;
+                    ml2js ty (Exp.field (var "x") ml);
+                  ]
+             )
+             lbls
+          )
+       ]
+    )
+
 and gen_funs p =
   let name = p.ptype_name.txt in
   let of_js, to_js =
@@ -361,42 +409,7 @@ and gen_funs p =
         fun_ "x" (ml2js ty (var "x"))
     | None ->
         match p.ptype_kind with
-        | Ptype_record lbls ->
-            let lbls =
-              List.map
-                (fun l ->
-                   mknoloc (Lident l.pld_name.txt), (* OCaml label *)
-                   str l.pld_name.txt, (* JS name *)
-                   parse_typ l.pld_type
-                )
-                lbls
-            in
-            fun_ "x"
-              (Exp.record
-                 (List.map
-                    (fun (ml, js, ty) ->
-                       ml,
-                       js2ml ty (app (Exp.ident (ojs "get")) [var "x"; js])
-                    )
-                    lbls
-                 )
-                 None
-              ),
-            fun_ "x"
-              (app (Exp.ident (ojs "obj"))
-                 [Exp.array
-                    (List.map
-                       (fun (ml, js, ty) ->
-                          Exp.tuple
-                            [
-                              js;
-                              ml2js ty (Exp.field (var "x") ml);
-                            ]
-                       )
-                       lbls
-                    )
-                 ]
-              )
+        | Ptype_record lbls -> gen_funs_record lbls
         | _ ->
             error p.ptype_loc Cannot_parse_type
   in
