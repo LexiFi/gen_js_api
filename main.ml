@@ -25,6 +25,7 @@ let () =
 
   Ojs.array_set myArray2 0 (Ojs.of_int 10);
   Ojs.array_set myArray2 1 (Ojs.of_array Ojs.of_int [| 100; 200; 300 |]);
+(*  Ojs.array_set myArray2 1 ([%to_js: int array] [| 100; 200; 300 |]); *)
 
 (*
   Printf.printf "%0.2f\n" 3.1415;

@@ -7,6 +7,25 @@
 
 (* $Id: gen_js_iface.ml 80189 2015-03-27 17:18:29Z afrisch $ *)
 
+(* TODO:
+
+   - Support other base types (bool, float, char) and type constructors
+     (list).
+
+   - Support for sum types, mapped either to integers or strings (for
+     constant constructors) or to records with a discrimator field.
+     (To be customized by attributes.)
+
+   - Also support running the tool as a ppx working on .ml files
+     to generate *_of_js, *_to_js functions associated to type
+     definitions (marked with an attribute), to generate bindings
+     for "val" declarations, and also to support typed-index mapping
+     betwen values  [%%to_js: tyexpr],  [%of_js: tyexpr] (returning
+     functions).
+*)
+
+
+
 open Location
 open Asttypes
 open Parsetree
