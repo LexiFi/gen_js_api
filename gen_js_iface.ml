@@ -280,7 +280,7 @@ let rec js2ml ty exp =
       app (Exp.ident (ojs "to_array")) [fun_ "elt" (js2ml ty (var "elt")); exp]
   | Option ty ->
       app (Exp.ident (ojs "to_option")) [fun_ "elt" (js2ml ty (var "elt")); exp]
-  | _ ->
+  | Unit | Arrow _ ->
       assert false
 (*
       Exp.extension (mknoloc "unknown", PStr [])
@@ -302,7 +302,7 @@ and ml2js ty exp =
       app (Exp.ident (ojs "of_array")) [fun_ "elt" (ml2js ty (var "elt")); exp]
   | Option ty ->
       app (Exp.ident (ojs "of_option")) [fun_ "elt" (ml2js ty (var "elt")); exp]
-  | _ ->
+  | Unit | Arrow _ ->
       assert false
 (*
       Exp.extension (mknoloc "unknown", PStr [])

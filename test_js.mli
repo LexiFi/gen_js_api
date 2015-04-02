@@ -89,3 +89,8 @@ val setTimeout: (unit -> unit) -> int -> unit
 type myType = { x : a; y : b [@js "Y"]}
 and a = int option
 and b = { s : string; i : int }
+
+
+val myArray: int array
+val myArray2: Ojs.t
+    [@@js.global "myArray"]

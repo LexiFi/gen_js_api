@@ -32,6 +32,7 @@ val set: t -> string -> t -> unit
 val obj: (string * t) array -> t
 
 val array_get: t -> int -> t
+val array_set: t -> int -> t -> unit
 val to_array: (t -> 'a) -> t -> 'a array
 val of_array: ('a -> t) -> 'a array -> t
 

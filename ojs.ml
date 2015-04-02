@@ -32,13 +32,21 @@ let obj = Js.Unsafe.obj
 
 let array_get t i = Obj.magic (Js.array_get (Obj.magic t) i)
 
+let array_set t i x = Js.array_set (Obj.magic t) i x
+
+
 let to_array f objs =
   Array.init
     (to_int (get objs "length"))
     (fun i -> f (array_get objs i))
 
-let of_array _f _arr =
-  assert false
+let of_array f arr =
+  let n = Array.length arr in
+  let a = Js.Unsafe.new_obj Js.array_length [|of_int n|] in
+  for i = 0 to n - 1 do
+    array_set a i (f arr.(i))
+  done;
+  a
 
 let to_option f x =
   if Js.Opt.test (Obj.magic x) && Js.Optdef.test (Obj.magic x) then
