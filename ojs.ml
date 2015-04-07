@@ -15,6 +15,12 @@ let string_to_js s = Js.Unsafe.inject (Js.string s)
 let int_of_js = Obj.magic
 let int_to_js = Js.Unsafe.inject
 
+let bool_of_js o = Js.to_bool (Obj.magic o)
+let bool_to_js x = Js.Unsafe.inject (Js.bool x)
+
+let float_of_js = Obj.magic
+let float_to_js = Js.Unsafe.inject
+
 let of_fun f = Js.Unsafe.inject (Js.wrap_callback f)
 let of_unit_fun f = Js.Unsafe.inject (Js.wrap_callback f)
 
@@ -47,6 +53,12 @@ let array_to_js f arr =
     array_set a i (f arr.(i))
   done;
   a
+
+let list_of_js f objs =
+  Array.to_list (array_of_js f objs)
+
+let list_to_js f l =
+  array_to_js f (Array.of_list l)
 
 let option_of_js f x =
   if Js.Opt.test (Obj.magic x) && Js.Optdef.test (Obj.magic x) then

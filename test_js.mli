@@ -83,6 +83,8 @@ end
 val window: Window.t
 
 val alert: string -> unit
+  [@@js.global]
+
 val setTimeout: (unit -> unit) -> int -> unit
 
 
@@ -94,3 +96,9 @@ and b = { s : string; i : int }
 val myArray: int array
 val myArray2: Ojs.t
     [@@js.global "myArray"]
+
+
+val alert_bool: bool -> unit
+  [@@js.global "alert"]
+val alert_float: float -> unit
+  [@@js.global "alert"]

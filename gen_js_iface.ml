@@ -9,9 +9,6 @@
 
 (* TODO:
 
-   - Support other base types (bool, float, char) and type constructors
-     (list).
-
    - Support for sum types, mapped either to integers or strings (for
      constant constructors) or to records with a discrimator field.
      (To be customized by attributes.)
@@ -74,14 +71,10 @@ let () =
 (** AST *)
 
 type typ =
-  | String
-  | Int
   | Arrow of typ list * typ
-  | Array of typ
-  | Option of typ
   | Unit
   | Js
-  | Name of string
+  | Name of string * typ list
 
 type expr =
   | Id of string
@@ -128,17 +121,11 @@ let rec parse_typ ty =
       | Arrow (tl, t2) -> Arrow (t1 :: tl, t2)
       | t2 -> Arrow ([t1], t2)
       end
-  | Ptyp_constr ({txt = Lident "array"}, [t1]) ->
-      Array (parse_typ t1)
-  | Ptyp_constr ({txt = Lident "option"}, [t1]) ->
-      Option (parse_typ t1)
-  | Ptyp_constr ({txt = lid}, []) ->
-      begin match String.concat "." (Longident.flatten lid) with
-      | "string" -> String
-      | "int" -> Int
-      | "unit" -> Unit
-      | "Ojs.t" -> Js
-      | s -> Name s
+  | Ptyp_constr ({txt = lid}, tl) ->
+      begin match String.concat "." (Longident.flatten lid), tl with
+      | "unit", [] -> Unit
+      | "Ojs.t", [] -> Js
+      | s, tl -> Name (s, List.map parse_typ tl)
       end
   | _ ->
       error ty.ptyp_loc Cannot_parse_type
@@ -176,10 +163,10 @@ let drop_suffix ~suffix s =
 
 let auto loc s ty =
   match ty with
-  | Arrow ([Name t], Js) when check_suffix ~suffix:"_to_js" s = Some t ->
+  | Arrow ([Name (t, [])], Js) when check_suffix ~suffix:"_to_js" s = Some t ->
       Cast
 
-  | Arrow ([Js], Name t) when check_suffix ~suffix:"_of_js" s = Some t ->
+  | Arrow ([Js], Name (t, [])) when check_suffix ~suffix:"_of_js" s = Some t ->
       Cast
 
   | Arrow ([Name _], _) ->
@@ -274,7 +261,13 @@ and parse_sig s =
 let var x = Exp.ident (mknoloc (Longident.parse x))
 let app f args = Exp.apply f (List.map (fun e -> (Nolabel, e)) args)
 let str s = Exp.constant (Const_string (s, None))
-let fun_ s e = Exp.fun_ Nolabel None (Pat.var (mknoloc s)) e
+let fun_ s e =
+  match e.pexp_desc with
+  | Pexp_apply (f, [Nolabel, {pexp_desc = Pexp_ident {txt = Lident x}}])
+      when x = s -> f
+  | _ ->
+      Exp.fun_ Nolabel None (Pat.var (mknoloc s)) e
+
 let fun_unit e = Exp.fun_ Nolabel None (Pat.construct (mknoloc (Lident "()")) None) e
 
 let func = List.fold_right (fun s rest -> fun_ s rest)
@@ -284,55 +277,44 @@ let ojs s args = app (Exp.ident (mknoloc (Ldot (Lident "Ojs", s)))) args
 let def s ty body =
   Str.value Nonrecursive [ Vb.mk (Pat.constraint_ (Pat.var (mknoloc s)) ty) body ]
 
+let builtin_type = function
+  | "int" | "string" | "bool" | "float"
+  | "array" | "list" | "option" -> true
+  | _ -> false
+
 let rec js2ml ty exp =
   match ty with
-  | String ->
-      ojs "string_of_js" [exp]
-  | Int ->
-      ojs "int_of_js" [exp]
   | Js ->
       exp
-  | Name s ->
-      app (Exp.ident (mknoloc (Longident.parse (s ^ "_of_js")))) [exp]
-  | Array ty ->
-      ojs "array_of_js" [fun_ "elt" (js2ml ty (var "elt")); exp]
-  | Option ty ->
-      ojs "option_of_js" [fun_ "elt" (js2ml ty (var "elt")); exp]
-  | Unit | Arrow _ ->
+  | Name (s, tl) ->
+      let s = if builtin_type s then "Ojs." ^ s else s in
+      let args = List.map (fun ty -> fun_ "elt" (js2ml ty (var "elt"))) tl in
+      app (Exp.ident (mknoloc (Longident.parse (s ^ "_of_js")))) (args @ [exp])
+(*  | Unit ->
       assert false
-(*
-      Exp.extension (mknoloc "unknown", PStr [])
+  | Arrow _ ->
+      assert false
 *)
+   | _ ->
+      Exp.extension (mknoloc "unknown", PStr [])
 
 and ml2js ty exp =
   match ty with
-  | String ->
-      ojs "string_to_js" [exp]
-  | Int ->
-      ojs "int_to_js" [exp]
   | Js ->
       exp
-  | Name s ->
-      app (Exp.ident (mknoloc (Longident.parse (s ^ "_to_js")))) [exp]
+  | Name (s, tl) ->
+      let s = if builtin_type s then "Ojs." ^ s else s in
+      let args = List.map (fun ty -> fun_ "elt" (ml2js ty (var "elt"))) tl in
+      app (Exp.ident (mknoloc (Longident.parse (s ^ "_to_js")))) (args @ [exp])
   | Arrow ([Unit], Unit) ->
       ojs "of_unit_fun" [exp]
-  | Array ty ->
-      ojs "array_to_js" [fun_ "elt" (ml2js ty (var "elt")); exp]
-  | Option ty ->
-      ojs "option_to_js" [fun_ "elt" (ml2js ty (var "elt")); exp]
   | Unit | Arrow _ ->
-      assert false
-(*
+(*      assert false *)
       Exp.extension (mknoloc "unknown", PStr [])
-*)
 
 and gen_typ = function
-  | String ->
-      Typ.constr (mknoloc (Lident "string")) []
-  | Int ->
-      Typ.constr (mknoloc (Lident "int")) []
-  | Name s ->
-      Typ.constr (mknoloc (Longident.parse s)) []
+  | Name (s, tyl) ->
+      Typ.constr (mknoloc (Longident.parse s)) (List.map gen_typ tyl)
   | Js ->
       Typ.constr (mknoloc (Longident.parse "Ojs.t")) []
   | Unit ->
@@ -342,10 +324,6 @@ and gen_typ = function
         (fun t1 t2 -> Typ.arrow Nolabel (gen_typ t1) t2)
         tl
         (gen_typ t2)
-  | Array ty ->
-      Typ.constr (mknoloc (Lident "array")) [gen_typ ty]
-  | Option ty ->
-      Typ.constr (mknoloc (Lident "option")) [gen_typ ty]
 
 let gen_args ty_args =
   List.mapi
@@ -412,12 +390,12 @@ and gen_funs p =
     Vb.mk
       (Pat.constraint_
          (Pat.var (mknoloc (name ^ "_of_js")))
-         (gen_typ (Arrow ([Js], Name name))))
+         (gen_typ (Arrow ([Js], Name (name, [])))))
       of_js;
     Vb.mk
       (Pat.constraint_
          (Pat.var (mknoloc (name ^ "_to_js")))
-         (gen_typ (Arrow ([Name name], Js))))
+         (gen_typ (Arrow ([Name (name, [])], Js))))
       to_js
   ]
 
@@ -510,7 +488,7 @@ and gen_expr ids = function
   | Call (Id "global", [Str s]) ->
       ojs "variable" [str s]
   | Str s ->
-      ml2js String (str s)
+      ml2js (Name ("string", [])) (str s)
   | Id s when List.mem_assoc s ids ->
       List.assoc s ids
   | _ ->

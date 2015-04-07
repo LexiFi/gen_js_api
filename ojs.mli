@@ -17,6 +17,26 @@ val string_to_js: string -> t
 val int_of_js: t -> int
 val int_to_js: int -> t
 
+val bool_of_js: t -> bool
+val bool_to_js: bool -> t
+
+val float_of_js: t -> float
+val float_to_js: float -> t
+
+val array_of_js: (t -> 'a) -> t -> 'a array
+val array_to_js: ('a -> t) -> 'a array -> t
+
+val list_of_js: (t -> 'a) -> t -> 'a list
+val list_to_js: ('a -> t) -> 'a list -> t
+
+val option_of_js: (t -> 'a) -> t -> 'a option
+(** Both [null] and [undefined] are mapped to [None]. *)
+val option_to_js: ('a -> t) -> 'a option -> t
+(** [None] is mapped to [null]. *)
+
+
+
+
 val of_fun: (t -> t) -> t
 val of_unit_fun: (unit -> unit) -> t
 
@@ -33,13 +53,5 @@ val obj: (string * t) array -> t
 
 val array_get: t -> int -> t
 val array_set: t -> int -> t -> unit
-
-val array_of_js: (t -> 'a) -> t -> 'a array
-val array_to_js: ('a -> t) -> 'a array -> t
-
-val option_of_js: (t -> 'a) -> t -> 'a option
-    (** Both [null] and [undefined] are mapped to [None]. *)
-val option_to_js: ('a -> t) -> 'a option -> t
-  (** [None] is mapped to [null]. *)
 
 val variable: string -> t
