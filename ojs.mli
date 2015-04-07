@@ -11,11 +11,11 @@
 
 type t
 
-val to_string: t -> string
-val of_string: string -> t
+val string_of_js: t -> string
+val string_to_js: string -> t
 
-val to_int: t -> int
-val of_int: int -> t
+val int_of_js: t -> int
+val int_to_js: int -> t
 
 val of_fun: (t -> t) -> t
 val of_unit_fun: (unit -> unit) -> t
@@ -33,12 +33,13 @@ val obj: (string * t) array -> t
 
 val array_get: t -> int -> t
 val array_set: t -> int -> t -> unit
-val to_array: (t -> 'a) -> t -> 'a array
-val of_array: ('a -> t) -> 'a array -> t
 
-val to_option: (t -> 'a) -> t -> 'a option
+val array_of_js: (t -> 'a) -> t -> 'a array
+val array_to_js: ('a -> t) -> 'a array -> t
+
+val option_of_js: (t -> 'a) -> t -> 'a option
     (** Both [null] and [undefined] are mapped to [None]. *)
-val of_option: ('a -> t) -> 'a option -> t
+val option_to_js: ('a -> t) -> 'a option -> t
   (** [None] is mapped to [null]. *)
 
 val variable: string -> t

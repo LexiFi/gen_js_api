@@ -287,17 +287,17 @@ let def s ty body =
 let rec js2ml ty exp =
   match ty with
   | String ->
-      ojs "to_string" [exp]
+      ojs "string_of_js" [exp]
   | Int ->
-      ojs "to_int" [exp]
+      ojs "int_of_js" [exp]
   | Js ->
       exp
   | Name s ->
       app (Exp.ident (mknoloc (Longident.parse (s ^ "_of_js")))) [exp]
   | Array ty ->
-      ojs "to_array" [fun_ "elt" (js2ml ty (var "elt")); exp]
+      ojs "array_of_js" [fun_ "elt" (js2ml ty (var "elt")); exp]
   | Option ty ->
-      ojs "to_option" [fun_ "elt" (js2ml ty (var "elt")); exp]
+      ojs "option_of_js" [fun_ "elt" (js2ml ty (var "elt")); exp]
   | Unit | Arrow _ ->
       assert false
 (*
@@ -307,9 +307,9 @@ let rec js2ml ty exp =
 and ml2js ty exp =
   match ty with
   | String ->
-      ojs "of_string" [exp]
+      ojs "string_to_js" [exp]
   | Int ->
-      ojs "of_int" [exp]
+      ojs "int_to_js" [exp]
   | Js ->
       exp
   | Name s ->
@@ -317,9 +317,9 @@ and ml2js ty exp =
   | Arrow ([Unit], Unit) ->
       ojs "of_unit_fun" [exp]
   | Array ty ->
-      ojs "of_array" [fun_ "elt" (ml2js ty (var "elt")); exp]
+      ojs "array_to_js" [fun_ "elt" (ml2js ty (var "elt")); exp]
   | Option ty ->
-      ojs "of_option" [fun_ "elt" (ml2js ty (var "elt")); exp]
+      ojs "option_to_js" [fun_ "elt" (ml2js ty (var "elt")); exp]
   | Unit | Arrow _ ->
       assert false
 (*

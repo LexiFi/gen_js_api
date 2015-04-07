@@ -23,8 +23,8 @@ let div = elt "div"
 let () =
   Array.iter (Printf.printf "[%i]\n") myArray;
 
-  Ojs.array_set myArray2 0 (Ojs.of_int 10);
-  Ojs.array_set myArray2 1 (Ojs.of_array Ojs.of_int [| 100; 200; 300 |]);
+  Ojs.array_set myArray2 0 (Ojs.int_to_js 10);
+  Ojs.array_set myArray2 1 (Ojs.array_to_js Ojs.int_to_js [| 100; 200; 300 |]);
 (*  Ojs.array_set myArray2 1 ([%to_js: int array] [| 100; 200; 300 |]); *)
 
 (*
