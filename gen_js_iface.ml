@@ -271,7 +271,6 @@ and parse_sig s =
 
 (** Code generation *)
 
-let ojs s =  mknoloc (Ldot (Lident "Ojs", s))
 let var x = Exp.ident (mknoloc (Longident.parse x))
 let app f args = Exp.apply f (List.map (fun e -> (Nolabel, e)) args)
 let str s = Exp.constant (Const_string (s, None))
@@ -279,7 +278,7 @@ let fun_ s e = Exp.fun_ Nolabel None (Pat.var (mknoloc s)) e
 let fun_unit e = Exp.fun_ Nolabel None (Pat.construct (mknoloc (Lident "()")) None) e
 
 let func = List.fold_right (fun s rest -> fun_ s rest)
-
+let ojs s args = app (Exp.ident (mknoloc (Ldot (Lident "Ojs", s)))) args
 
 
 let def s ty body =
@@ -288,17 +287,17 @@ let def s ty body =
 let rec js2ml ty exp =
   match ty with
   | String ->
-      app (Exp.ident (ojs "to_string")) [exp]
+      ojs "to_string" [exp]
   | Int ->
-      app (Exp.ident (ojs "to_int")) [exp]
+      ojs "to_int" [exp]
   | Js ->
       exp
   | Name s ->
       app (Exp.ident (mknoloc (Longident.parse (s ^ "_of_js")))) [exp]
   | Array ty ->
-      app (Exp.ident (ojs "to_array")) [fun_ "elt" (js2ml ty (var "elt")); exp]
+      ojs "to_array" [fun_ "elt" (js2ml ty (var "elt")); exp]
   | Option ty ->
-      app (Exp.ident (ojs "to_option")) [fun_ "elt" (js2ml ty (var "elt")); exp]
+      ojs "to_option" [fun_ "elt" (js2ml ty (var "elt")); exp]
   | Unit | Arrow _ ->
       assert false
 (*
@@ -308,19 +307,19 @@ let rec js2ml ty exp =
 and ml2js ty exp =
   match ty with
   | String ->
-      app (Exp.ident (ojs "of_string")) [exp]
+      ojs "of_string" [exp]
   | Int ->
-      app (Exp.ident (ojs "of_int")) [exp]
+      ojs "of_int" [exp]
   | Js ->
       exp
   | Name s ->
       app (Exp.ident (mknoloc (Longident.parse (s ^ "_to_js")))) [exp]
   | Arrow ([Unit], Unit) ->
-      app (Exp.ident (ojs "of_unit_fun")) [exp]
+      ojs "of_unit_fun" [exp]
   | Array ty ->
-      app (Exp.ident (ojs "of_array")) [fun_ "elt" (ml2js ty (var "elt")); exp]
+      ojs "of_array" [fun_ "elt" (ml2js ty (var "elt")); exp]
   | Option ty ->
-      app (Exp.ident (ojs "of_option")) [fun_ "elt" (ml2js ty (var "elt")); exp]
+      ojs "of_option" [fun_ "elt" (ml2js ty (var "elt")); exp]
   | Unit | Arrow _ ->
       assert false
 (*
@@ -387,14 +386,14 @@ and gen_funs_record lbls =
   in
   let lbls = List.map prepare_label lbls in
   let of_js (ml, js, ty) =
-    ml, js2ml ty (app (Exp.ident (ojs "get")) [var "x"; js])
+    ml, js2ml ty (ojs "get" [var "x"; js])
   in
   let to_js (ml, js, ty) =
     Exp.tuple [js; ml2js ty (Exp.field (var "x") ml)]
   in
 
   fun_ "x" (Exp.record (List.map of_js lbls) None),
-  fun_ "x" (app (Exp.ident (ojs "obj")) [Exp.array (List.map to_js lbls)])
+  fun_ "x" (ojs "obj" [Exp.array (List.map to_js lbls)])
 
 and gen_funs p =
   let name = p.ptype_name.txt in
@@ -441,12 +440,12 @@ and gen_def loc decl ty =
       fun_ "this" (js2ml ty_res (ml2js ty_arg (var "this")))
 
   | PropGet s, Arrow ([ty_this], ty_res) ->
-      let res = app (Exp.ident (ojs "get")) [ml2js ty_this (var "this"); str s] in
+      let res = ojs "get" [ml2js ty_this (var "this"); str s] in
       fun_ "this" (js2ml ty_res res)
 
   | PropSet s, Arrow ([Name _ as ty_this; ty_arg], Unit) ->
       let res =
-        app (Exp.ident (ojs "set"))
+        ojs "set"
           [
             ml2js ty_this (var "this");
             str s;
@@ -459,8 +458,8 @@ and gen_def loc decl ty =
       let ty_args = map_args ty_args in
       let args = gen_args ty_args in
       let res =
-        app
-          (Exp.ident (ojs (if ty_res = Unit then "call_unit" else "call")))
+        ojs
+          (if ty_res = Unit then "call_unit" else "call")
           [
             ml2js ty_this (var "this");
             str s;
@@ -475,9 +474,9 @@ and gen_def loc decl ty =
       let ty_args = map_args ty_args in
       let args = gen_args ty_args in
       let res =
-        app (Exp.ident (ojs (if ty_res=Unit then "apply_unit" else "apply")))
+        ojs (if ty_res=Unit then "apply_unit" else "apply")
           [
-            app (Exp.ident (ojs "variable")) [str s];
+            ojs "variable" [str s];
             Exp.array (List.map snd args)
           ]
       in
@@ -485,7 +484,7 @@ and gen_def loc decl ty =
       (if ty_args = [] then fun_unit else func (List.map fst args)) res
 
   | Global s, ty_res ->
-      let res = app (Exp.ident (ojs "variable")) [str s] in
+      let res = ojs "variable" [str s] in
       js2ml ty_res res
 
   | Expr e, Arrow (ty_args, ty_res) ->
@@ -502,14 +501,14 @@ and gen_def loc decl ty =
 
 and gen_expr ids = function
   | Call (Id "call", obj :: Str meth :: args) ->
-      app (Exp.ident (ojs "call"))
+      ojs "call"
         [
           gen_expr ids obj;
           str meth;
           Exp.array (List.map (gen_expr ids) args)
         ]
   | Call (Id "global", [Str s]) ->
-      app (Exp.ident (ojs "variable")) [str s]
+      ojs "variable" [str s]
   | Str s ->
       ml2js String (str s)
   | Id s when List.mem_assoc s ids ->
