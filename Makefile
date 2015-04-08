@@ -14,7 +14,8 @@ build:
 example:
 	./gen_js_api.exe examples/test_js.mli > examples/test_js.ml
 	$(OCAMLC) -c -I examples examples/test_js.mli examples/test_js.ml
-	$(OCAMLC) -package js_of_ocaml -linkpkg -I examples -o examples/main.exe ojs.cmo examples/test_js.cmo examples/main.ml
+	$(OCAMLC) -c -I examples -ppx "./gen_js_api.exe -ppx" examples/main.ml
+	$(OCAMLC) -package js_of_ocaml -linkpkg -o examples/main.exe ojs.cmo examples/test_js.cmo examples/main.cmo
 	js_of_ocaml -o examples/main.js examples/main.exe
 
 clean:

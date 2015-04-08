@@ -57,29 +57,3 @@ val alert: string -> unit
   [@@js.global]
 
 val setTimeout: (unit -> unit) -> int -> unit
-
-
-type myType = { x : a; y : b [@js "Y"]}
-and a = int option
-and b = { s : string; i : int }
-
-
-val myArray: int array
-val myArray2: Ojs.t
-    [@@js.global "myArray"]
-
-
-val alert_bool: bool -> unit
-  [@@js.global "alert"]
-val alert_float: float -> unit
-  [@@js.global "alert"]
-
-val wrapper: (int -> int -> int) -> (int -> int -> int [@f])
-    [@@js.global "wrapper"]
-
-val caller: (unit -> int) -> int
-  [@@js.global "caller"]
-
-val caller_unit: (unit -> unit) -> unit
-  [@@js.global "caller"]
-

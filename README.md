@@ -347,6 +347,57 @@ declarations in most cases.  Here are the rules, applied in order:
   This applies in particular for any non-functional type.
 
 
+PPX on implementations
+----------------------
+
+While the primary mode of operation for gen_js_api is to generate an
+.ml file from an annotated .mli file, it is also possible to use it as
+a ppx preprocessor on .ml file directly to insert local JS bindings.
+Several forms are supported:
+
+ - `[%js]` extension as a module expression, to be used directly under
+   a module-level type constraint.  Examples:
+
+   ````
+     include ([%js] : sig ... end)
+
+     module M : sig ... end = [%js]
+   ````
+
+   The signature is processed as it it were found in an .mli file, and
+   the resulting structure is inserted in place of the `[%js]`
+   extension.
+
+ - `[@@js]` attributes on type declarations.
+
+   Example:
+
+   ````
+     type t = { x : int; y : int } [@@js]
+   ````
+
+   This generates the corresponding `*_of_js` and `*_to_js` functions.
+   In case of a multi-type declaration, each type must be annotated
+   with `[@@js]` (if needed).
+
+ - `[@@js.*]` attributes on val declarations.
+
+   Example:
+
+   ````
+     val alert_bool: bool -> unit
+       [@@js.global "alert"]
+
+     val myGlobalValue: int array
+       [@@js]
+   ````
+
+   In implementations, such `val` declarations are recognized only
+   if they have some `[@@js.*]` attribute.  To enable the default
+   heuristics, one can use `[@@js]`.
+
+
+
 TODOs
 -----
 
@@ -359,10 +410,7 @@ TODOs
 
 - Support really abstract types (treated as `Ojs.t` in the implementation).
 
-- Also support running the tool as a ppx working on .ml files to
-  generate *_of_js, *_to_js functions associated to type definitions
-  (marked with an attribute), to generate bindings for "val"
-  declarations, and also to support typed-index mapping betwen values
+- In ppx mode, support typed-index mapping betwen values
   [%%to_js: tyexpr], [%of_js: tyexpr] (returning functions).
 
 
