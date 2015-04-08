@@ -449,8 +449,6 @@ TODOs
 
 - Support really abstract types (treated as `Ojs.t` in the implementation).
 
-- Support binding to object constructors `[@@js.new]`.
-
 
 About
 -----
