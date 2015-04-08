@@ -9,10 +9,10 @@ all: build example
 
 build:
 	$(OCAMLC) -c -package js_of_ocaml ojs.mli ojs.ml
-	$(OCAMLC) -package compiler-libs.bytecomp -linkpkg -o gen_js_iface.exe gen_js_iface.ml
+	$(OCAMLC) -package compiler-libs.bytecomp -linkpkg -o gen_js_api.exe gen_js_api.ml
 
 example:
-	./gen_js_iface.exe examples/test_js.mli > examples/test_js.ml
+	./gen_js_api.exe examples/test_js.mli > examples/test_js.ml
 	$(OCAMLC) -c -I examples examples/test_js.mli examples/test_js.ml
 	$(OCAMLC) -package js_of_ocaml -linkpkg -I examples -o examples/main.exe ojs.cmo examples/test_js.cmo examples/main.ml
 	js_of_ocaml -o examples/main.js examples/main.exe
