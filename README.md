@@ -353,6 +353,10 @@ PPX on implementations
 While the primary mode of operation for gen_js_api is to generate an
 .ml file from an annotated .mli file, it is also possible to use it as
 a ppx preprocessor on .ml file directly to insert local JS bindings.
+
+The `-ppx` command-line option must be the first argument passed
+to gen_js_api to enable the ppx mode.
+
 Several forms are supported:
 
  - `[%js]` extension as a module expression, to be used directly under
