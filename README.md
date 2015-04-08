@@ -402,10 +402,10 @@ Several forms are supported:
 
  - `[%js.to: ty]` and `[%js.of: ty]` extensions an expressions.
 
-   Examples:
+   Example:
 
    ````
-     let x = [%js.of: int list]  [ 10; 20; 30 ]
+     let x : Ojs.t = [%js.of: int list]  [ 10; 20; 30 ]
    ````
 
    This form generates the mapping function associated to a JS-able type.
@@ -423,9 +423,7 @@ TODOs
 
 - Support really abstract types (treated as `Ojs.t` in the implementation).
 
-- In ppx mode, support typed-index mapping betwen values
-  [%%to_js: tyexpr], [%of_js: tyexpr] (returning functions).
-
+- Support binding to object constructors `[@@js.new]`.
 
 
 About
