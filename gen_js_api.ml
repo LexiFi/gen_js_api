@@ -182,9 +182,17 @@ let parse_valdecl ~in_sig vd =
   let attrs = vd.pval_attributes in
 
   let parse_attr defs (k, v) =
-    let opt_name () =
+    let opt_name ?prefix () =
       match v with
-      | PStr [] -> s (* default *)
+      | PStr [] ->
+          begin match prefix with
+          | None -> s (* default *)
+          | Some prefix ->
+              begin match check_prefix ~prefix s with
+              | None -> error loc Setter_name
+              | Some s -> s
+              end
+          end
       | _ -> id_of_expr (expr_of_payload k.loc v)
     in
     match k.txt with
@@ -195,16 +203,7 @@ let parse_valdecl ~in_sig vd =
     | "js.get" ->
         PropGet (opt_name ()) :: defs
     | "js.set" ->
-        let s =
-          match v with
-          | PStr [] ->
-              begin match check_prefix ~prefix:"set_" s with
-              | None -> error loc Setter_name
-              | Some s2 -> s2
-              end
-          | _ -> opt_name ()
-        in
-        PropSet s :: defs
+        PropSet (opt_name ~prefix:"set_" ()) :: defs
     | "js.meth" ->
         MethCall (opt_name ()) :: defs
     | "js.global" ->
@@ -212,7 +211,7 @@ let parse_valdecl ~in_sig vd =
     | "js" ->
         auto s (Lazy.force ty) :: defs
     | "js.new" ->
-        New (opt_name ()) :: defs
+        New (opt_name ~prefix:"new_" ()) :: defs
     | _ ->
         defs
   in
