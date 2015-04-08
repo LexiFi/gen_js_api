@@ -445,7 +445,20 @@ TODOs
   objects with a discriminator field, etc.
 
 - Support OCaml object types, to wrap JS values (less efficient than
-  opaque binding, but sometimes more idiomatic).
+  opaque binding, but sometimes more idiomatic).  The idea would be to
+  declare:
+
+  ```
+    class foo: Ojs.t -> object
+      method f: int -> unit (* method *)
+      method x: int (* getter *)
+      method set_x: int -> unit (* setter *)
+
+      method to_js: Ojs.t
+    end
+  ```
+
+
 
 - Support really abstract types (treated as `Ojs.t` in the implementation).
 
