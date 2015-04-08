@@ -40,6 +40,7 @@ type error =
   | Cannot_parse_type
   | Cannot_parse_sigitem
   | Setter_name
+  | Unit_not_supported_here
 
 exception Error of Location.t * error
 
@@ -62,6 +63,8 @@ let print_error ppf = function
       Format.fprintf ppf "Cannot parse signature item"
   | Setter_name ->
       Format.fprintf ppf "Setter with implicit name must start with 'set_'"
+  | Unit_not_supported_here ->
+      Format.fprintf ppf "Unit not supported in this context"
 
 let () =
   Location.register_error_of_exn
@@ -75,7 +78,7 @@ let () =
 
 type typ =
   | Arrow of typ list * typ
-  | Unit
+  | Unit of Location.t
   | Js
   | Name of string * typ list
 
@@ -96,6 +99,10 @@ type decl =
   | Module of string * decl list
   | Type of rec_flag * Parsetree.type_declaration list
   | Val of string * typ * valdef * Location.t
+
+let is_unit = function
+  | Unit _ -> true
+  | _ -> false
 
 (** Parsing *)
 
@@ -126,7 +133,7 @@ let rec parse_typ ty =
       end
   | Ptyp_constr ({txt = lid}, tl) ->
       begin match String.concat "." (Longident.flatten lid), tl with
-      | "unit", [] -> Unit
+      | "unit", [] -> Unit ty.ptyp_loc
       | "Ojs.t", [] -> Js
       | s, tl -> Name (s, List.map parse_typ tl)
       end
@@ -175,7 +182,7 @@ let auto loc s ty =
   | Arrow ([Name _], _) ->
       PropGet s
 
-  | Arrow ([Name _; _], Unit) when has_prefix ~prefix:"set_" s ->
+  | Arrow ([Name _; _], Unit _) when has_prefix ~prefix:"set_" s ->
       PropSet (drop_prefix ~prefix:"set_" s)
 
 
@@ -320,7 +327,7 @@ let rec js2ml ty exp =
       let ty_args = map_args ty_args in
       let args = gen_args ty_args in
       let res =
-        ojs (if ty_res=Unit then "apply_unit" else "apply")
+        ojs (if is_unit ty_res then "apply_unit" else "apply")
           [
             exp;
             Exp.array (List.map snd args)
@@ -329,9 +336,8 @@ let rec js2ml ty exp =
       let res = map_res res ty_res in
       func_or_unit (List.map fst args) res
 
-  | Unit ->
-      assert false
-      (* Exp.extension (mknoloc "unknown", PStr []) *)
+  | Unit loc ->
+      error loc Unit_not_supported_here
 
 and ml2js ty exp =
   match ty with
@@ -348,9 +354,8 @@ and ml2js ty exp =
       let f = func_or_unit (List.map fst args) (map_res ~map:ml2js res ty_res) in
       ojs "fun_to_js" [f]
 
-  | Unit ->
-      assert false
-      (* Exp.extension (mknoloc "unknown", PStr []) *)
+  | Unit loc ->
+      error loc Unit_not_supported_here
 
 and js2ml_fun ty = mkfun (js2ml ty)
 and ml2js_fun ty = mkfun (ml2js ty)
@@ -366,11 +371,11 @@ and gen_args ?(name = fun _ -> fresh ()) ?(map = ml2js) ty_args =
 
 and map_res ?(map=js2ml) res ty_res =
   match ty_res with
-  | Unit -> res
+  | Unit _ -> res
   | _ -> map ty_res res
 
 and map_args = function
-  | [Unit] -> []
+  | [Unit _] -> []
   | args -> args
 
 
@@ -380,7 +385,7 @@ and gen_typ = function
       Typ.constr (mknoloc (Longident.parse s)) (List.map gen_typ tyl)
   | Js ->
       Typ.constr (mknoloc (Longident.parse "Ojs.t")) []
-  | Unit ->
+  | Unit _ ->
       Typ.constr (mknoloc (Lident "unit")) []
   | Arrow (tl, t2) ->
       List.fold_right
@@ -465,7 +470,7 @@ and gen_def loc decl ty =
   | PropGet s, Arrow ([ty_this], ty_res) ->
       mkfun (fun this -> js2ml ty_res (ojs "get" [ml2js ty_this this; str s]))
 
-  | PropSet s, Arrow ([Name _ as ty_this; ty_arg], Unit) ->
+  | PropSet s, Arrow ([Name _ as ty_this; ty_arg], Unit _) ->
       let res this arg =
         ojs "set"
           [
@@ -481,7 +486,7 @@ and gen_def loc decl ty =
       let args = gen_args ty_args in
       let res this =
         ojs
-          (if ty_res = Unit then "call_unit" else "call")
+          (if is_unit ty_res then "call_unit" else "call")
           [
             ml2js ty_this this;
             str s;
@@ -500,21 +505,21 @@ and gen_def loc decl ty =
   | Expr e, Arrow (ty_args, ty_res) ->
       let ty_args = map_args ty_args in
       let args = gen_args ~name:(Printf.sprintf "arg%i") ty_args in
-      func_or_unit (List.map fst args) (map_res (gen_expr args e) ty_res)
+      func_or_unit (List.map fst args) (map_res (gen_expr loc args e) ty_res)
 
   | Expr e, ty ->
-      js2ml ty (gen_expr [] e)
+      js2ml ty (gen_expr loc [] e)
 
   | _ ->
       error loc Binding_type_mismatch
 
-and gen_expr ids = function
+and gen_expr loc ids = function
   | Call (Id "call", obj :: Str meth :: args) ->
       ojs "call"
         [
-          gen_expr ids obj;
+          gen_expr loc ids obj;
           str meth;
-          Exp.array (List.map (gen_expr ids) args)
+          Exp.array (List.map (gen_expr loc ids) args)
         ]
   | Call (Id "global", [Str s]) ->
       ojs "variable" [str s]
@@ -523,10 +528,7 @@ and gen_expr ids = function
   | Id s when List.mem_assoc s ids ->
       List.assoc s ids
   | _ ->
-      assert false
-(*
-      Exp.extension (mknoloc "unknown", PStr [])
-*)
+      error loc Invalid_expression
 
 (** Main *)
 

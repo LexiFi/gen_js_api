@@ -203,16 +203,6 @@ implementation).  Mutually recursive type declarations are supported.
   ````
 
 
-TODOs:
-
-- Support sum types, with different possible mappings (configured through
-  attributes): int or strings for enums (only constant constructors),
-  objects with a discriminator field, etc.
-
-- Support OCaml object types, to wrap JS values (less efficient than
-  opaque binding, but sometimes more idiomatic).
-
-
 Value bindings
 --------------
 
@@ -352,3 +342,18 @@ declarations in most cases.  Here are the rules, applied in order:
 
 - Otherwise, the declaration is assumed to be a `[@@js.global]` value.
   This applies in particular for any non-functional type.
+
+
+TODOs
+-----
+
+- Support sum types, with different possible mappings (configured through
+  attributes): int or strings for enums (only constant constructors),
+  objects with a discriminator field, etc.
+
+- Support OCaml object types, to wrap JS values (less efficient than
+  opaque binding, but sometimes more idiomatic).
+
+- Support really abstract types (treated as `Ojs.t` in the implementation).
+
+- Support running the tool as a ppx working on .ml files.
