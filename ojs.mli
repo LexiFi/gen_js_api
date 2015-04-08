@@ -35,10 +35,7 @@ val option_to_js: ('a -> t) -> 'a option -> t
 (** [None] is mapped to [null]. *)
 
 
-
-
-val of_fun: (t -> t) -> t
-val of_unit_fun: (unit -> unit) -> t
+val fun_to_js: ('a -> 'b) -> t
 
 val call: t -> string -> t array -> t
 val call_unit: t -> string -> t array -> unit

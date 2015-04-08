@@ -8,6 +8,23 @@
     </canvas>
     <script type="text/javascript">
       var myArray = [1, 2, 3];
+
+      function wrapper(f) {
+          return function (x, y) {
+              console.log("Before");
+              var r = f(x, y);
+              console.log("Result 1 = " + r);
+              var r = f(r, y);
+              console.log("Result 2 = " + r);
+              return r;
+          }
+      }
+      function caller(f) {
+        console.log("Before call");
+        var r = f();
+        console.log("After call");
+        return r;
+      }
     </script>
     <script type="text/javascript" src="main.js">
     </script>

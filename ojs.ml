@@ -21,8 +21,7 @@ let bool_to_js x = Js.Unsafe.inject (Js.bool x)
 let float_of_js = Obj.magic
 let float_to_js = Js.Unsafe.inject
 
-let of_fun f = Js.Unsafe.inject (Js.wrap_callback f)
-let of_unit_fun f = Js.Unsafe.inject (Js.wrap_callback f)
+let fun_to_js f = Js.Unsafe.inject (Js.wrap_callback f)
 
 let call = Js.Unsafe.meth_call
 let call_unit o s args = ignore (call o s args)

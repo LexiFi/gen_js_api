@@ -102,3 +102,13 @@ val alert_bool: bool -> unit
   [@@js.global "alert"]
 val alert_float: float -> unit
   [@@js.global "alert"]
+
+val wrapper: (int -> int -> int) -> (int -> int -> int [@f])
+    [@@js.global "wrapper"]
+
+val caller: (unit -> int) -> int
+  [@@js.global "caller"]
+
+val caller_unit: (unit -> unit) -> unit
+  [@@js.global "caller"]
+

@@ -54,6 +54,26 @@ let () =
   in
   alert_bool true;
   alert_float 3.1415;
+  let f =
+    wrapper
+      (fun x y ->
+         Printf.printf "IN CALLBACK, x = %i, y = %i\n%!" x y;
+         x + y
+      )
+  in
+  Printf.printf "Result -> %i\n%!" (f 42 1);
+
+  let uid = ref 0 in
+  let f () =
+    incr uid;
+    Printf.printf "uid = %i\n%!" !uid;
+    !uid
+  in
+  Printf.printf "Caller result -> %i, %i, %i\n%!" (caller f) (caller f) (caller f);
+  caller_unit (fun () -> ignore (f ()));
+  caller_unit (fun () -> ignore (f ()));
+  caller_unit (fun () -> ignore (f ()));
+
 
 
   let body = Document.body doc in
