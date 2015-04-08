@@ -50,3 +50,5 @@ val array_get: t -> int -> t
 val array_set: t -> int -> t -> unit
 
 val variable: string -> t
+
+val new_obj: string -> t array -> t

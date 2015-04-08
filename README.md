@@ -237,6 +237,25 @@ Value bindings
   the object itself) of type `unit`.  This is interpreted as a JS
   method with no argument at all.
 
+- Object creation:
+
+  ````
+  val new_myClass: T1 -> ... -> Tn -> t
+  [@@js.new]
+  ````
+
+  Corresponds to creating an object of class `myClass` with other
+  arguments passed to it.
+
+  By default, the name of the class on the JS side is derived from the
+  name of the OCaml value (`myClass` above).  It is also possible to
+  specify a custom name explicitly.
+
+  ````
+  val new_myClass: T1 -> ... -> Tn -> t
+  [@@js.new "JavascriptClassName"]
+  ````
+
 - Global value or function:
 
   ````

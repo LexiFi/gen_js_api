@@ -74,6 +74,7 @@ type valdef =
   | MethCall of string
   | Global of string
   | Expr of expr
+  | New of string
 
 type decl =
   | Module of string * decl list
@@ -156,7 +157,8 @@ let auto s = function
   | Arrow ([Js], Name (t, [])) when check_suffix ~suffix:"_of_js" s = Some t -> Cast
   | Arrow ([Name _], _) ->  PropGet s
   | Arrow ([Name _; _], Unit _) when has_prefix ~prefix:"set_" s -> PropSet (drop_prefix ~prefix:"set_" s)
-  | Arrow (Name _ :: _, _) ->  MethCall s
+  | Arrow (_, Name _) when has_prefix ~prefix:"new_" s -> New (drop_prefix ~prefix:"new_" s)
+  | Arrow (Name _ :: _, _) -> MethCall s
   | _ -> Global s
 
 let id_of_expr = function
@@ -209,6 +211,8 @@ let parse_valdecl ~in_sig vd =
         Global (opt_name ()) :: defs
     | "js" ->
         auto s (Lazy.force ty) :: defs
+    | "js.new" ->
+        New (opt_name ()) :: defs
     | _ ->
         defs
   in
@@ -468,6 +472,11 @@ and gen_def loc decl ty =
 
   | Expr e, ty ->
       js2ml ty (gen_expr loc [] e)
+
+  | New name, Arrow (ty_args, ty_res) ->
+      let args = gen_args ty_args in
+      let res = ojs "new_obj" [str name; Exp.array (List.map snd args)] in
+      func (List.map fst args) (map_res res ty_res)
 
   | _ ->
       error loc Binding_type_mismatch
