@@ -554,8 +554,15 @@ let mapper =
     | _ ->
         str
   in
-
-  {super with module_expr; structure_item}
+  let expr self e =
+    let e = super.expr self e in
+    match e.pexp_desc with
+    | Pexp_extension ({txt="js.to"}, PTyp ty) -> js2ml_fun (parse_typ ty)
+    | Pexp_extension ({txt="js.of"}, PTyp ty) -> ml2js_fun (parse_typ ty)
+    | _ ->
+        e
+  in
+  {super with module_expr; structure_item; expr}
 
 
 (** Main *)

@@ -400,6 +400,15 @@ Several forms are supported:
    if they have some `[@@js.*]` attribute.  To enable the default
    heuristics, one can use `[@@js]`.
 
+ - `[%js.to: ty]` and `[%js.of: ty]` extensions an expressions.
+
+   Examples:
+
+   ````
+     let x = [%js.of: int list]  [ 10; 20; 30 ]
+   ````
+
+   This form generates the mapping function associated to a JS-able type.
 
 
 TODOs

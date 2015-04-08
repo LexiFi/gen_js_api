@@ -21,10 +21,13 @@ module LocalBindings : sig
 end = [%js]
 
 
-type foo = int list
-    [@@js]
+let () =
+  let s = [%js.of: int list] [10; 20; 30] in
+  Printf.printf "%i\n%!" ([%js.to: int] (Ojs.array_get s 0));
+  Printf.printf "%i\n%!" ([%js.to: int] (Ojs.array_get s 1));
+  Printf.printf "%i\n%!" ([%js.to: int] (Ojs.array_get s 2))
 
-let _ = foo_of_js
+
 
 val myArray: int array
     [@@js]
