@@ -79,3 +79,7 @@ let option_to_js f = function
 
 
 let variable = Js.Unsafe.variable
+
+let new_obj name args =
+  let constr = Js.Unsafe.get Js.Unsafe.global name in
+  Js.Unsafe.new_obj constr args

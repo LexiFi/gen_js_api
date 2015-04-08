@@ -237,6 +237,27 @@ Value bindings
   the object itself) of type `unit`.  This is interpreted as a JS
   method with no argument at all.
 
+- Object creation:
+
+  ````
+  val new_myClass: T1 -> ... -> Tn -> t
+  [@@js.new]
+  ````
+
+  Corresponds to creating an object of class `myClass` with other
+  arguments passed to it.
+
+  By default, the name of the class on the JS side is derived from the
+  name of the OCaml value (`myClass` above): in this case, the value
+  name must start with the `new_` prefix which is dropped to obtain
+  the class name.  It is also possible to specify a custom name
+  explicitly.
+
+  ````
+  val new_myClass: T1 -> ... -> Tn -> t
+  [@@js.new "JavascriptClassName"]
+  ````
+
 - Global value or function:
 
   ````
@@ -339,6 +360,11 @@ declarations in most cases.  Here are the rules, applied in order:
   its name starts with `set_`, then the declaration is assumed to be a
   `[@@js.set]` property setter (on the property whose name is obtained
   by dropping the `set_` prefix).
+
+- If the value is a function whose result is a named type `... -> t`
+  and its name starts with `new_`, then the declaration is assumed to
+  be a `[@@js.new]` object creation (on the class whose name is
+  obtained by dropping the `new_`prefix).
 
 - If the value is a function whose first argument is a named type `t -> ...`,
   then the definition is assumed to be a `[@@js.call]` method call.

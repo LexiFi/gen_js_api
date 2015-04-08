@@ -57,3 +57,11 @@ val alert: string -> unit
   [@@js.global]
 
 val setTimeout: (unit -> unit) -> int -> unit
+
+module Person: sig
+  type t = private Ojs.t
+
+  val create: string -> t
+  [@@js.new "Person"]
+  val name: t -> string
+end
