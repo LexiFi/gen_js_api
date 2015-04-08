@@ -41,8 +41,6 @@ val alert_bool: bool -> unit
 val alert_float: float -> unit
     [@@js.global "alert"]
 
-
-
 let doc = Window.document window
 
 let elt name ?(attrs = []) ?onclick subs =
@@ -117,13 +115,14 @@ let () =
   caller_unit (fun () -> ignore (f ()));
   caller_unit (fun () -> ignore (f ()));
 
-
+  let alice = Person.create "Alice" in
+  let bob = Person.create "Bob" in
 
   let body = Document.body doc in
   setTimeout (fun () -> Element.setAttribute body "bgcolor" "red") 2000;
   Element.appendChild body (Document.createTextNode doc "ABC");
   Element.appendChild body
-    (div ~attrs:["style", "color: blue"] [ txt "!!!!"; elt "b" [txt "XXX"] ]);
+    (div ~attrs:["style", "color: blue"] [ txt "!!!!"; elt "b" [txt "XXX"; txt (Person.name alice); txt (Person.name bob)] ]);
 
   let l = Document.getElementsByClassName doc "myClass" in
   Array.iter
