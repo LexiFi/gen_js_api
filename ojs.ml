@@ -9,6 +9,9 @@
 
 type t = Js.Unsafe.any
 
+let t_to_js x = x
+let t_of_js x = x
+
 let string_of_js o = Js.to_string (Obj.magic o)
 let string_to_js s = Js.Unsafe.inject (Js.string s)
 

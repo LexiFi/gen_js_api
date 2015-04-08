@@ -39,6 +39,7 @@ type error =
   | Binding_type_mismatch
   | Cannot_parse_type
   | Cannot_parse_sigitem
+  | Setter_name
 
 exception Error of Location.t * error
 
@@ -59,6 +60,8 @@ let print_error ppf = function
       Format.fprintf ppf "Cannot parse type"
   | Cannot_parse_sigitem ->
       Format.fprintf ppf "Cannot parse signature item"
+  | Setter_name ->
+      Format.fprintf ppf "Setter with implicit name must start with 'set_'"
 
 let () =
   Location.register_error_of_exn
@@ -201,20 +204,29 @@ let parse_valdecl loc s ty attrs =
     let opt_name () =
       match v with
       | PStr [] -> s (* default *)
-      | e -> id_of_expr (expr_of_payload k.loc e)
+      | _ -> id_of_expr (expr_of_payload k.loc v)
     in
-    match k.txt, v with
-    | "js.cast", _ ->
+    match k.txt with
+    | "js.cast" ->
         Cast :: defs
-    | "js.expr", e ->
-        Expr (parse_expr (expr_of_payload k.loc e)) :: defs
-    | "js.get", _ ->
+    | "js.expr" ->
+        Expr (parse_expr (expr_of_payload k.loc v)) :: defs
+    | "js.get" ->
         PropGet (opt_name ()) :: defs
-    | "js.set", _ ->
-        PropSet (opt_name ()) :: defs
-    | "js.meth", _ ->
+    | "js.set" ->
+        let s =
+          match v with
+          | PStr [] ->
+              begin match check_prefix ~prefix:"set_" s with
+              | None -> error loc Setter_name
+              | Some s2 -> s2
+              end
+          | e -> opt_name ()
+        in
+        PropSet s :: defs
+    | "js.meth" ->
         MethCall (opt_name ()) :: defs
-    | "js.global", _ ->
+    | "js.global" ->
         Global (opt_name ()) :: defs
     | _ ->
         defs
@@ -237,17 +249,6 @@ let rec parse_sig_item s =
           )
   | Psig_type (rec_flag, decls) ->
       Type (rec_flag, decls)
-(*
-  | Psig_type (_,
-               [ {ptype_name; ptype_params = [];
-                  ptype_cstrs = [];
-                  ptype_kind = Ptype_abstract;
-                  ptype_private = Private;
-                  ptype_manifest = Some ty;
-                  _}
-               ]) when parse_typ ty = Js ->
-      JsType ptype_name.txt
-*)
   | Psig_module {pmd_name; pmd_type = {pmty_desc = Pmty_signature si; _}; _} ->
       Module (pmd_name.txt, parse_sig si)
   | _ ->

@@ -11,6 +11,9 @@
 
 type t
 
+val t_of_js: t -> t
+val t_to_js: t -> t
+
 val string_of_js: t -> string
 val string_to_js: string -> t
 
