@@ -359,7 +359,12 @@ TODOs
 
 - Support really abstract types (treated as `Ojs.t` in the implementation).
 
-- Support running the tool as a ppx working on .ml files.
+- Also support running the tool as a ppx working on .ml files to
+  generate *_of_js, *_to_js functions associated to type definitions
+  (marked with an attribute), to generate bindings for "val"
+  declarations, and also to support typed-index mapping betwen values
+  [%%to_js: tyexpr], [%of_js: tyexpr] (returning functions).
+
 
 
 About
@@ -368,3 +373,7 @@ About
 This package is licensed by LexiFi under the terms of the MIT license.
 
 Contact: alain.frisch@lexifi.com
+
+
+Currenlty, this package works only on OCaml trunk, not on any released
+version.

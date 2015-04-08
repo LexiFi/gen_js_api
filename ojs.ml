@@ -1,11 +1,16 @@
-(***************************************************************************)
-(*  Copyright (C) 2000-2015 LexiFi SAS. All rights reserved.               *)
-(*                                                                         *)
-(*  No part of this document may be reproduced or transmitted in any       *)
-(*  form or for any purpose without the express permission of LexiFi SAS.  *)
-(***************************************************************************)
+(* The package sedlex is released under the terms of an MIT-like license. *)
+(* See the attached LICENSE file.                                         *)
+(* Copyright 2015 by Alain Frisch and LexiFi.                             *)
 
-(* $Id: ojs.ml 80187 2015-03-27 16:40:57Z afrisch $ *)
+(* This module (mostly) abstracts away from js_of_ocaml encoding of
+   OCaml values.  It serves as a support library for the code generated
+   by gen_js_api.
+
+   It would be quite easy to completely drop dependency to
+   js_of_ocaml's library (so as to only rely on its compiler and JS
+   runtime code).
+*)
+
 
 type t = Js.Unsafe.any
 

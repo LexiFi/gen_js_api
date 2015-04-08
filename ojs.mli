@@ -1,11 +1,6 @@
-(***************************************************************************)
-(*  Copyright (C) 2000-2015 LexiFi SAS. All rights reserved.               *)
-(*                                                                         *)
-(*  No part of this document may be reproduced or transmitted in any       *)
-(*  form or for any purpose without the express permission of LexiFi SAS.  *)
-(***************************************************************************)
-
-(* $Id: ojs.mli 80187 2015-03-27 16:40:57Z afrisch $ *)
+(* The package sedlex is released under the terms of an MIT-like license. *)
+(* See the attached LICENSE file.                                         *)
+(* Copyright 2015 by Alain Frisch and LexiFi.                             *)
 
 (** Binding with JS values. *)
 
