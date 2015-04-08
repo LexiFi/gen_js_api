@@ -171,26 +171,13 @@ let drop_suffix ~suffix s =
   | Some x -> x
   | None -> assert false
 
-let auto loc s ty =
-  match ty with
-  | Arrow ([Name (t, [])], Js) when check_suffix ~suffix:"_to_js" s = Some t ->
-      Cast
-
-  | Arrow ([Js], Name (t, [])) when check_suffix ~suffix:"_of_js" s = Some t ->
-      Cast
-
-  | Arrow ([Name _], _) ->
-      PropGet s
-
-  | Arrow ([Name _; _], Unit _) when has_prefix ~prefix:"set_" s ->
-      PropSet (drop_prefix ~prefix:"set_" s)
-
-
-  | Arrow (Name _ :: _, _) ->
-      MethCall s
-
-  | _ ->
-      Global s
+let auto loc s = function
+  | Arrow ([Name (t, [])], Js) when check_suffix ~suffix:"_to_js" s = Some t -> Cast
+  | Arrow ([Js], Name (t, [])) when check_suffix ~suffix:"_of_js" s = Some t -> Cast
+  | Arrow ([Name _], _) ->  PropGet s
+  | Arrow ([Name _; _], Unit _) when has_prefix ~prefix:"set_" s -> PropSet (drop_prefix ~prefix:"set_" s)
+  | Arrow (Name _ :: _, _) ->  MethCall s
+  | _ -> Global s
 
 let id_of_expr = function
   | {pexp_desc=Pexp_constant (Const_string (s, _)); _}
@@ -242,8 +229,7 @@ let parse_valdecl loc s ty attrs =
   match defs with
   | [x] -> x
   | [] -> auto loc s ty
-  | _ ->
-      error loc Multiple_binding_declarations
+  | _ -> error loc Multiple_binding_declarations
 
 let rec parse_sig_item s =
   match s.psig_desc with
@@ -261,14 +247,13 @@ let rec parse_sig_item s =
   | _ ->
       error s.psig_loc Cannot_parse_sigitem
 
-and parse_sig s =
-  List.map parse_sig_item s
+and parse_sig s = List.map parse_sig_item s
 
 (** Code generation *)
 
 let var x = Exp.ident (mknoloc (Longident.parse x))
-let app f args = Exp.apply f (List.map (fun e -> (Nolabel, e)) args)
 let str s = Exp.constant (Const_string (s, None))
+
 let fun_ s e =
   match e.pexp_desc with
   | Pexp_apply (f, [Nolabel, {pexp_desc = Pexp_ident {txt = Lident x}}])
@@ -283,16 +268,18 @@ let fun_unit e =
   | _ ->
       Exp.fun_ Nolabel None (Pat.construct (mknoloc (Lident "()")) None) e
 
-let func = List.fold_right (fun s rest -> fun_ s rest)
-let func_or_unit args body =
+let func args body =
   match args with
   | [] -> fun_unit body
-  | args -> func args body
+  | args -> List.fold_right (fun s rest -> fun_ s rest) args body
 
-let app_or_unit f args =
-  match args with
-  | [] -> app f [Exp.construct (mknoloc (Lident "()")) None]
-  | args -> app f args
+let app f args =
+  let args =
+    match args with
+    | [] -> [Exp.construct (mknoloc (Lident "()")) None]
+    | args -> args
+  in
+  Exp.apply f (List.map (fun e -> (Nolabel, e)) args)
 
 let ojs s args = app (Exp.ident (mknoloc (Ldot (Lident "Ojs", s)))) args
 
@@ -324,7 +311,6 @@ let rec js2ml ty exp =
       let args = List.map js2ml_fun tl in
       app (Exp.ident (mknoloc (Longident.parse (s ^ "_of_js")))) (args @ [exp])
   | Arrow (ty_args, ty_res) ->
-      let ty_args = map_args ty_args in
       let args = gen_args ty_args in
       let res =
         ojs (if is_unit ty_res then "apply_unit" else "apply")
@@ -333,9 +319,7 @@ let rec js2ml ty exp =
             Exp.array (List.map snd args)
           ]
       in
-      let res = map_res res ty_res in
-      func_or_unit (List.map fst args) res
-
+      func (List.map fst args) (map_res res ty_res)
   | Unit loc ->
       error loc Unit_not_supported_here
 
@@ -348,37 +332,29 @@ and ml2js ty exp =
       let args = List.map ml2js_fun tl in
       app (Exp.ident (mknoloc (Longident.parse (s ^ "_to_js")))) (args @ [exp])
   | Arrow (ty_args, ty_res) ->
-      let ty_args = map_args ty_args in
       let args = gen_args ~map:js2ml ty_args in
-      let res = app_or_unit exp (List.map snd args) in
-      let f = func_or_unit (List.map fst args) (map_res ~map:ml2js res ty_res) in
+      let res = app exp (List.map snd args) in
+      let f = func (List.map fst args) (map_res ~map:ml2js res ty_res) in
       ojs "fun_to_js" [f]
-
   | Unit loc ->
       error loc Unit_not_supported_here
 
 and js2ml_fun ty = mkfun (js2ml ty)
 and ml2js_fun ty = mkfun (ml2js ty)
 
-
-and gen_args ?(name = fun _ -> fresh ()) ?(map = ml2js) ty_args =
-  List.mapi
-    (fun i ty ->
-       let s = name i in
-       s, map ty (var s)
-    )
-    ty_args
+and gen_args ?(name = fun _ -> fresh ()) ?(map = ml2js) = function
+  | [Unit _] -> []
+  | args ->
+      let f i ty =
+        let s = name i in
+        s, map ty (var s)
+      in
+      List.mapi f args
 
 and map_res ?(map=js2ml) res ty_res =
   match ty_res with
   | Unit _ -> res
   | _ -> map ty_res res
-
-and map_args = function
-  | [Unit _] -> []
-  | args -> args
-
-
 
 and gen_typ = function
   | Name (s, tyl) ->
@@ -402,10 +378,8 @@ and gen_funs_record lbls =
     List.iter
       (fun (k, v) ->
          match k.txt with
-         | "js" ->
-             js := id_of_expr (expr_of_payload k.loc v)
-         | _ ->
-             ()
+         | "js" -> js := id_of_expr (expr_of_payload k.loc v)
+         | _ -> ()
       )
       l.pld_attributes;
 
@@ -449,7 +423,6 @@ and gen_funs p =
       to_js
   ]
 
-
 and gen_decl env = function
   | Type (rec_flag, decls) ->
       let decls = List.map (fun t -> {t with ptype_private = Public}) decls in
@@ -482,7 +455,6 @@ and gen_def loc decl ty =
       mkfun (fun this -> mkfun (fun arg -> res this arg))
 
   | MethCall s, Arrow (ty_this :: ty_args, ty_res) ->
-      let ty_args = map_args ty_args in
       let args = gen_args ty_args in
       let res this =
         ojs
@@ -495,7 +467,7 @@ and gen_def loc decl ty =
       in
       mkfun
         (fun this ->
-           func_or_unit (List.map fst args) (map_res (res this) ty_res)
+           func (List.map fst args) (map_res (res this) ty_res)
         )
 
   | Global s, ty_res ->
@@ -503,9 +475,8 @@ and gen_def loc decl ty =
       js2ml ty_res res
 
   | Expr e, Arrow (ty_args, ty_res) ->
-      let ty_args = map_args ty_args in
       let args = gen_args ~name:(Printf.sprintf "arg%i") ty_args in
-      func_or_unit (List.map fst args) (map_res (gen_expr loc args e) ty_res)
+      func (List.map fst args) (map_res (gen_expr loc args e) ty_res)
 
   | Expr e, ty ->
       js2ml ty (gen_expr loc [] e)

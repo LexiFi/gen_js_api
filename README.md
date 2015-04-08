@@ -1,9 +1,12 @@
 gen_js_api: generate OCaml bindings for Javascript libraries
 ============================================================
 
+Overview
+--------
+
 gen_js_api aims at simplifying the creation of OCaml bindings for
-Javascript libraries, for OCaml code compiled to Javascript with
-js_of_ocaml.  It is based on the following ideas:
+Javascript libraries, to be used with the js_of_ocaml compiler.  It is
+based on the following ideas:
 
  - Authors of bindings write OCaml signatures for Javascript libraries
    and the tool generates automatically the actual binding code.
@@ -357,3 +360,11 @@ TODOs
 - Support really abstract types (treated as `Ojs.t` in the implementation).
 
 - Support running the tool as a ppx working on .ml files.
+
+
+About
+-----
+
+This package is licensed by LexiFi under the terms of the MIT license.
+
+Contact: alain.frisch@lexifi.com

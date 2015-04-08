@@ -1,32 +1,3 @@
-(* Default conventions:
-
- - val xxx : t -> T
-   Getter for property "xxx" on object of type "t"
-
- - val set_xxx : t -> T -> unit
-   Setter for property "xxx" on object of type "t"
-
- - val xxx : t -> unit -> T
-   Call method "xxx" on object of type "t" with no arguments
-
- - val xxx : t -> T1 -> ... -> Tn -> T
-   Call method "xxx" on object of type "t" with n arguments
-
- - val xxx_to_js : xxx -> Ojs.t
-   Upcast
-
- - val xxx_of_js : Ojs.t -> xxx
-   Downcast
-
- - val xxx : T1 -> ... -> Tn -> T
-   Call global function xxx (assumes T1 is not a named type).
-
- - val xxx : t
-   Global variable xxx
-
-*)
-
-
 module Element : sig
   type t = private Ojs.t
 
