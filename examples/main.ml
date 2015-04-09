@@ -117,10 +117,12 @@ let () =
 
   let alice = Person.create "Alice" Person.Foo.Foo in
   let bob = Person.create "Bob" Person.Foo.Bar in
+  let eve = Person.create "Eve" (Person.Foo.Other 2713) in
 
   let string_of_foo = function
     | Person.Foo.Foo -> "foo"
     | Person.Foo.Bar -> "bar"
+    | Person.Foo.Other n -> Printf.sprintf "other = %d" n
   in
   let string_of_person x = Printf.sprintf "%s <%s>" (Person.name x) (string_of_foo (Person.foo x)) in
 
@@ -128,7 +130,7 @@ let () =
   setTimeout (fun () -> Element.setAttribute body "bgcolor" "red") 2000;
   Element.appendChild body (Document.createTextNode doc "ABC");
   Element.appendChild body
-    (div ~attrs:["style", "color: blue"] [ txt "!!!!"; elt "b" [txt "XXX"; txt (string_of_person alice); txt (string_of_person bob)] ]);
+    (div ~attrs:["style", "color: blue"] [ txt "!!!!"; elt "b" [txt "XXX"; txt (string_of_person alice); txt (string_of_person bob); txt (string_of_person eve)] ]);
 
   let l = Document.getElementsByClassName doc "myClass" in
   Array.iter
