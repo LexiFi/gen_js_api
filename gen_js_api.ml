@@ -28,10 +28,6 @@ let has_attribute key attrs =
   let p ({txt; loc = _}, _) = txt = key in
   List.exists p attrs
 
-let get_attribute key attrs =
-  let p ({txt; loc = _}, _) = txt = key in
-  List.find p attrs
-
 let error loc err = raise (Error (loc, err))
 
 let print_error ppf = function
@@ -69,6 +65,7 @@ type typ =
   | Unit of Location.t
   | Js
   | Name of string * typ list
+  | Enum of (string * Parsetree.expression * typ) list
 
 type expr =
   | Id of string
@@ -112,6 +109,32 @@ let rec parse_expr e =
   | _ ->
      error e.pexp_loc Invalid_expression
 
+let expr_of_stritem = function
+  | {pstr_desc=Pstr_eval (e, _); _} -> e
+  | p -> error p.pstr_loc Expression_expected
+
+let expr_of_payload loc = function
+  | PStr [x] -> expr_of_stritem x
+  | _ -> error loc Expression_expected
+
+let prepare_enum label loc attributes =
+  let js = ref {pexp_desc = Pexp_constant (Const_string (label, None)); pexp_loc = loc; pexp_attributes = attributes} in
+  List.iter
+    begin fun (k, v) ->
+      match k.txt with
+      | "js" -> js := expr_of_payload k.loc v
+      | _ -> ()
+    end
+    attributes;
+  let js = !js in
+  let ty =
+    match js.pexp_desc with
+    | Pexp_constant (Const_string _) -> Name ("string", [])
+    | Pexp_constant (Const_int _) -> Name ("int", [])
+    | _ -> error js.pexp_loc Invalid_expression
+  in
+  label, js, ty
+
 let rec parse_typ ty =
   match ty.ptyp_desc with
   | Ptyp_arrow (_, t1, t2) ->
@@ -126,6 +149,13 @@ let rec parse_typ ty =
       | "Ojs.t", [] -> Js
       | s, tl -> Name (s, List.map parse_typ tl)
       end
+  | Ptyp_variant (rows, Closed, None) ->
+      let prepare_row = function
+        | Rtag (label, attributes, true, []) -> prepare_enum label ty.ptyp_loc attributes
+        | _ -> error ty.ptyp_loc Invalid_expression
+      in
+      let rows = List.map prepare_row rows in
+      Enum rows
   | _ ->
       error ty.ptyp_loc Cannot_parse_type
 
@@ -174,14 +204,6 @@ let id_of_expr = function
   | {pexp_desc=Pexp_ident {txt=Lident s;_}; _}
   | {pexp_desc=Pexp_construct ({txt=Lident s;_}, None); _} -> s
   | e -> error e.pexp_loc Identifier_expected
-
-let expr_of_stritem = function
-  | {pstr_desc=Pstr_eval (e, _); _} -> e
-  | p -> error p.pstr_loc Expression_expected
-
-let expr_of_payload loc = function
-  | PStr [x] -> expr_of_stritem x
-  | _ -> error loc Expression_expected
 
 let parse_valdecl ~in_sig vd =
   let s = vd.pval_name.txt in
@@ -315,6 +337,14 @@ let rec js2ml ty exp =
       func (List.map fst args) (map_res res ty_res)
   | Unit loc ->
       error loc Unit_not_supported_here
+  | Enum enums -> js2ml_of_enum (fun x -> Exp.variant x None) enums exp
+
+and js2ml_of_enum mkval enums exp =
+  let f otherwise (ml, js, ty) =
+    let mlval = mkval ml in
+    Exp.ifthenelse (Exp.apply (Exp.ident (mknoloc (Longident.parse "Pervasives.(==)"))) [Nolabel, exp; Nolabel, ml2js ty js]) mlval (Some otherwise)
+  in
+  List.fold_left f (Exp.assert_ (Exp.construct (mknoloc (Longident.parse "false")) None)) enums
 
 and ml2js ty exp =
   match ty with
@@ -331,6 +361,14 @@ and ml2js ty exp =
       ojs "fun_to_js" [f]
   | Unit loc ->
       error loc Unit_not_supported_here
+  | Enum enums -> ml2js_of_enum (fun x -> Pat.variant x None) enums exp
+
+and ml2js_of_enum mkpat enums exp =
+  let f (ml, js, ty) =
+    let pat = mkpat ml in
+    Exp.case pat (ml2js ty js)
+  in
+  Exp.match_ exp (List.map f enums)
 
 and js2ml_fun ty = mkfun (js2ml ty)
 and ml2js_fun ty = mkfun (ml2js ty)
@@ -361,6 +399,10 @@ and gen_typ = function
         (fun t1 t2 -> Typ.arrow Nolabel (gen_typ t1) t2)
         tl
         (gen_typ t2)
+  | Enum enums ->
+      let f (label, _, _) = Rtag (label, [], true, []) in
+      let rows = List.map f enums in
+      Typ.variant rows Closed None
 
 let rec gen_decls si =
   List.concat (List.map gen_decl si)
@@ -395,35 +437,13 @@ and gen_funs_enums constructors =
   let prepare_constructor c =
     begin match c.pcd_res, c.pcd_args with
     | None, Pcstr_tuple [] ->
-        let js = ref {pexp_desc = Pexp_constant (Const_string (c.pcd_name.txt, None)); pexp_loc = c.pcd_loc; pexp_attributes = c.pcd_attributes} in
-        List.iter
-          begin fun (k, v) ->
-             match k.txt with
-             | "js" -> js := expr_of_payload k.loc v
-             | _ -> ()
-          end
-          c.pcd_attributes;
-        let js = !js in
-        let ty =
-          match js.pexp_desc with
-          | Pexp_constant (Const_string _) -> Name ("string", [])
-          | Pexp_constant (Const_int _) -> Name ("int", [])
-          | _ -> error js.pexp_loc Cannot_parse_type
-        in
-        mknoloc (Longident.parse c.pcd_name.txt), js, ty
+        prepare_enum c.pcd_name.txt c.pcd_name.loc c.pcd_attributes
     | _ -> error c.pcd_loc Cannot_parse_type
     end
   in
-  let constructors = List.map prepare_constructor constructors in
-  let of_js x =
-    let f otherwise (ml, js, ty) =
-      Exp.ifthenelse (Exp.apply (Exp.ident (mknoloc (Longident.parse "Pervasives.(==)"))) [Nolabel, x; Nolabel, ml2js ty js]) (Exp.construct ml None) (Some otherwise)
-    in
-    List.fold_left f (Exp.assert_ (Exp.construct (mknoloc (Longident.parse "false")) None)) constructors
-  in
-  let to_js (ml, js, ty) = Exp.case (Pat.construct ml None) (ml2js ty js) in
-  mkfun of_js,
-  mkfun (fun x -> Exp.match_ x (List.map to_js constructors))
+  let enums = List.map prepare_constructor constructors in
+  mkfun (js2ml_of_enum (function x -> Exp.construct (mknoloc (Longident.Lident x)) None) enums),
+  mkfun (ml2js_of_enum (function x -> Pat.construct (mknoloc (Longident.Lident x)) None) enums)
 
 and gen_funs p =
   let name = p.ptype_name.txt in
