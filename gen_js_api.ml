@@ -182,16 +182,12 @@ let parse_valdecl ~in_sig vd =
   let attrs = vd.pval_attributes in
 
   let parse_attr defs (k, v) =
-    let opt_name ?prefix () =
+    let opt_name ?(prefix = "") () =
       match v with
       | PStr [] ->
-          begin match prefix with
-          | None -> s (* default *)
-          | Some prefix ->
-              begin match check_prefix ~prefix s with
-              | None -> error loc Setter_name
-              | Some s -> s
-              end
+          begin match check_prefix ~prefix s with
+          | None -> error loc Setter_name
+          | Some s -> s
           end
       | _ -> id_of_expr (expr_of_payload k.loc v)
     in
