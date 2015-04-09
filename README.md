@@ -155,13 +155,8 @@ arity 2 (returning type `t3`).
 The `unit` type can only be used in specific contexts: as the return
 type of functions or methods, or as the unique argument.
 
-Polymorphic types with only constant variants are supported.  By
-default, each variant is mapped to the JS string of the same name, but
-a custom translation (which can be a string literal or an integer
-literal) can be provided with a `[@js]` attribute:
-
-  ````
-    type t = [`foo | `bar [@js 42]] -> int
+Polymorphic types with only constant variants are supported.  See the section
+on Enums below.
   ````
 
 
@@ -215,19 +210,39 @@ implementation).  Mutually recursive type declarations are supported.
   type myType = { x : int; y : int [@js "Y"]}
   ````
 
-- Sum type declaration, mapped to enums:
+- Sum type declaration, mapped to enums (see Enums section).
+
+
+Enums
+-----
+
+Either polymorphic variants or normal sum types (all with constant
+constructors) can be used to bind to "enums" in Javascript.  By
+default, constructors are mapped to the JS string equal to their OCaml
+name, but a custom translation can be provided with a `[@js]`
+attribute.  This custom translation can be a string or an integer
+literal.
 
     ````
     type t =
       | Foo [@js "foo"]
       | Bar [@js 42]
       | Baz
+
+    type t = [`foo | `bar [@js 42] | `Baz]
     ````
 
-  This assumes that all constructors are constant.  By default, a
-  constructor is mapped to the JS string corresponding to its name,
-  but a custom translation (a string or integer literal) can be
-  provided with the `[@js]` attribute.
+
+It is possible to specify a single constructor with one argument (of
+type int or string), used to represent "all other cases" of JS values.
+
+  ````
+    type status =
+      | OK [@js 1]
+      | KO [@js 2]
+      | Other of int [@js.default]
+  ````
+
 
 
 Value bindings
@@ -488,6 +503,13 @@ TODOs
 
 - Optimize generated code (for instance, lift calls to string_of_js on
   literals).
+
+- For enum, allow adding a default case:
+
+
+  Only `int` or `string` are supported for the default.
+
+
 
 About
 -----
