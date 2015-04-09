@@ -139,12 +139,12 @@ automatically when it processed type declarations.
 
 The `Ojs.t` type itself is JS-able.
 
-Arrow can also be used in contexts that expect JS-able types. The JS
-function's arity is obtained by counting arrows.  A special case is
-when the OCaml arity is 1, with a single argument of type unit, in
-which case the JS function is assumed to have no argument.  In order
-to define functions that return functions, one can put an arbitrary
-attribute on the resulting type:
+Arrow types can also be used in contexts that expect JS-able
+types. The JS function's arity is obtained by counting arrows.  A
+special case is when the OCaml arity is 1, with a single argument of
+type unit, in which case the JS function is assumed to have no
+argument.  In order to define functions that return functions, one can
+put an arbitrary attribute on the resulting type:
 
    ```t1 -> (t2 -> t3 [@foo])```
 
@@ -154,6 +154,16 @@ arity 2 (returning type `t3`).
 
 The `unit` type can only be used in specific contexts: as the return
 type of functions or methods, or as the unique argument.
+
+Polymorphic types with only constant variants are supported.  By
+default, each variant is mapped to the JS string of the same name, but
+a custom translation (which can be a string literal or an integer
+literal) can be provided with a `[@js]` attribute:
+
+  ````
+    type t = [`foo | `bar [@js 42]] -> int
+  ````
+
 
 
 Type declarations
@@ -204,6 +214,22 @@ implementation).  Mutually recursive type declarations are supported.
   ````
   type myType = { x : int; y : int [@js "Y"]}
   ````
+
+- Sum type declaration, mapped to enums:
+
+    ````
+    type t =
+      | Foo [@js "foo"]
+      | Bar [@js 42]
+      | Baz
+    [@@js.enum]
+
+    ````
+
+  This assumes that all constructors are constant.  By default, a
+  constructor is mapped to the JS string corresponding to its name,
+  but a custom translation (a string or integer literal) can be
+  provided with the `[@js]` attribute.
 
 
 Value bindings
@@ -440,33 +466,8 @@ Several forms are supported:
 TODOs
 -----
 
-- Support sum types, with different possible mappings (configured through
-  attributes): int or strings for enums (only constant constructors),
-  objects with a discriminator field, etc.
-
-  ````
-    type t =
-      | Foo
-      | Bar
-    [@@js.enum]
-  ````
-
-  `js.enum` assumes that all constructors are constant.  `Foo` is
-  mapped by default to the constant string `Foo`.  One can also
-  specify custom translation (string or integer literal).
-
-  ````
-    type t =
-      | Foo [@js "foo"]
-      | Bar [@js 42]
-    [@@js.enum]
-  ````
-
-  One could also have support for polymorphic variants:
-
-  ````
-    val f: [`foo | `bar] -> int
-  ````
+- Support sum types / polymorphic variants with non constant constructors
+  (mapped to objects with a discriminator field).
 
 
 - Support OCaml object types, to wrap JS values (less efficient than
