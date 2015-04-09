@@ -59,9 +59,17 @@ val alert: string -> unit
 val setTimeout: (unit -> unit) -> int -> unit
 
 module Person: sig
+  module Foo: sig
+    type t =
+      | Foo
+      | Bar [@js 42]
+          [@@js.enum]
+  end
+
   type t = private Ojs.t
 
-  val create: string -> t
+  val create: string -> Foo.t -> t
   [@@js.new "Person"]
   val name: t -> string
+  val foo: t -> Foo.t
 end
