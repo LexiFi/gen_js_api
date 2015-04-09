@@ -24,6 +24,14 @@ type error =
 
 exception Error of Location.t * error
 
+let has_attribute key attrs =
+  let p ({txt; loc = _}, _) = txt = key in
+  List.exists p attrs
+
+let get_attribute key attrs =
+  let p ({txt; loc = _}, _) = txt = key in
+  List.find p attrs
+
 let error loc err = raise (Error (loc, err))
 
 let print_error ppf = function
@@ -383,6 +391,40 @@ and gen_funs_record lbls =
   mkfun (fun x -> Exp.record (List.map (of_js x) lbls) None),
   mkfun (fun x -> ojs "obj" [Exp.array (List.map (to_js x) lbls)])
 
+and gen_funs_enums constructors =
+  let prepare_constructor c =
+    begin match c.pcd_res, c.pcd_args with
+    | None, Pcstr_tuple [] ->
+        let js = ref {pexp_desc = Pexp_constant (Const_string (c.pcd_name.txt, None)); pexp_loc = c.pcd_loc; pexp_attributes = c.pcd_attributes} in
+        List.iter
+          begin fun (k, v) ->
+             match k.txt with
+             | "js" -> js := expr_of_payload k.loc v
+             | _ -> ()
+          end
+          c.pcd_attributes;
+        let js = !js in
+        let ty =
+          match js.pexp_desc with
+          | Pexp_constant (Const_string _) -> Name ("string", [])
+          | Pexp_constant (Const_int _) -> Name ("int", [])
+          | _ -> error js.pexp_loc Cannot_parse_type
+        in
+        mknoloc (Longident.parse c.pcd_name.txt), js, ty
+    | _ -> error c.pcd_loc Cannot_parse_type
+    end
+  in
+  let constructors = List.map prepare_constructor constructors in
+  let of_js x =
+    let f otherwise (ml, js, ty) =
+      Exp.ifthenelse (Exp.apply (Exp.ident (mknoloc (Longident.parse "Pervasives.(==)"))) [Nolabel, x; Nolabel, ml2js ty js]) (Exp.construct ml None) (Some otherwise)
+    in
+    List.fold_left f (Exp.assert_ (Exp.construct (mknoloc (Longident.parse "false")) None)) constructors
+  in
+  let to_js (ml, js, ty) = Exp.case (Pat.construct ml None) (ml2js ty js) in
+  mkfun of_js,
+  mkfun (fun x -> Exp.match_ x (List.map to_js constructors))
+
 and gen_funs p =
   let name = p.ptype_name.txt in
   let of_js, to_js =
@@ -390,6 +432,8 @@ and gen_funs p =
     | Some ty, Ptype_abstract ->
         let ty = parse_typ ty in
         js2ml_fun ty, ml2js_fun ty
+    | _, Ptype_variant constructors when has_attribute "js.enum" p.ptype_attributes ->
+        gen_funs_enums constructors
     | _, Ptype_record lbls ->
         gen_funs_record lbls
     | _ ->
