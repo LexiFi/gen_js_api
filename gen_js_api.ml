@@ -414,9 +414,10 @@ and ml2js_of_enum ~variant enums default exp =
     match default with
     | None -> cases
     | Some (label, ty) ->
-        let pat = mkpat label (Some (Pat.var (mknoloc "x"))) in
+        let x = fresh () in
+        let pat = mkpat label (Some (Pat.var (mknoloc x))) in
         let ty = Name (ty, []) in
-        (Exp.case pat (ml2js ty (Exp.ident (mknoloc (Longident.Lident "x"))))) :: cases
+        (Exp.case pat (ml2js ty (Exp.ident (mknoloc (Longident.Lident x))))) :: cases
   in
   Exp.match_ exp cases
 
