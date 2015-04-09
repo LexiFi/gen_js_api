@@ -68,7 +68,7 @@ type typ =
   | Unit of Location.t
   | Js
   | Name of string * typ list
-  | Enum of (string * Parsetree.expression * typ) list
+  | Enum of (string * Parsetree.expression) list
 
 type expr =
   | Id of string
@@ -120,6 +120,12 @@ let expr_of_payload loc = function
   | PStr [x] -> expr_of_stritem x
   | _ -> error loc Expression_expected
 
+let typ_of_constant_exp x =
+  match x.pexp_desc with
+  | Pexp_constant (Const_string _) -> Name ("string", [])
+  | Pexp_constant (Const_int _) -> Name ("int", [])
+  | _ -> error x.pexp_loc Invalid_expression
+
 let prepare_enum label loc attributes =
   let js = ref {pexp_desc = Pexp_constant (Const_string (label, None)); pexp_loc = loc; pexp_attributes = attributes} in
   List.iter
@@ -129,14 +135,7 @@ let prepare_enum label loc attributes =
       | _ -> ()
     )
     attributes;
-  let js = !js in
-  let ty =
-    match js.pexp_desc with
-    | Pexp_constant (Const_string _) -> Name ("string", [])
-    | Pexp_constant (Const_int _) -> Name ("int", [])
-    | _ -> error js.pexp_loc Invalid_expression
-  in
-  label, js, ty
+  label, !js
 
 let rec parse_typ ty =
   match ty.ptyp_desc with
@@ -344,8 +343,9 @@ let rec js2ml ty exp =
   | Enum enums -> js2ml_of_enum (fun x -> Exp.variant x None) enums exp
 
 and js2ml_of_enum mkval enums exp =
-  let f otherwise (ml, js, ty) =
+  let f otherwise (ml, js) =
     let mlval = mkval ml in
+    let ty = typ_of_constant_exp js in
     Exp.ifthenelse (Exp.apply (Exp.ident (mknoloc (Longident.parse "Pervasives.(==)"))) [Nolabel, exp; Nolabel, ml2js ty js]) mlval (Some otherwise)
   in
   List.fold_left f (Exp.assert_ (Exp.construct (mknoloc (Longident.parse "false")) None)) enums
@@ -368,8 +368,9 @@ and ml2js ty exp =
   | Enum enums -> ml2js_of_enum (fun x -> Pat.variant x None) enums exp
 
 and ml2js_of_enum mkpat enums exp =
-  let f (ml, js, ty) =
+  let f (ml, js) =
     let pat = mkpat ml in
+    let ty = typ_of_constant_exp js in
     Exp.case pat (ml2js ty js)
   in
   Exp.match_ exp (List.map f enums)
@@ -404,7 +405,7 @@ and gen_typ = function
         tl
         (gen_typ t2)
   | Enum enums ->
-      let f (label, _, _) = Rtag (label, [], true, []) in
+      let f (label, _) = Rtag (label, [], true, []) in
       let rows = List.map f enums in
       Typ.variant rows Closed None
 
