@@ -444,12 +444,48 @@ TODOs
   attributes): int or strings for enums (only constant constructors),
   objects with a discriminator field, etc.
 
+  ````
+    type t =
+      | Foo
+      | Bar
+    [@@js.enum]
+  ````
+
+  `js.enum` assumes that all constructors are constant.  `Foo` is
+  mapped by default to the constant string `Foo`.  One can also
+  specify custom translation (string or integer literal).
+
+  ````
+    type t =
+      | Foo [@js "foo"]
+      | Bar [@js 42]
+    [@@js.enum]
+  ````
+
+  One could also have support for polymorphic variants:
+
+  ````
+    val f: [`foo | `bar] -> int
+  ````
+
+
 - Support OCaml object types, to wrap JS values (less efficient than
-  opaque binding, but sometimes more idiomatic).
+  opaque binding, but sometimes more idiomatic).  The idea would be to
+  declare:
+
+  ````
+    class foo: Ojs.t -> object
+      method f: int -> unit (* method *)
+      method x: int (* getter *)
+      method set_x: int -> unit (* setter *)
+
+      method to_js: Ojs.t
+    end
+  ````
+
+
 
 - Support really abstract types (treated as `Ojs.t` in the implementation).
-
-- Support binding to object constructors `[@@js.new]`.
 
 
 About
@@ -459,6 +495,11 @@ This package is licensed by LexiFi under the terms of the MIT license.
 
 Contact: alain.frisch@lexifi.com
 
+Contributors:
+
+ - Alain Frisch
+ - Sebastien Briais
+
 
 Currenlty, this package works only on OCaml trunk, not on any released
-version.
+version.  The package is itself not released.
