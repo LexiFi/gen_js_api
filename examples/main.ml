@@ -115,14 +115,20 @@ let () =
   caller_unit (fun () -> ignore (f ()));
   caller_unit (fun () -> ignore (f ()));
 
-  let alice = Person.create "Alice" in
-  let bob = Person.create "Bob" in
+  let alice = Person.create "Alice" Person.Foo.Foo in
+  let bob = Person.create "Bob" Person.Foo.Bar in
+
+  let string_of_foo = function
+    | Person.Foo.Foo -> "foo"
+    | Person.Foo.Bar -> "bar"
+  in
+  let string_of_person x = Printf.sprintf "%s <%s>" (Person.name x) (string_of_foo (Person.foo x)) in
 
   let body = Document.body doc in
   setTimeout (fun () -> Element.setAttribute body "bgcolor" "red") 2000;
   Element.appendChild body (Document.createTextNode doc "ABC");
   Element.appendChild body
-    (div ~attrs:["style", "color: blue"] [ txt "!!!!"; elt "b" [txt "XXX"; txt (Person.name alice); txt (Person.name bob)] ]);
+    (div ~attrs:["style", "color: blue"] [ txt "!!!!"; elt "b" [txt "XXX"; txt (string_of_person alice); txt (string_of_person bob)] ]);
 
   let l = Document.getElementsByClassName doc "myClass" in
   Array.iter
