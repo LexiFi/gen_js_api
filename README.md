@@ -444,11 +444,36 @@ TODOs
   attributes): int or strings for enums (only constant constructors),
   objects with a discriminator field, etc.
 
+  ````
+    type t =
+      | Foo
+      | Bar
+    [@@js.enum]
+  ````
+
+  `js.enum` assumes that all constructors are constant.  `Foo` is
+  mapped by default to the constant string `Foo`.  One can also
+  specify custom translation (string or integer literal).
+
+  ````
+    type t =
+      | Foo [@js "foo"]
+      | Bar [@js 42]
+    [@@js.enum]
+  ````
+
+  One could also have support for polymorphic variants:
+
+  ````
+    val f: [`foo | `bar] -> int
+  ````
+
+
 - Support OCaml object types, to wrap JS values (less efficient than
   opaque binding, but sometimes more idiomatic).  The idea would be to
   declare:
 
-  ```
+  ````
     class foo: Ojs.t -> object
       method f: int -> unit (* method *)
       method x: int (* getter *)
@@ -456,7 +481,7 @@ TODOs
 
       method to_js: Ojs.t
     end
-  ```
+  ````
 
 
 
