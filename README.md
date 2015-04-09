@@ -222,8 +222,6 @@ implementation).  Mutually recursive type declarations are supported.
       | Foo [@js "foo"]
       | Bar [@js 42]
       | Baz
-    [@@js.enum]
-
     ````
 
   This assumes that all constructors are constant.  By default, a
@@ -488,6 +486,8 @@ TODOs
 
 - Support really abstract types (treated as `Ojs.t` in the implementation).
 
+- Optimize generated code (for instance, lift calls to string_of_js on
+  literals).
 
 About
 -----

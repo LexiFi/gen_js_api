@@ -21,6 +21,7 @@ type error =
   | Cannot_parse_sigitem
   | Setter_name
   | Unit_not_supported_here
+  | Non_constant_constructor_in_enum
 
 exception Error of Location.t * error
 
@@ -49,6 +50,8 @@ let print_error ppf = function
       Format.fprintf ppf "Setter with implicit name must start with 'set_'"
   | Unit_not_supported_here ->
       Format.fprintf ppf "Unit not supported in this context"
+  | Non_constant_constructor_in_enum ->
+      Format.fprintf ppf "Constructors in enums cannot take arguments"
 
 let () =
   Location.register_error_of_exn
@@ -120,11 +123,11 @@ let expr_of_payload loc = function
 let prepare_enum label loc attributes =
   let js = ref {pexp_desc = Pexp_constant (Const_string (label, None)); pexp_loc = loc; pexp_attributes = attributes} in
   List.iter
-    begin fun (k, v) ->
+    (fun (k, v) ->
       match k.txt with
       | "js" -> js := expr_of_payload k.loc v
       | _ -> ()
-    end
+    )
     attributes;
   let js = !js in
   let ty =
@@ -151,8 +154,9 @@ let rec parse_typ ty =
       end
   | Ptyp_variant (rows, Closed, None) ->
       let prepare_row = function
-        | Rtag (label, attributes, true, []) -> prepare_enum label ty.ptyp_loc attributes
-        | _ -> error ty.ptyp_loc Invalid_expression
+        | Rtag (label, attributes, true, []) ->
+            prepare_enum label ty.ptyp_loc attributes
+        | _ -> error ty.ptyp_loc Non_constant_constructor_in_enum
       in
       let rows = List.map prepare_row rows in
       Enum rows
@@ -438,7 +442,8 @@ and gen_funs_enums constructors =
     begin match c.pcd_res, c.pcd_args with
     | None, Pcstr_tuple [] ->
         prepare_enum c.pcd_name.txt c.pcd_name.loc c.pcd_attributes
-    | _ -> error c.pcd_loc Cannot_parse_type
+    | _ ->
+        error c.pcd_loc Non_constant_constructor_in_enum
     end
   in
   let enums = List.map prepare_constructor constructors in
@@ -452,8 +457,8 @@ and gen_funs p =
     | Some ty, Ptype_abstract ->
         let ty = parse_typ ty in
         js2ml_fun ty, ml2js_fun ty
-    | _, Ptype_variant constructors when has_attribute "js.enum" p.ptype_attributes ->
-        gen_funs_enums constructors
+    | _, Ptype_variant cstrs ->
+        gen_funs_enums cstrs
     | _, Ptype_record lbls ->
         gen_funs_record lbls
     | _ ->

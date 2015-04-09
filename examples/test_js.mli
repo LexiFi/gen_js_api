@@ -63,7 +63,6 @@ module Person: sig
     type t =
       | Foo
       | Bar [@js 42]
-          [@@js.enum]
   end
 
   type t = private Ojs.t
