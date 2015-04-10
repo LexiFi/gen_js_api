@@ -401,32 +401,34 @@ and js2ml_of_enum ~variant {enums; string_default; int_default} exp =
     else fun x arg -> Exp.construct (mknoloc (Longident.Lident x)) arg
   in
   let to_ml exp =
-    let gen_match typ enums default =
-      let f otherwise (ml, _ty, js) =
+    let gen_match enums default =
+      let f otherwise (ml, js) =
         let pat = Pat.constant (val_of_constant_exp js) in
         let mlval = mkval ml None in
         Exp.case pat mlval :: otherwise
       in
-      let otherwise =
-        match default with
-        | None -> Exp.case (Pat.any ()) assert_false
-        | Some label ->
-            let x = fresh () in
-            Exp.case (Pat.var (mknoloc x)) (mkval label (Some (Exp.ident (mknoloc (Longident.Lident x)))))
-      in
-      let cases = List.fold_left f [otherwise] enums in
-      Exp.match_ (js2ml (Name (typ, [])) exp) cases
+      match enums, default with
+      | [], None -> []
+      | _ ->
+          let otherwise =
+            match default with
+            | None -> Exp.case (Pat.any ()) assert_false
+            | Some label ->
+                let x = fresh () in
+                Exp.case (Pat.var (mknoloc x)) (mkval label (Some (Exp.ident (mknoloc (Longident.Lident x)))))
+          in
+          List.fold_left f [otherwise] enums
     in
-    let enums = List.map (function (ml, js) -> (ml, typ_of_constant_exp js, js)) enums in
-    let int_enums, string_enums = List.partition (function (_, ty, _) -> ty = "int") enums in
-    let int_cases = gen_match "int" int_enums int_default in
-    let string_cases = gen_match "string" string_enums string_default in
-    match int_enums, int_default, string_enums, string_default with
-    | [], None, _, _ -> int_cases
-    | _, _, [], None -> string_cases
+    let mk_match typ cases = Exp.match_ (js2ml (Name (typ, [])) exp) cases in
+    let int_enums, string_enums = List.partition (function (_, js) -> typ_of_constant_exp js = "int") enums in
+    let int_cases = gen_match int_enums int_default in
+    let string_cases = gen_match string_enums string_default in
+    match int_cases, string_cases with
+    | [], cases -> mk_match "string" cases
+    | cases, [] -> mk_match "int" cases
     | _ ->
-        let case_int = Exp.case (Pat.constant (Const_string ("number", None))) int_cases in
-        let case_string = Exp.case (Pat.constant (Const_string ("string", None))) string_cases in
+        let case_int = Exp.case (Pat.constant (Const_string ("number", None))) (mk_match "int" int_cases) in
+        let case_string = Exp.case (Pat.constant (Const_string ("string", None))) (mk_match "string" string_cases) in
         let case_default = Exp.case (Pat.any ()) assert_false in
         Exp.match_ (Exp.apply (Exp.ident (mknoloc (Longident.parse "Ojs.type_of"))) [Nolabel, exp]) [case_int; case_string; case_default]
   in
