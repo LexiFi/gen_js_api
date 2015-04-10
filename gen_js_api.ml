@@ -401,7 +401,7 @@ and js2ml_of_enum ~variant {enums; string_default; int_default} exp =
     else fun x arg -> Exp.construct (mknoloc (Longident.Lident x)) arg
   in
   let to_ml exp =
-    let gen_match enums default =
+    let gen_cases enums default =
       let f otherwise (ml, js) =
         let pat = Pat.constant (val_of_constant_exp js) in
         let mlval = mkval ml None in
@@ -421,8 +421,8 @@ and js2ml_of_enum ~variant {enums; string_default; int_default} exp =
     in
     let mk_match typ cases = Exp.match_ (js2ml (Name (typ, [])) exp) cases in
     let int_enums, string_enums = List.partition (function (_, js) -> typ_of_constant_exp js = "int") enums in
-    let int_cases = gen_match int_enums int_default in
-    let string_cases = gen_match string_enums string_default in
+    let int_cases = gen_cases int_enums int_default in
+    let string_cases = gen_cases string_enums string_default in
     match int_cases, string_cases with
     | [], cases -> mk_match "string" cases
     | cases, [] -> mk_match "int" cases
