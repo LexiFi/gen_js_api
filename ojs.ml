@@ -83,3 +83,5 @@ let variable = Js.Unsafe.variable
 let new_obj name args =
   let constr = Js.Unsafe.get Js.Unsafe.global name in
   Js.Unsafe.new_obj constr args
+
+let type_of x = Js.to_string (Js.typeof (Obj.magic x))
