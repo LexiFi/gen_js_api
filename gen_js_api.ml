@@ -343,6 +343,11 @@ let builtin_type = function
   | "array" | "list" | "option" -> true
   | _ -> false
 
+let let_exp_in exp f =
+  let x = fresh () in
+  let pat = Pat.var (mknoloc x) in
+  Exp.let_ Nonrecursive [Vb.mk pat exp] (f (Exp.ident (mknoloc (Longident.Lident x))))
+
 let rec js2ml ty exp =
   match ty with
   | Js ->
@@ -366,25 +371,24 @@ let rec js2ml ty exp =
   | Enum (enums, default) -> js2ml_of_enum ~variant:true enums default exp
 
 and js2ml_of_enum ~variant enums default exp =
-  let x = fresh () in
-  let pat = Pat.var (mknoloc x) in
-  let bindings = [Vb.mk pat exp] in
-  let exp = Exp.ident (mknoloc (Longident.Lident x)) in
   let mkval =
     if variant then fun x arg -> Exp.variant x arg
     else fun x arg -> Exp.construct (mknoloc (Longident.Lident x)) arg
   in
-  let f otherwise (ml, js) =
-    let mlval = mkval ml None in
-    let ty = typ_of_constant_exp js in
-    Exp.ifthenelse (Exp.apply (Exp.ident (mknoloc (Longident.parse "Pervasives.(==)"))) [Nolabel, exp; Nolabel, ml2js ty js]) mlval (Some otherwise)
+  let to_ml exp =
+    let f otherwise (ml, js) =
+      let mlval = mkval ml None in
+      let ty = typ_of_constant_exp js in
+      Exp.ifthenelse (Exp.apply (Exp.ident (mknoloc (Longident.parse "Pervasives.(==)"))) [Nolabel, exp; Nolabel, ml2js ty js]) mlval (Some otherwise)
+    in
+    let otherwise =
+      match default with
+      | None -> Exp.assert_ (Exp.construct (mknoloc (Longident.parse "false")) None)
+      | Some (label, ty) -> mkval label (Some (js2ml (Name (ty, [])) exp))
+    in
+    List.fold_left f otherwise enums
   in
-  let otherwise =
-    match default with
-    | None -> Exp.assert_ (Exp.construct (mknoloc (Longident.parse "false")) None)
-    | Some (label, ty) -> mkval label (Some (js2ml (Name (ty, [])) exp))
-  in
-  Exp.let_ Nonrecursive bindings (List.fold_left f otherwise enums)
+  let_exp_in exp to_ml
 
 and ml2js ty exp =
   match ty with
