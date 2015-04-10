@@ -128,8 +128,13 @@ let expr_of_payload loc = function
 
 let typ_of_constant_exp x =
   match x.pexp_desc with
-  | Pexp_constant (Const_string _) -> Name ("string", [])
-  | Pexp_constant (Const_int _) -> Name ("int", [])
+  | Pexp_constant (Const_string _) -> "string"
+  | Pexp_constant (Const_int _) -> "int"
+  | _ -> error x.pexp_loc Invalid_expression
+
+let val_of_constant_exp x =
+  match x.pexp_desc with
+  | Pexp_constant c -> c
   | _ -> error x.pexp_loc Invalid_expression
 
 let prepare_enum label loc attributes =
@@ -376,17 +381,44 @@ and js2ml_of_enum ~variant enums default exp =
     else fun x arg -> Exp.construct (mknoloc (Longident.Lident x)) arg
   in
   let to_ml exp =
-    let f otherwise (ml, js) =
-      let mlval = mkval ml None in
-      let ty = typ_of_constant_exp js in
-      Exp.ifthenelse (Exp.apply (Exp.ident (mknoloc (Longident.parse "Pervasives.(==)"))) [Nolabel, exp; Nolabel, ml2js ty js]) mlval (Some otherwise)
-    in
-    let otherwise =
+    let enums = List.map (function (ml, js) -> (ml, typ_of_constant_exp js, js)) enums in
+    let default_typ =
       match default with
-      | None -> Exp.assert_ (Exp.construct (mknoloc (Longident.parse "false")) None)
-      | Some (label, ty) -> mkval label (Some (js2ml (Name (ty, [])) exp))
+      | None ->
+          begin match enums with
+          | [] -> assert false
+          | (_, ty, _) :: _ -> ty
+          end
+      | Some (_, ty) -> ty
     in
-    List.fold_left f otherwise enums
+    let assert_false = Exp.assert_ (Exp.construct (mknoloc (Longident.parse "false")) None) in
+    if List.for_all (function (_, ty, _) -> ty = default_typ) enums then
+      let f otherwise (ml, _ty, js) =
+        let pat = Pat.constant (val_of_constant_exp js) in
+        let mlval = mkval ml None in
+        Exp.case pat mlval :: otherwise
+      in
+      let otherwise =
+        match default with
+        | None -> Exp.case (Pat.any ()) assert_false
+        | Some (label, _) ->
+            let x = fresh () in
+            Exp.case (Pat.var (mknoloc x)) (mkval label (Some (Exp.ident (mknoloc (Longident.Lident x)))))
+      in
+      let cases = List.fold_left f [otherwise] enums in
+      Exp.match_ (js2ml (Name (default_typ, [])) exp) cases
+    else
+      let f otherwise (ml, ty, js) =
+        let mlval = mkval ml None in
+        let ty = Name (ty, []) in
+        Exp.ifthenelse (Exp.apply (Exp.ident (mknoloc (Longident.parse "Pervasives.(==)"))) [Nolabel, exp; Nolabel, ml2js ty js]) mlval (Some otherwise)
+      in
+      let otherwise =
+        match default with
+        | None -> assert_false
+        | Some (label, ty) -> mkval label (Some (js2ml (Name (ty, [])) exp))
+      in
+      List.fold_left f otherwise enums
   in
   let_exp_in exp to_ml
 
@@ -414,7 +446,7 @@ and ml2js_of_enum ~variant enums default exp =
   in
   let f (ml, js) =
     let pat = mkpat ml None in
-    let ty = typ_of_constant_exp js in
+    let ty = Name (typ_of_constant_exp js, []) in
     Exp.case pat (ml2js ty js)
   in
   let cases = List.map f enums in
