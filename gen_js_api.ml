@@ -66,6 +66,19 @@ let () =
       | _ -> None
     )
 
+let js_name name =
+  let n = String.length name in
+  let buf = Buffer.create n in
+  let capitalize = ref false in
+  for i = 0 to n-1 do
+    let c = name.[i] in
+    if c = '_' then capitalize := true
+    else if !capitalize then begin
+      Buffer.add_char buf (Char.uppercase_ascii c);
+      capitalize := false
+    end else Buffer.add_char buf c
+  done;
+  Buffer.contents buf
 
 (** AST *)
 
@@ -242,11 +255,11 @@ let drop_suffix ~suffix s =
 let auto s = function
   | Arrow ([Name (t, [])], Js) when check_suffix ~suffix:"_to_js" s = Some t -> Cast
   | Arrow ([Js], Name (t, [])) when check_suffix ~suffix:"_of_js" s = Some t -> Cast
-  | Arrow ([Name _], _) ->  PropGet s
-  | Arrow ([Name _; _], Unit _) when has_prefix ~prefix:"set_" s -> PropSet (drop_prefix ~prefix:"set_" s)
-  | Arrow (_, Name _) when has_prefix ~prefix:"new_" s -> New (drop_prefix ~prefix:"new_" s)
-  | Arrow (Name _ :: _, _) -> MethCall s
-  | _ -> Global s
+  | Arrow ([Name _], _) ->  PropGet (js_name s)
+  | Arrow ([Name _; _], Unit _) when has_prefix ~prefix:"set_" s -> PropSet (js_name (drop_prefix ~prefix:"set_" s))
+  | Arrow (_, Name _) when has_prefix ~prefix:"new_" s -> New (js_name (drop_prefix ~prefix:"new_" s))
+  | Arrow (Name _ :: _, _) -> MethCall (js_name s)
+  | _ -> Global (js_name s)
 
 let id_of_expr = function
   | {pexp_desc=Pexp_constant (Const_string (s, _)); _}
@@ -266,7 +279,7 @@ let parse_valdecl ~in_sig vd =
       | PStr [] ->
           begin match check_prefix ~prefix s with
           | None -> error loc (Implicit_name prefix)
-          | Some s -> s
+          | Some s -> js_name s
           end
       | _ -> id_of_expr (expr_of_payload k.loc v)
     in
