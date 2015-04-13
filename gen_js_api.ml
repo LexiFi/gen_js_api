@@ -19,7 +19,7 @@ type error =
   | Binding_type_mismatch
   | Cannot_parse_type
   | Cannot_parse_sigitem
-  | Setter_name
+  | Implicit_name of string
   | Unit_not_supported_here
   | Non_constant_constructor_in_enum
   | Default_case_in_enum
@@ -48,8 +48,8 @@ let print_error ppf = function
       Format.fprintf ppf "Cannot parse type"
   | Cannot_parse_sigitem ->
       Format.fprintf ppf "Cannot parse signature item"
-  | Setter_name ->
-      Format.fprintf ppf "Setter with implicit name must start with 'set_'"
+  | Implicit_name prefix ->
+      Format.fprintf ppf "Implicit name must start with '%s'" prefix
   | Unit_not_supported_here ->
       Format.fprintf ppf "Unit not supported in this context"
   | Non_constant_constructor_in_enum ->
@@ -265,7 +265,7 @@ let parse_valdecl ~in_sig vd =
       match v with
       | PStr [] ->
           begin match check_prefix ~prefix s with
-          | None -> error loc Setter_name
+          | None -> error loc (Implicit_name prefix)
           | Some s -> s
           end
       | _ -> id_of_expr (expr_of_payload k.loc v)
