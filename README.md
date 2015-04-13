@@ -347,7 +347,7 @@ Value bindings
   Calling the function on a first argument `o` of type `t` corresponds
   to setting the `prop` property of the underlying JS object.  Note that
   the value name must start with the `set_` prefix, which is dropped to
-  obtain the propery name.
+  obtain the property name.
 
   A custom name for the JS property can also be specified (in which
   case the name of the value can be arbitrary):
@@ -373,6 +373,12 @@ Value bindings
 
   TODO
 
+Name conversion
+---------------
+
+Unless explicitly provided, the derived Javascript name is obtained
+from Caml name by (1) removing every underscore and (2) uppercasing
+every character following an underscore.
 
 Automatic binding
 -----------------
