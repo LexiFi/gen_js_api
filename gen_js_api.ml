@@ -674,7 +674,9 @@ and gen_def loc decl ty =
       in
       mkfun
         (fun this ->
-           func (List.map fst args) (map_res (res this) ty_res)
+           match ty_args with
+           | [] -> map_res (res this) ty_res
+           | _ :: _ -> func (List.map fst args) (map_res (res this) ty_res)
         )
 
   | Global s, ty_res ->
