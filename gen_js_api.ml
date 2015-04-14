@@ -334,6 +334,7 @@ and parse_sig s = List.map parse_sig_item s
 
 let var x = Exp.ident (mknoloc (Longident.parse x))
 let str s = Exp.constant (Const_string (s, None))
+let int n = Exp.constant (Const_int n)
 
 let fun_ s e =
   match e.pexp_desc with
@@ -354,13 +355,17 @@ let func args body =
   | [] -> fun_unit body
   | args -> List.fold_right (fun s rest -> fun_ s rest) args body
 
+let apply f args = Exp.apply f (List.map (fun e -> (Nolabel, e)) args)
+
+let apply_fun f args = apply (var f) args
+
 let app f args =
   let args =
     match args with
     | [] -> [Exp.construct (mknoloc (Lident "()")) None]
     | args -> args
   in
-  Exp.apply f (List.map (fun e -> (Nolabel, e)) args)
+  apply f args
 
 let ojs s args = app (Exp.ident (mknoloc (Ldot (Lident "Ojs", s)))) args
 
@@ -413,7 +418,7 @@ let rec js2ml ty exp =
   | Enum params -> js2ml_of_enum ~variant:true params exp
   | Tuple typs ->
       let f x =
-        Exp.tuple (List.mapi (fun i typ -> js2ml typ (Exp.apply (var "Ojs.array_get") [Nolabel, x; Nolabel, Exp.constant (Const_int i)])) typs)
+        Exp.tuple (List.mapi (fun i typ -> js2ml typ (apply_fun "Ojs.array_get" [x; int i])) typs)
       in
       let_exp_in exp f
 
@@ -452,7 +457,7 @@ and js2ml_of_enum ~variant {enums; string_default; int_default} exp =
         let case_int = Exp.case (Pat.constant (Const_string ("number", None))) (mk_match "int" int_cases) in
         let case_string = Exp.case (Pat.constant (Const_string ("string", None))) (mk_match "string" string_cases) in
         let case_default = Exp.case (Pat.any ()) assert_false in
-        Exp.match_ (Exp.apply (var "Ojs.type_of") [Nolabel, exp]) [case_int; case_string; case_default]
+        Exp.match_ (apply_fun "Ojs.type_of" [exp]) [case_int; case_string; case_default]
   in
   let_exp_in exp to_ml
 
@@ -478,10 +483,10 @@ and ml2js ty exp =
       Exp.let_ Nonrecursive [Vb.mk pat exp] begin
         let n = List.length typs in
         let a = fresh () in
-        let new_array = Exp.apply (var "Ojs.array_make") [Nolabel, Exp.constant (Const_int n)] in
+        let new_array = apply_fun "Ojs.array_make" [int n] in
         Exp.let_ Nonrecursive [Vb.mk (Pat.var (mknoloc a)) new_array] begin
           let f e (i, typ, x) =
-            Exp.sequence (Exp.apply (var "Ojs.array_set") [Nolabel, var a; Nolabel, Exp.constant (Const_int i); Nolabel, ml2js typ (var x)]) e
+            Exp.sequence (apply_fun "Ojs.array_set" [var a; int i; ml2js typ (var x)]) e
           in
           List.fold_left f (var a) (List.rev typed_vars)
         end
