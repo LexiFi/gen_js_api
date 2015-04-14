@@ -71,6 +71,11 @@ module Person: sig
 
   val create: string -> Foo.t -> t
   [@@js.new "Person"]
+
   val name: t -> string
   val foo: t -> Foo.t
+  val get: t -> unit -> string * Foo.t
+  [@@js.meth]
+  val set: t -> string * Foo.t -> unit
+  [@@js.meth]
 end
