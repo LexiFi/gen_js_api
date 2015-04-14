@@ -95,6 +95,7 @@ type typ =
   | Js
   | Name of string * typ list
   | Enum of enum_params
+  | Tuple of typ list
 
 type expr =
   | Id of string
@@ -218,6 +219,9 @@ let rec parse_typ ty =
         | _ -> error ty.ptyp_loc Non_constant_constructor_in_enum
       in
       Enum (get_enums prepare_row rows)
+  | Ptyp_tuple typs ->
+      let typs = List.map parse_typ typs in
+      Tuple typs
   | _ ->
       error ty.ptyp_loc Cannot_parse_type
 
@@ -330,6 +334,7 @@ and parse_sig s = List.map parse_sig_item s
 
 let var x = Exp.ident (mknoloc (Longident.parse x))
 let str s = Exp.constant (Const_string (s, None))
+let int n = Exp.constant (Const_int n)
 
 let fun_ s e =
   match e.pexp_desc with
@@ -350,13 +355,17 @@ let func args body =
   | [] -> fun_unit body
   | args -> List.fold_right (fun s rest -> fun_ s rest) args body
 
+let apply f args = Exp.apply f (List.map (fun e -> (Nolabel, e)) args)
+
+let apply_fun f args = apply (var f) args
+
 let app f args =
   let args =
     match args with
     | [] -> [Exp.construct (mknoloc (Lident "()")) None]
     | args -> args
   in
-  Exp.apply f (List.map (fun e -> (Nolabel, e)) args)
+  apply f args
 
 let ojs s args = app (Exp.ident (mknoloc (Ldot (Lident "Ojs", s)))) args
 
@@ -382,7 +391,7 @@ let builtin_type = function
 let let_exp_in exp f =
   let x = fresh () in
   let pat = Pat.var (mknoloc x) in
-  Exp.let_ Nonrecursive [Vb.mk pat exp] (f (Exp.ident (mknoloc (Longident.Lident x))))
+  Exp.let_ Nonrecursive [Vb.mk pat exp] (f (var x))
 
 let assert_false = Exp.assert_ (Exp.construct (mknoloc (Longident.parse "false")) None)
 
@@ -393,7 +402,7 @@ let rec js2ml ty exp =
   | Name (s, tl) ->
       let s = if builtin_type s then "Ojs." ^ s else s in
       let args = List.map js2ml_fun tl in
-      app (Exp.ident (mknoloc (Longident.parse (s ^ "_of_js")))) (args @ [exp])
+      app (var (s ^ "_of_js")) (args @ [exp])
   | Arrow (ty_args, ty_res) ->
       let args = gen_args ty_args in
       let res =
@@ -407,6 +416,11 @@ let rec js2ml ty exp =
   | Unit loc ->
       error loc Unit_not_supported_here
   | Enum params -> js2ml_of_enum ~variant:true params exp
+  | Tuple typs ->
+      let f x =
+        Exp.tuple (List.mapi (fun i typ -> js2ml typ (apply_fun "Ojs.array_get" [x; int i])) typs)
+      in
+      let_exp_in exp f
 
 and js2ml_of_enum ~variant {enums; string_default; int_default} exp =
   let mkval =
@@ -428,7 +442,7 @@ and js2ml_of_enum ~variant {enums; string_default; int_default} exp =
             | None -> Exp.case (Pat.any ()) assert_false
             | Some label ->
                 let x = fresh () in
-                Exp.case (Pat.var (mknoloc x)) (mkval label (Some (Exp.ident (mknoloc (Longident.Lident x)))))
+                Exp.case (Pat.var (mknoloc x)) (mkval label (Some (var x)))
           in
           List.fold_left f [otherwise] enums
     in
@@ -443,7 +457,7 @@ and js2ml_of_enum ~variant {enums; string_default; int_default} exp =
         let case_int = Exp.case (Pat.constant (Const_string ("number", None))) (mk_match "int" int_cases) in
         let case_string = Exp.case (Pat.constant (Const_string ("string", None))) (mk_match "string" string_cases) in
         let case_default = Exp.case (Pat.any ()) assert_false in
-        Exp.match_ (Exp.apply (Exp.ident (mknoloc (Longident.parse "Ojs.type_of"))) [Nolabel, exp]) [case_int; case_string; case_default]
+        Exp.match_ (apply_fun "Ojs.type_of" [exp]) [case_int; case_string; case_default]
   in
   let_exp_in exp to_ml
 
@@ -454,7 +468,7 @@ and ml2js ty exp =
   | Name (s, tl) ->
       let s = if builtin_type s then "Ojs." ^ s else s in
       let args = List.map ml2js_fun tl in
-      app (Exp.ident (mknoloc (Longident.parse (s ^ "_to_js")))) (args @ [exp])
+      app (var (s ^ "_to_js")) (args @ [exp])
   | Arrow (ty_args, ty_res) ->
       let args = gen_args ~map:js2ml ty_args in
       let res = app exp (List.map snd args) in
@@ -463,6 +477,20 @@ and ml2js ty exp =
   | Unit loc ->
       error loc Unit_not_supported_here
   | Enum params -> ml2js_of_enum ~variant:true params exp
+  | Tuple typs ->
+      let typed_vars = List.mapi (fun i typ -> i, typ, fresh ()) typs in
+      let pat = Pat.tuple (List.map (function (_, _, x) -> Pat.var (mknoloc x)) typed_vars) in
+      Exp.let_ Nonrecursive [Vb.mk pat exp] begin
+        let n = List.length typs in
+        let a = fresh () in
+        let new_array = apply_fun "Ojs.array_make" [int n] in
+        Exp.let_ Nonrecursive [Vb.mk (Pat.var (mknoloc a)) new_array] begin
+          let f e (i, typ, x) =
+            Exp.sequence (apply_fun "Ojs.array_set" [var a; int i; ml2js typ (var x)]) e
+          in
+          List.fold_left f (var a) (List.rev typed_vars)
+        end
+      end
 
 and ml2js_of_enum ~variant {enums; string_default; int_default} exp =
   let mkpat =
@@ -476,7 +504,7 @@ and ml2js_of_enum ~variant {enums; string_default; int_default} exp =
         let x = fresh () in
         let pat = mkpat label (Some (Pat.var (mknoloc x))) in
         let ty = Name (ty, []) in
-        Some (Exp.case pat (ml2js ty (Exp.ident (mknoloc (Longident.Lident x)))))
+        Some (Exp.case pat (ml2js ty (var x)))
   in
   let f (ml, js) =
     let pat = mkpat ml None in
@@ -528,6 +556,8 @@ and gen_typ = function
       let rows = opt_cons (gen_default "int" int_default) rows in
       let rows = List.map f enums @ rows in
       Typ.variant rows Closed None
+  | Tuple typs ->
+      Typ.tuple (List.map gen_typ typs)
 
 let rec gen_decls si =
   List.concat (List.map gen_decl si)
@@ -649,7 +679,9 @@ and gen_def loc decl ty =
       in
       mkfun
         (fun this ->
-           func (List.map fst args) (map_res (res this) ty_res)
+           match ty_args with
+           | [] -> map_res (res this) ty_res
+           | _ :: _ -> func (List.map fst args) (map_res (res this) ty_res)
         )
 
   | Global s, ty_res ->

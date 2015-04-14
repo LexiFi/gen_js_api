@@ -46,6 +46,7 @@ val set: t -> string -> t -> unit
 
 val obj: (string * t) array -> t
 
+val array_make: int -> t
 val array_get: t -> int -> t
 val array_set: t -> int -> t -> unit
 

@@ -127,12 +127,25 @@ let () =
     | Person.Foo.OtherString s -> Printf.sprintf "other = %s" s
   in
   let string_of_person x = Printf.sprintf "%s <%s>" (Person.name x) (string_of_foo (Person.foo x)) in
+  let hack_person x =
+    let name, foo = Person.get x () in
+    Printf.printf "before: %s <%s>\n" name (string_of_foo foo);
+    Person.set x ("Dave", Person.Foo.OtherString "bar");
+    let name, foo = Person.get x () in
+    Printf.printf "after: %s <%s>\n" name (string_of_foo foo);
+  in
 
   let body = Document.body doc in
   setTimeout (fun () -> Element.setAttribute body "bgcolor" "red") 2000;
   Element.appendChild body (Document.createTextNode doc "ABC");
   Element.appendChild body
-    (div ~attrs:["style", "color: blue"] [ txt "!!!!"; elt "b" [txt "XXX"; txt (string_of_person alice); txt (string_of_person bob); txt (string_of_person charlie); txt (string_of_person eve)] ]);
+    (div ~attrs:["style", "color: blue"] [ txt "!!!!"; elt "b" [txt "XXX"]]);
+
+  Element.appendChild body
+    (div (List.map (fun x -> txt (string_of_person x)) [alice; bob; charlie; eve]));
+  hack_person eve;
+  Element.appendChild body
+    (div (List.map (fun x -> txt (string_of_person x)) [alice; bob; charlie; eve]));
 
   let l = Document.getElementsByClassName doc "myClass" in
   Array.iter
