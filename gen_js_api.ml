@@ -95,6 +95,7 @@ type typ =
   | Js
   | Name of string * typ list
   | Enum of enum_params
+  | Tuple of typ list
 
 type expr =
   | Id of string
@@ -218,6 +219,9 @@ let rec parse_typ ty =
         | _ -> error ty.ptyp_loc Non_constant_constructor_in_enum
       in
       Enum (get_enums prepare_row rows)
+  | Ptyp_tuple typs ->
+      let typs = List.map parse_typ typs in
+      Tuple typs
   | _ ->
       error ty.ptyp_loc Cannot_parse_type
 
@@ -407,6 +411,11 @@ let rec js2ml ty exp =
   | Unit loc ->
       error loc Unit_not_supported_here
   | Enum params -> js2ml_of_enum ~variant:true params exp
+  | Tuple typs ->
+      let f x =
+        Exp.tuple (List.mapi (fun i typ -> js2ml typ (Exp.apply (Exp.ident (mknoloc (Longident.parse "Ojs.array_get"))) [Nolabel, x; Nolabel, Exp.constant (Const_int i)])) typs)
+      in
+      let_exp_in exp f
 
 and js2ml_of_enum ~variant {enums; string_default; int_default} exp =
   let mkval =
@@ -463,6 +472,21 @@ and ml2js ty exp =
   | Unit loc ->
       error loc Unit_not_supported_here
   | Enum params -> ml2js_of_enum ~variant:true params exp
+  | Tuple typs ->
+      let typed_vars = List.mapi (fun i typ -> i, typ, fresh ()) typs in
+      let pat = Pat.tuple (List.map (function (_, _, x) -> Pat.var (mknoloc x)) typed_vars) in
+      Exp.let_ Nonrecursive [Vb.mk pat exp] begin
+        let n = List.length typs in
+        let a = fresh () in
+        let new_array = Exp.apply (Exp.ident (mknoloc (Longident.parse "Ojs.array_make"))) [Nolabel, Exp.constant (Const_int n)] in
+        Exp.let_ Nonrecursive [Vb.mk (Pat.var (mknoloc a)) new_array] begin
+          let a = Exp.ident (mknoloc (Longident.Lident a)) in
+          let f e (i, typ, x) =
+            Exp.sequence (Exp.apply (Exp.ident (mknoloc (Longident.parse "Ojs.array_set"))) [Nolabel, a; Nolabel, Exp.constant (Const_int i); Nolabel, ml2js typ (Exp.ident (mknoloc (Longident.Lident x)))]) e
+          in
+          List.fold_left f a (List.rev typed_vars)
+        end
+      end
 
 and ml2js_of_enum ~variant {enums; string_default; int_default} exp =
   let mkpat =
@@ -528,6 +552,8 @@ and gen_typ = function
       let rows = opt_cons (gen_default "int" int_default) rows in
       let rows = List.map f enums @ rows in
       Typ.variant rows Closed None
+  | Tuple typs ->
+      Typ.tuple (List.map gen_typ typs)
 
 let rec gen_decls si =
   List.concat (List.map gen_decl si)

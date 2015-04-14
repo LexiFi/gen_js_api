@@ -85,3 +85,5 @@ let new_obj name args =
   Js.Unsafe.new_obj constr args
 
 let type_of x = Js.to_string (Js.typeof (Obj.magic x))
+
+let array_make n = new_obj "Array" [|int_to_js n|]
