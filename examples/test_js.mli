@@ -111,3 +111,16 @@ module PersonObj: sig
   val of_person: Person.t -> t
   [@@js.cast]
 end
+
+module Str: sig
+  class t: Ojs.t ->
+    object
+      inherit Ojs.obj
+      method concat_string: string -> t [@@js.meth "concat"]
+      method concat2: t -> t [@@js.meth "concat"]
+      method to_string: string [@@js.meth]
+    end
+
+  val create: string -> t
+  [@@js.new "String"]
+end
