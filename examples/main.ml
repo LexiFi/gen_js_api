@@ -120,13 +120,18 @@ let () =
   let charlie = Person.create "Charlie" (Person.Foo.OtherString "bla") in
   let eve = Person.create "Eve" (Person.Foo.OtherInt 2713) in
 
+  let alice_obj = PersonObj.create "Alice" Person.Foo.Foo in
+  let bob_obj = PersonObj.of_person bob in
+
   let string_of_foo = function
     | Person.Foo.Foo -> "foo"
     | Person.Foo.Bar -> "bar"
     | Person.Foo.OtherInt n -> Printf.sprintf "other = %d" n
     | Person.Foo.OtherString s -> Printf.sprintf "other = %s" s
   in
-  let string_of_person x = Printf.sprintf "%s <%s>" (Person.name x) (string_of_foo (Person.foo x)) in
+  let string_of_name_foo name foo = Printf.sprintf "%s <%s>" name (string_of_foo foo) in
+  let string_of_person x = string_of_name_foo (Person.name x) (Person.foo x) in
+  let string_of_person_obj x = string_of_name_foo (x # name) (x # foo) in
   let hack_person x =
     let name, foo = Person.get x () in
     Printf.printf "before: %s <%s>\n" name (string_of_foo foo);
@@ -146,6 +151,8 @@ let () =
   hack_person eve;
   Element.appendChild body
     (div (List.map (fun x -> txt (string_of_person x)) [alice; bob; charlie; eve]));
+  Element.appendChild body
+    (div (List.map (fun x -> txt (string_of_person_obj x)) [alice_obj; bob_obj]));
 
   let l = Document.getElementsByClassName doc "myClass" in
   Array.iter

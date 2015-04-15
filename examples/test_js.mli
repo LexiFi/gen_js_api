@@ -79,3 +79,22 @@ module Person: sig
   val set: t -> string * Foo.t -> unit
   [@@js.meth]
 end
+
+module PersonObj: sig
+  class t: Ojs.t ->
+     object
+       inherit Ojs.obj
+       method name: string
+       method set_name: string -> unit
+       method foo: Person.Foo.t
+       method set_foo: Person.Foo.t -> unit
+       method get: string * Person.Foo.t [@@js.meth]
+       method set: string * Person.Foo.t -> unit [@@js.meth]
+     end
+
+  val create: string -> Person.Foo.t -> t
+  [@@js.new "Person"]
+
+  val of_person: Person.t -> t
+  [@@js.cast]
+end
