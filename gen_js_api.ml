@@ -413,6 +413,8 @@ let var x = Exp.ident (mknoloc (Longident.parse x))
 let str s = Exp.constant (Const_string (s, None))
 let int n = Exp.constant (Const_int n)
 
+let ojs_typ = Typ.constr (mknoloc (Longident.parse "Ojs.t")) []
+
 let fun_ s e =
   match e.pexp_desc with
   | Pexp_apply (f, [Nolabel, {pexp_desc = Pexp_ident {txt = Lident x}}])
@@ -725,10 +727,11 @@ and gen_decl = function
       [ def s (gen_typ ty) d ]
 
   | Class decls ->
-      let cs = List.map gen_classdecl decls in
-      [Str.class_ (List.map fst cs); Str.value Nonrecursive (List.concat (List.map snd cs))]
+      let cast_funcs = List.concat (List.map gen_class_cast decls) in
+      let classes = List.map (gen_classdecl cast_funcs) decls in
+      [Str.class_ classes; Str.value Nonrecursive cast_funcs]
 
-and gen_classdecl { class_name; class_fields } =
+and gen_classdecl cast_funcs { class_name; class_fields } =
   let mk_object x =
     let gen_field = function
       | Method {method_name; method_typ; method_def; method_loc} ->
@@ -759,22 +762,29 @@ and gen_classdecl { class_name; class_fields } =
           let e = Cl.apply (Cl.constr super []) [Nolabel, var x] in
           Cf.inherit_ Fresh e None
     in
-    Cl.structure (Cstr.mk (Pat.any()) (List.map gen_field class_fields))
+    Cl.let_ Nonrecursive cast_funcs
+      (Cl.structure
+         (Cstr.mk (Pat.any()) (List.map gen_field class_fields)))
   in
   let class_decl =
     let x = fresh() in
     Ci.mk
       (mknoloc class_name)
-      (Cl.fun_ Nolabel None (Pat.constraint_ (Pat.var (mknoloc x)) (Typ.constr (mknoloc (Longident.parse "Ojs.t")) [])) (mk_object x))
+      (Cl.fun_ Nolabel None (Pat.constraint_ (Pat.var (mknoloc x)) ojs_typ) (mk_object x))
   in
+  class_decl
+
+and gen_class_cast { class_name; class_fields = _ } =
+  let class_typ = Typ.constr (mknoloc (Longident.parse class_name)) [] in
   let to_js =
     let arg = fresh() in
-    Vb.mk (Pat.var (mknoloc (class_name ^ "_to_js"))) (fun_ arg (Exp.send (var arg) "to_js"))
+    Vb.mk (Pat.var (mknoloc (class_name ^ "_to_js"))) (Exp.fun_ Nolabel None (Pat.constraint_ (Pat.var (mknoloc arg)) class_typ) (Exp.constraint_ (Exp.send (var arg) "to_js") ojs_typ))
   in
   let of_js =
-    Vb.mk (Pat.var (mknoloc (class_name ^ "_of_js"))) (Exp.new_ (mknoloc (Longident.Lident class_name)))
+    let arg = fresh() in
+    Vb.mk (Pat.var (mknoloc (class_name ^ "_of_js"))) (Exp.fun_ Nolabel None (Pat.constraint_ (Pat.var (mknoloc arg)) ojs_typ) (Exp.constraint_ (Exp.apply (Exp.new_ (mknoloc (Longident.Lident class_name))) [Nolabel, var arg]) class_typ))
   in
-  class_decl, [to_js; of_js]
+  [to_js; of_js]
 
 and gen_def loc decl ty =
   match decl, ty with
