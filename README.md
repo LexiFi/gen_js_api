@@ -157,8 +157,6 @@ type of functions or methods, or as the unique argument.
 
 Polymorphic types with only constant variants are supported.  See the section
 on Enums below.
-  ````
-
 
 
 Type declarations
