@@ -309,48 +309,47 @@ let id_of_expr = function
   | {pexp_desc=Pexp_construct ({txt=Lident s;_}, None); _} -> s
   | e -> error e.pexp_loc Identifier_expected
 
-let parse_valdecl ?(in_object = false) ~in_sig vd =
+let parse_attr (s, loc, ty) defs (k, v) =
+  let opt_name ?(prefix = "") () =
+    match v with
+    | PStr [] ->
+        begin match check_prefix ~prefix s with
+        | None -> error loc (Implicit_name prefix)
+        | Some s -> js_name s
+        end
+    | _ -> id_of_expr (expr_of_payload k.loc v)
+  in
+  match k.txt with
+  | "js.cast" ->
+      Cast :: defs
+  | "js.expr" ->
+      Expr (parse_expr (expr_of_payload k.loc v)) :: defs
+  | "js.get" ->
+      PropGet (opt_name ()) :: defs
+  | "js.set" ->
+      PropSet (opt_name ~prefix:"set_" ()) :: defs
+  | "js.meth" ->
+      MethCall (opt_name ()) :: defs
+  | "js.global" ->
+      Global (opt_name ()) :: defs
+  | "js" ->
+      auto s (Lazy.force ty) :: defs
+  | "js.new" ->
+      New (opt_name ~prefix:"new_" ()) :: defs
+  | _ ->
+      defs
+
+let parse_valdecl ~in_sig vd =
   let s = vd.pval_name.txt in
   let loc = vd.pval_loc in
   let ty = lazy (parse_typ vd.pval_type) in
   let attrs = vd.pval_attributes in
 
-  let parse_attr defs (k, v) =
-    let opt_name ?(prefix = "") () =
-      match v with
-      | PStr [] ->
-          begin match check_prefix ~prefix s with
-          | None -> error loc (Implicit_name prefix)
-          | Some s -> js_name s
-          end
-      | _ -> id_of_expr (expr_of_payload k.loc v)
-    in
-    match k.txt with
-    | "js.cast" ->
-        Cast :: defs
-    | "js.expr" ->
-        Expr (parse_expr (expr_of_payload k.loc v)) :: defs
-    | "js.get" ->
-        PropGet (opt_name ()) :: defs
-    | "js.set" ->
-        PropSet (opt_name ~prefix:"set_" ()) :: defs
-    | "js.meth" ->
-        MethCall (opt_name ()) :: defs
-    | "js.global" ->
-        Global (opt_name ()) :: defs
-    | "js" ->
-        auto s (Lazy.force ty) :: defs
-    | "js.new" ->
-        New (opt_name ~prefix:"new_" ()) :: defs
-    | _ ->
-        defs
-  in
-  let defs = List.fold_left parse_attr [] attrs in
+  let defs = List.fold_left (parse_attr (s, loc, ty)) [] attrs in
   let r =
     match defs with
     | [x] -> x
     | [] when in_sig -> auto s (Lazy.force ty)
-    | [] when in_object -> auto_in_object s (Lazy.force ty)
     | [] -> raise Exit
     | _ -> error loc Multiple_binding_declarations
   in
@@ -381,33 +380,29 @@ and parse_class_decl = function
 
 and parse_class_field = function
   | {pctf_desc = Pctf_method (method_name, Public, Concrete, typ); pctf_loc; pctf_attributes} ->
-      let vd =
-        {
-          pval_name = mkloc method_name pctf_loc;
-          pval_type = typ;
-          pval_prim = [];
-          pval_attributes = pctf_attributes;
-          pval_loc = pctf_loc;
-        }
+      let ty = lazy (parse_typ typ) in
+      let defs = List.fold_left (parse_attr (method_name, pctf_loc, ty)) [] pctf_attributes in
+      let kind =
+        match defs with
+        | [x] -> x
+        | [] -> auto_in_object method_name (Lazy.force ty)
+        | _ -> error pctf_loc Multiple_binding_declarations
       in
-      begin match parse_valdecl ~in_sig:false ~in_object:true vd with
-      | Val (method_name, method_typ, kind, method_loc) ->
-          let method_def =
-            match kind with
-            | PropGet s -> Getter s
-            | PropSet s -> Setter s
-            | MethCall s -> MethodCall s
-            | _ -> error pctf_loc Cannot_parse_classfield
-          in
-          Method
-            {
-              method_name;
-              method_typ;
-              method_def;
-              method_loc;
-            }
-      | _ -> error pctf_loc Cannot_parse_classfield
-      end
+      let method_typ = Lazy.force ty in
+      let method_def =
+        match kind with
+        | PropGet s -> Getter s
+        | PropSet s -> Setter s
+        | MethCall s -> MethodCall s
+        | _ -> error pctf_loc Cannot_parse_classfield
+      in
+      Method
+        {
+          method_name;
+          method_typ;
+          method_def;
+          method_loc = pctf_loc;
+        }
   | {pctf_desc = Pctf_inherit {pcty_desc = Pcty_constr (id, []); _}; _} ->
       Inherit id
   | {pctf_loc; _} -> error pctf_loc Cannot_parse_classfield
