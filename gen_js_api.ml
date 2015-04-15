@@ -19,6 +19,9 @@ type error =
   | Binding_type_mismatch
   | Cannot_parse_type
   | Cannot_parse_sigitem
+  | Cannot_parse_classdecl
+  | Cannot_parse_classsig
+  | Cannot_parse_classfield
   | Implicit_name of string
   | Unit_not_supported_here
   | Non_constant_constructor_in_enum
@@ -48,6 +51,12 @@ let print_error ppf = function
       Format.fprintf ppf "Cannot parse type"
   | Cannot_parse_sigitem ->
       Format.fprintf ppf "Cannot parse signature item"
+  | Cannot_parse_classdecl ->
+      Format.fprintf ppf "Cannot parse class declaration"
+  | Cannot_parse_classsig ->
+      Format.fprintf ppf "Cannot parse class signature"
+  | Cannot_parse_classfield ->
+      Format.fprintf ppf "Cannot parse class field"
   | Implicit_name prefix ->
       Format.fprintf ppf "Implicit name must start with '%s'" prefix
   | Unit_not_supported_here ->
@@ -111,10 +120,34 @@ type valdef =
   | Expr of expr
   | New of string
 
+type methoddef =
+  | Getter of string
+  | Setter of string
+  | MethodCall of string
+
+type method_decl =
+  {
+    method_name: string;
+    method_typ: typ;
+    method_def: methoddef;
+    method_loc: Location.t;
+  }
+
+type class_field =
+  | Method of method_decl
+  | Inherit of Longident.t Location.loc
+
+type classdecl =
+  {
+    class_name: string;
+    class_fields: class_field list;
+  }
+
 type decl =
   | Module of string * decl list
   | Type of rec_flag * Parsetree.type_declaration list
   | Val of string * typ * valdef * Location.t
+  | Class of classdecl list
 
 let is_unit = function
   | Unit _ -> true
@@ -265,13 +298,18 @@ let auto s = function
   | Arrow (Name _ :: _, _) -> MethCall (js_name s)
   | _ -> Global (js_name s)
 
+let auto_in_object s = function
+  | Arrow ([_], Unit _) when has_prefix ~prefix:"set_" s -> PropSet (js_name (drop_prefix ~prefix:"set_" s))
+  | Arrow (_, _) -> MethCall (js_name s)
+  | _ -> PropGet (js_name s)
+
 let id_of_expr = function
   | {pexp_desc=Pexp_constant (Const_string (s, _)); _}
   | {pexp_desc=Pexp_ident {txt=Lident s;_}; _}
   | {pexp_desc=Pexp_construct ({txt=Lident s;_}, None); _} -> s
   | e -> error e.pexp_loc Identifier_expected
 
-let parse_valdecl ~in_sig vd =
+let parse_valdecl ?(in_object = false) ~in_sig vd =
   let s = vd.pval_name.txt in
   let loc = vd.pval_loc in
   let ty = lazy (parse_typ vd.pval_type) in
@@ -312,6 +350,7 @@ let parse_valdecl ~in_sig vd =
     match defs with
     | [x] -> x
     | [] when in_sig -> auto s (Lazy.force ty)
+    | [] when in_object -> auto_in_object s (Lazy.force ty)
     | [] -> raise Exit
     | _ -> error loc Multiple_binding_declarations
   in
@@ -325,10 +364,53 @@ let rec parse_sig_item s =
       Type (rec_flag, decls)
   | Psig_module {pmd_name; pmd_type = {pmty_desc = Pmty_signature si; _}; _} ->
       Module (pmd_name.txt, parse_sig si)
+  | Psig_class cs -> Class (List.map parse_class_decl cs)
   | _ ->
       error s.psig_loc Cannot_parse_sigitem
 
 and parse_sig s = List.map parse_sig_item s
+
+and parse_class_decl = function
+  | {pci_virt = Concrete; pci_params = []; pci_name; pci_expr = {pcty_desc = Pcty_arrow (Nolabel, {ptyp_desc = Ptyp_constr ({txt = Longident.Ldot (Lident "Ojs", "t"); loc = _}, []); _}, {pcty_desc = Pcty_signature {pcsig_self = {ptyp_desc = Ptyp_any; _}; pcsig_fields}; _})}} ->
+      let class_name = pci_name.txt in
+      {
+        class_name;
+        class_fields = List.map parse_class_field pcsig_fields;
+      }
+  | {pci_loc; _} -> error pci_loc Cannot_parse_classdecl
+
+and parse_class_field = function
+  | {pctf_desc = Pctf_method (method_name, Public, Concrete, typ); pctf_loc; pctf_attributes} ->
+      let vd =
+        {
+          pval_name = mkloc method_name pctf_loc;
+          pval_type = typ;
+          pval_prim = [];
+          pval_attributes = pctf_attributes;
+          pval_loc = pctf_loc;
+        }
+      in
+      begin match parse_valdecl ~in_sig:false ~in_object:true vd with
+      | Val (method_name, method_typ, kind, method_loc) ->
+          let method_def =
+            match kind with
+            | PropGet s -> Getter s
+            | PropSet s -> Setter s
+            | MethCall s -> MethodCall s
+            | _ -> error pctf_loc Cannot_parse_classfield
+          in
+          Method
+            {
+              method_name;
+              method_typ;
+              method_def;
+              method_loc;
+            }
+      | _ -> error pctf_loc Cannot_parse_classfield
+      end
+  | {pctf_desc = Pctf_inherit {pcty_desc = Pcty_constr (id, []); _}; _} ->
+      Inherit id
+  | {pctf_loc; _} -> error pctf_loc Cannot_parse_classfield
 
 (** Code generation *)
 
@@ -646,6 +728,58 @@ and gen_decl = function
   | Val (s, ty, decl, loc) ->
       let d = gen_def loc decl ty in
       [ def s (gen_typ ty) d ]
+
+  | Class decls ->
+      let cs = List.map gen_classdecl decls in
+      [Str.class_ (List.map fst cs); Str.value Nonrecursive (List.concat (List.map snd cs))]
+
+and gen_classdecl { class_name; class_fields } =
+  let mk_object x =
+    let gen_field = function
+      | Method {method_name; method_typ; method_def; method_loc} ->
+          let body =
+            match method_def, method_typ with
+            | Getter s, ty_res -> js2ml ty_res (ojs "get" [var x; str s])
+            | Setter s, Arrow ([ty_arg], Unit _) ->
+                mkfun (fun arg -> ojs "set" [var x; str s; ml2js ty_arg arg])
+            | MethodCall s, Arrow (ty_args, ty_res) ->
+                let args = gen_args ty_args in
+                let res =
+                  ojs
+                    (if is_unit ty_res then "call_unit" else "call")
+                    [var x; str s; Exp.array (List.map snd args)]
+                in
+                func (List.map fst args) (map_res res ty_res)
+            | MethodCall s, ty_res ->
+                let res =
+                  ojs
+                    (if is_unit ty_res then "call_unit" else "call")
+                    [var x; str s; Exp.array []]
+                in
+                map_res res ty_res
+            | _ -> error method_loc Binding_type_mismatch
+          in
+          Cf.method_ (mknoloc method_name) Public (Cf.concrete Fresh body)
+      | Inherit super ->
+          let e = Cl.apply (Cl.constr super []) [Nolabel, var x] in
+          Cf.inherit_ Fresh e None
+    in
+    Cl.structure (Cstr.mk (Pat.any()) (List.map gen_field class_fields))
+  in
+  let class_decl =
+    let x = fresh() in
+    Ci.mk
+      (mknoloc class_name)
+      (Cl.fun_ Nolabel None (Pat.constraint_ (Pat.var (mknoloc x)) (Typ.constr (mknoloc (Longident.parse "Ojs.t")) [])) (mk_object x))
+  in
+  let to_js =
+    let arg = fresh() in
+    Vb.mk (Pat.var (mknoloc (class_name ^ "_to_js"))) (fun_ arg (Exp.send (var arg) "to_js"))
+  in
+  let of_js =
+    Vb.mk (Pat.var (mknoloc (class_name ^ "_of_js"))) (Exp.new_ (mknoloc (Longident.Lident class_name)))
+  in
+  class_decl, [to_js; of_js]
 
 and gen_def loc decl ty =
   match decl, ty with

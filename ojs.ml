@@ -87,3 +87,8 @@ let new_obj name args =
 let type_of x = Js.to_string (Js.typeof (Obj.magic x))
 
 let array_make n = new_obj "Array" [|int_to_js n|]
+
+class obj (x:t) =
+  object
+    method to_js = x
+  end
