@@ -49,6 +49,8 @@ module Window : sig
   val t_to_js: t -> Ojs.t
 
   val document: t -> Document.t
+
+  val set_onload: t -> (unit -> unit) -> unit
 end
 
 val window: Window.t
@@ -57,6 +59,17 @@ val alert: string -> unit
   [@@js.global]
 
 val setTimeout: (unit -> unit) -> int -> unit
+
+module Console: sig
+  type t = private Ojs.t
+
+  val log: t -> Ojs.t -> unit
+
+  val log_string: t -> string -> unit
+  [@@js.meth "log"]
+end
+
+val console: Console.t
 
 module Person: sig
   module Foo: sig
