@@ -116,8 +116,26 @@ module Str: sig
   class t: Ojs.t ->
     object
       inherit Ojs.obj
-      method concat: (t list [@js.variadic]) -> t [@@js.meth]
+      method char_at: int -> t
+      method char_code_at: int -> int
+      method concat: (t list [@js.variadic]) -> t
+      method from_char_code: (int list [@js.variadic]) -> t
+      method index_of: t -> int
+      method index_of_from: t -> int -> int [@@js.meth "indexOf"]
+      method last_index_of: t -> int
+      method last_index_of_from: t -> int -> int [@@js.meth "indexOf"]
+      method length: int
+      method locale_compare: t -> int
+      method slice: int -> int -> t
+      method split: t -> t array
+      method substr: int -> int -> t
+      method substring: int -> int -> t
+      method to_locale_lower_case: t [@@js.meth]
+      method to_locale_upper_case: t [@@js.meth]
+      method to_lower_case: t [@@js.meth]
+      method to_upper_case: t [@@js.meth]
       method to_string: string [@@js.meth]
+      method value_of: string [@@js.meth]
     end
 
   val create: string -> t
