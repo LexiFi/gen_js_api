@@ -27,6 +27,7 @@ type error =
   | Non_constant_constructor_in_enum
   | Default_case_in_enum
   | Multiple_default_case_in_enum
+  | Invalid_variadic_type_arg
 
 exception Error of Location.t * error
 
@@ -67,6 +68,8 @@ let print_error ppf = function
       Format.fprintf ppf "Default constructor in enums unique argument must be of type int or string"
   | Multiple_default_case_in_enum ->
       Format.fprintf ppf "At most one default constructor is supported in enums for each type"
+  | Invalid_variadic_type_arg ->
+      Format.fprintf ppf "A variadic function argument must be of type list"
 
 let () =
   Location.register_error_of_exn
@@ -99,7 +102,7 @@ type enum_params =
   }
 
 type typ =
-  | Arrow of typ list * typ
+  | Arrow of typ list * typ option * typ
   | Unit of Location.t
   | Js
   | Name of string * typ list
@@ -228,11 +231,20 @@ let get_enums f l =
 
 let rec parse_typ ty =
   match ty.ptyp_desc with
+  | Ptyp_arrow (_, t1, t2) when has_attribute "js.variadic" t1.ptyp_attributes ->
+      begin match parse_typ t1 with
+      | Name ("list", [ty_arg]) ->
+          begin match parse_typ t2 with
+          | Arrow _ when t2.ptyp_attributes = [] -> error ty.ptyp_loc Cannot_parse_type
+          | tres -> Arrow ([], Some ty_arg, tres)
+          end
+      | _ -> error t1.ptyp_loc Invalid_variadic_type_arg
+      end
   | Ptyp_arrow (_, t1, t2) ->
       let t1 = parse_typ t1 in
       begin match parse_typ t2 with
-      | Arrow (tl, tres) when t2.ptyp_attributes = [] -> Arrow (t1 :: tl, tres)
-      | tres -> Arrow ([t1], tres)
+      | Arrow (tl, topt, tres) when t2.ptyp_attributes = [] -> Arrow (t1 :: tl, topt, tres)
+      | tres -> Arrow ([t1], None, tres)
       end
   | Ptyp_constr ({txt = lid}, tl) ->
       begin match String.concat "." (Longident.flatten lid), tl with
@@ -290,17 +302,17 @@ let drop_suffix ~suffix s =
   | None -> assert false
 
 let auto s = function
-  | Arrow ([Name (t, [])], Js) when check_suffix ~suffix:"_to_js" s = Some t -> Cast
-  | Arrow ([Js], Name (t, [])) when check_suffix ~suffix:"_of_js" s = Some t -> Cast
-  | Arrow ([Name _], _) ->  PropGet (js_name s)
-  | Arrow ([Name _; _], Unit _) when has_prefix ~prefix:"set_" s -> PropSet (js_name (drop_prefix ~prefix:"set_" s))
-  | Arrow (_, Name _) when has_prefix ~prefix:"new_" s -> New (js_name (drop_prefix ~prefix:"new_" s))
-  | Arrow (Name _ :: _, _) -> MethCall (js_name s)
+  | Arrow ([Name (t, [])], None, Js) when check_suffix ~suffix:"_to_js" s = Some t -> Cast
+  | Arrow ([Js], None, Name (t, [])) when check_suffix ~suffix:"_of_js" s = Some t -> Cast
+  | Arrow ([Name _], None, _) ->  PropGet (js_name s)
+  | Arrow ([Name _; _], None, Unit _) when has_prefix ~prefix:"set_" s -> PropSet (js_name (drop_prefix ~prefix:"set_" s))
+  | Arrow (_, None, Name _) when has_prefix ~prefix:"new_" s -> New (js_name (drop_prefix ~prefix:"new_" s))
+  | Arrow (Name _ :: _, _, _) -> MethCall (js_name s)
   | _ -> Global (js_name s)
 
 let auto_in_object s = function
-  | Arrow ([_], Unit _) when has_prefix ~prefix:"set_" s -> PropSet (js_name (drop_prefix ~prefix:"set_" s))
-  | Arrow (_, _) -> MethCall (js_name s)
+  | Arrow ([_], None, Unit _) when has_prefix ~prefix:"set_" s -> PropSet (js_name (drop_prefix ~prefix:"set_" s))
+  | Arrow (_, _, _) -> MethCall (js_name s)
   | _ -> PropGet (js_name s)
 
 let id_of_expr = function
@@ -415,6 +427,17 @@ let int n = Exp.constant (Const_int n)
 
 let ojs_typ = Typ.constr (mknoloc (Longident.parse "Ojs.t")) []
 
+let list_map f x =
+  Exp.apply (Exp.ident (mknoloc (Longident.parse "List.map"))) [Nolabel, f; Nolabel, x]
+
+let array_of_list x =
+  Exp.apply (Exp.ident (mknoloc (Longident.parse "Array.of_list"))) [Nolabel, x]
+
+let array_append a1 a2 =
+  match a1.pexp_desc with
+  | Pexp_array [] -> a2
+  | _ -> Exp.apply (Exp.ident (mknoloc (Longident.parse "Array.append"))) [Nolabel, a1; Nolabel, a2]
+
 let fun_ s e =
   match e.pexp_desc with
   | Pexp_apply (f, [Nolabel, {pexp_desc = Pexp_ident {txt = Lident x}}])
@@ -482,16 +505,17 @@ let rec js2ml ty exp =
       let s = if builtin_type s then "Ojs." ^ s else s in
       let args = List.map js2ml_fun tl in
       app (var (s ^ "_of_js")) (args @ [exp])
-  | Arrow (ty_args, ty_res) ->
+  | Arrow (ty_args, ty_variadic, ty_res) ->
       let args = gen_args ty_args in
+      let formal_args, concrete_args = add_variadic_arg args ty_variadic in
       let res =
         ojs (if is_unit ty_res then "apply_unit" else "apply")
           [
             exp;
-            Exp.array (List.map snd args)
+            concrete_args
           ]
       in
-      func (List.map fst args) (map_res res ty_res)
+      func formal_args (map_res res ty_res)
   | Unit loc ->
       error loc Unit_not_supported_here
   | Enum params -> js2ml_of_enum ~variant:true params exp
@@ -548,10 +572,26 @@ and ml2js ty exp =
       let s = if builtin_type s then "Ojs." ^ s else s in
       let args = List.map ml2js_fun tl in
       app (var (s ^ "_to_js")) (args @ [exp])
-  | Arrow (ty_args, ty_res) ->
+  | Arrow (ty_args, None, ty_res) ->
       let args = gen_args ~map:js2ml ty_args in
-      let res = app exp (List.map snd args) in
-      let f = func (List.map fst args) (map_res ~map:ml2js res ty_res) in
+      let formal_args, concrete_args = List.map fst args, List.map snd args in
+      let res = app exp concrete_args in
+      let f = func formal_args (map_res ~map:ml2js res ty_res) in
+      ojs "fun_to_js" [f]
+  | Arrow (ty_args, Some ty_variadic, ty_res) -> (* TODO *)
+      assert (1 = 2);
+      let n_args = List.length ty_args in
+      let args = gen_args ~map:js2ml ty_args in
+      let formal_args, concrete_args = List.map fst args, List.map snd args in
+      let extra_arg =
+        let array_class = ojs "variable" [str "Array"] in
+        let array_proto = ojs "get" [array_class; str "prototype"] in
+        let slice = ojs "get" [array_proto; str "slice"] in
+        let arguments = ojs "variable" [str "arguments"] in
+        js2ml (Name ("list", [ty_variadic])) (ojs "call" [slice; str "call"; Exp.array [ arguments; ojs "int_to_js" [int n_args] ]])
+      in
+      let res = app exp (concrete_args @ [extra_arg]) in
+      let f = func formal_args (Exp.fun_ Nolabel None (Pat.any ()) (map_res ~map:ml2js res ty_res)) in
       ojs "fun_to_js" [f]
   | Unit loc ->
       error loc Unit_not_supported_here
@@ -607,6 +647,14 @@ and gen_args ?(name = fun _ -> fresh ()) ?(map = ml2js) = function
       in
       List.mapi f args
 
+and add_variadic_arg args ty_variadic =
+  let formal_args, concrete_args = List.map fst args, Exp.array (List.map snd args) in
+  match ty_variadic with
+  | None -> formal_args, concrete_args
+  | Some ty_arg ->
+      let arg = fresh () in
+      formal_args @ [arg], array_append concrete_args (array_of_list (list_map (ml2js_fun ty_arg) (var arg)))
+
 and map_res ?(map=js2ml) res ty_res =
   match ty_res with
   | Unit _ -> res
@@ -619,11 +667,13 @@ and gen_typ = function
       Typ.constr (mknoloc (Longident.parse "Ojs.t")) []
   | Unit _ ->
       Typ.constr (mknoloc (Lident "unit")) []
-  | Arrow (tl, t2) ->
-      List.fold_right
-        (fun t1 t2 -> Typ.arrow Nolabel (gen_typ t1) t2)
-        tl
-        (gen_typ t2)
+  | Arrow (tl, ty_variadic, t2) ->
+      let tl =
+        match ty_variadic with
+        | None -> tl
+        | Some ty_arg -> tl @ [Name ("list", [ty_arg])]
+      in
+      List.fold_right (fun t1 t2 -> Typ.arrow Nolabel (gen_typ t1) t2) tl (gen_typ t2)
   | Enum {enums; string_default; int_default} ->
       let gen_default ty default =
         match default with
@@ -704,13 +754,13 @@ and gen_funs p =
       ~loc:p.ptype_loc
       (Pat.constraint_
          (Pat.var (mknoloc (name ^ "_of_js")))
-         (gen_typ (Arrow ([Js], Name (name, [])))))
+         (gen_typ (Arrow ([Js], None, Name (name, [])))))
       of_js;
     Vb.mk
       ~loc:p.ptype_loc
       (Pat.constraint_
          (Pat.var (mknoloc (name ^ "_to_js")))
-         (gen_typ (Arrow ([Name (name, [])], Js))))
+         (gen_typ (Arrow ([Name (name, [])], None, Js))))
       to_js
   ]
 
@@ -738,16 +788,17 @@ and gen_classdecl cast_funcs { class_name; class_fields } =
           let body =
             match method_def, method_typ with
             | Getter s, ty_res -> js2ml ty_res (ojs "get" [var x; str s])
-            | Setter s, Arrow ([ty_arg], Unit _) ->
+            | Setter s, Arrow ([ty_arg], None, Unit _) ->
                 mkfun (fun arg -> ojs "set" [var x; str s; ml2js ty_arg arg])
-            | MethodCall s, Arrow (ty_args, ty_res) ->
+            | MethodCall s, Arrow (ty_args, ty_variadic, ty_res) ->
                 let args = gen_args ty_args in
+                let formal_args, concrete_args = add_variadic_arg args ty_variadic in
                 let res =
                   ojs
                     (if is_unit ty_res then "call_unit" else "call")
-                    [var x; str s; Exp.array (List.map snd args)]
+                    [var x; str s; concrete_args]
                 in
-                func (List.map fst args) (map_res res ty_res)
+                func formal_args (map_res res ty_res)
             | MethodCall s, ty_res ->
                 let res =
                   ojs
@@ -788,13 +839,13 @@ and gen_class_cast { class_name; class_fields = _ } =
 
 and gen_def loc decl ty =
   match decl, ty with
-  | Cast, Arrow ([ty_arg], ty_res) ->
+  | Cast, Arrow ([ty_arg], None, ty_res) ->
       mkfun (fun this -> js2ml ty_res (ml2js ty_arg this))
 
-  | PropGet s, Arrow ([ty_this], ty_res) ->
+  | PropGet s, Arrow ([ty_this], None, ty_res) ->
       mkfun (fun this -> js2ml ty_res (ojs "get" [ml2js ty_this this; str s]))
 
-  | PropSet s, Arrow ([Name _ as ty_this; ty_arg], Unit _) ->
+  | PropSet s, Arrow ([Name _ as ty_this; ty_arg], None, Unit _) ->
       let res this arg =
         ojs "set"
           [
@@ -805,39 +856,38 @@ and gen_def loc decl ty =
       in
       mkfun (fun this -> mkfun (fun arg -> res this arg))
 
-  | MethCall s, Arrow (ty_this :: ty_args, ty_res) ->
+  | MethCall s, Arrow (ty_this :: ty_args, ty_variadic, ty_res) ->
       let args = gen_args ty_args in
+      let formal_args, concrete_args = add_variadic_arg args ty_variadic in
       let res this =
         ojs
           (if is_unit ty_res then "call_unit" else "call")
-          [
-            ml2js ty_this this;
-            str s;
-            Exp.array (List.map snd args)
-          ]
+          [ ml2js ty_this this; str s; concrete_args ]
       in
       mkfun
         (fun this ->
-           match ty_args with
-           | [] -> map_res (res this) ty_res
-           | _ :: _ -> func (List.map fst args) (map_res (res this) ty_res)
+           match ty_args, ty_variadic with
+           | [], None -> map_res (res this) ty_res
+           | [], Some _
+           | _ :: _, _ -> func formal_args (map_res (res this) ty_res)
         )
 
   | Global s, ty_res ->
       let res = ojs "variable" [str s] in
       js2ml ty_res res
 
-  | Expr e, Arrow (ty_args, ty_res) ->
+  | Expr e, Arrow (ty_args, None, ty_res) -> (* TODO: handle variadic argument *)
       let args = gen_args ~name:(Printf.sprintf "arg%i") ty_args in
       func (List.map fst args) (map_res (gen_expr loc args e) ty_res)
 
   | Expr e, ty ->
       js2ml ty (gen_expr loc [] e)
 
-  | New name, Arrow (ty_args, ty_res) ->
+  | New name, Arrow (ty_args, ty_variadic, ty_res) ->
       let args = gen_args ty_args in
-      let res = ojs "new_obj" [str name; Exp.array (List.map snd args)] in
-      func (List.map fst args) (map_res res ty_res)
+      let formal_args, concrete_args = add_variadic_arg args ty_variadic in
+      let res = ojs "new_obj" [str name; concrete_args] in
+      func formal_args (map_res res ty_res)
 
   | _ ->
       error loc Binding_type_mismatch
