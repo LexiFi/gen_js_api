@@ -105,6 +105,8 @@ module PersonObj: sig
        method set: string * Person.Foo.t -> unit [@@js.meth]
      end
 
+  class person: string -> Person.Foo.t -> (int list [@js.variadic]) -> t
+
   val create: string -> Person.Foo.t -> t
   [@@js.new "Person"]
 

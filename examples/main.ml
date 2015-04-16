@@ -122,6 +122,7 @@ let () =
 
   let alice_obj = PersonObj.create "Alice" Person.Foo.Foo in
   let bob_obj = PersonObj.of_person bob in
+  let dave_obj = new PersonObj.person "Dave" Person.Foo.Bar [1; 2; 3] in
 
   let string_of_foo = function
     | Person.Foo.Foo -> "foo"
@@ -152,7 +153,7 @@ let () =
   Element.appendChild body
     (div (List.map (fun x -> txt (string_of_person x)) [alice; bob; charlie; eve]));
   Element.appendChild body
-    (div (List.map (fun x -> txt (string_of_person_obj x)) [alice_obj; bob_obj]));
+    (div (List.map (fun x -> txt (string_of_person_obj x)) [alice_obj; bob_obj; dave_obj]));
 
   let s = (new Str.str "") # concat [Str.create "Hello"; Str.create ", "; Str.create "world"; Str.create "!"] in
   Console.log_string console (s # to_string);
