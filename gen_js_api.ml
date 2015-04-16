@@ -141,10 +141,8 @@ type class_field =
   | Inherit of Longident.t Location.loc
 
 type classdecl =
-  {
-    class_name: string;
-    class_fields: class_field list;
-  }
+  | Declaration of { class_name: string; class_fields: class_field list }
+  | Constructor of { class_name: string; js_class_name: string; class_args: typ list; class_variadic_arg: typ option; super_class: string }
 
 type decl =
   | Module of string * decl list
@@ -384,10 +382,28 @@ and parse_sig s = List.map parse_sig_item s
 and parse_class_decl = function
   | {pci_virt = Concrete; pci_params = []; pci_name; pci_expr = {pcty_desc = Pcty_arrow (Nolabel, {ptyp_desc = Ptyp_constr ({txt = Longident.Ldot (Lident "Ojs", "t"); loc = _}, []); _}, {pcty_desc = Pcty_signature {pcsig_self = {ptyp_desc = Ptyp_any; _}; pcsig_fields}; _})}} ->
       let class_name = pci_name.txt in
-      {
-        class_name;
-        class_fields = List.map parse_class_field pcsig_fields;
-      }
+      Declaration { class_name; class_fields = List.map parse_class_field pcsig_fields }
+  | {pci_virt = Concrete; pci_params = []; pci_name; pci_expr; pci_attributes; pci_loc} ->
+      let rec convert_typ = function
+        | { pcty_desc = Pcty_constr (id, typs); pcty_attributes; pcty_loc } ->
+            Typ.constr ~loc:pcty_loc ~attrs:pcty_attributes id typs
+        | { pcty_desc = Pcty_arrow (Nolabel, typ, ct); pcty_attributes; pcty_loc } ->
+            Typ.arrow ~loc:pcty_loc ~attrs:pcty_attributes Nolabel typ (convert_typ ct)
+        | _ -> error pci_loc Cannot_parse_classdecl
+      in
+      let class_args, class_variadic_arg, super_class =
+        match parse_typ (convert_typ pci_expr) with
+        | Arrow (ty_args, ty_variadic, Name (ty_res, [])) -> ty_args, ty_variadic, ty_res
+        | Name (ty_res, []) -> [], None, ty_res
+        | _ -> error pci_loc Cannot_parse_classdecl
+      in
+      let class_name = pci_name.txt in
+      let js_class_name =
+        match List.find (function ({txt; loc = _}, _) -> txt = "js.new") pci_attributes with
+        | exception Not_found -> js_name (String.capitalize_ascii class_name)
+        | (k, v) -> id_of_expr (expr_of_payload k.loc v)
+      in
+      Constructor {class_name; js_class_name; class_args; class_variadic_arg; super_class}
   | {pci_loc; _} -> error pci_loc Cannot_parse_classdecl
 
 and parse_class_field = function
@@ -781,61 +797,82 @@ and gen_decl = function
       let classes = List.map (gen_classdecl cast_funcs) decls in
       [Str.class_ classes; Str.value Nonrecursive cast_funcs]
 
-and gen_classdecl cast_funcs { class_name; class_fields } =
-  let mk_object x =
-    let gen_field = function
-      | Method {method_name; method_typ; method_def; method_loc} ->
-          let body =
-            match method_def, method_typ with
-            | Getter s, ty_res -> js2ml ty_res (ojs "get" [var x; str s])
-            | Setter s, Arrow ([ty_arg], None, Unit _) ->
-                mkfun (fun arg -> ojs "set" [var x; str s; ml2js ty_arg arg])
-            | MethodCall s, Arrow (ty_args, ty_variadic, ty_res) ->
-                let args = gen_args ty_args in
-                let formal_args, concrete_args = add_variadic_arg args ty_variadic in
-                let res =
-                  ojs
-                    (if is_unit ty_res then "call_unit" else "call")
-                    [var x; str s; concrete_args]
-                in
-                func formal_args (map_res res ty_res)
-            | MethodCall s, ty_res ->
-                let res =
-                  ojs
-                    (if is_unit ty_res then "call_unit" else "call")
-                    [var x; str s; Exp.array []]
-                in
-                map_res res ty_res
-            | _ -> error method_loc Binding_type_mismatch
-          in
-          Cf.method_ (mknoloc method_name) Public (Cf.concrete Fresh body)
-      | Inherit super ->
-          let e = Cl.apply (Cl.constr super []) [Nolabel, var x] in
-          Cf.inherit_ Fresh e None
-    in
-    Cl.let_ Nonrecursive cast_funcs
-      (Cl.structure
-         (Cstr.mk (Pat.any()) (List.map gen_field class_fields)))
-  in
-  let class_decl =
-    let x = fresh() in
-    Ci.mk
-      (mknoloc class_name)
-      (Cl.fun_ Nolabel None (Pat.constraint_ (Pat.var (mknoloc x)) ojs_typ) (mk_object x))
-  in
-  class_decl
+and gen_classdecl cast_funcs = function
+  | Declaration { class_name; class_fields } ->
+      let mk_object x =
+        let gen_field = function
+          | Method {method_name; method_typ; method_def; method_loc} ->
+              let body =
+                match method_def, method_typ with
+                | Getter s, ty_res -> js2ml ty_res (ojs "get" [var x; str s])
+                | Setter s, Arrow ([ty_arg], None, Unit _) ->
+                    mkfun (fun arg -> ojs "set" [var x; str s; ml2js ty_arg arg])
+                | MethodCall s, Arrow (ty_args, ty_variadic, ty_res) ->
+                    let args = gen_args ty_args in
+                    let formal_args, concrete_args = add_variadic_arg args ty_variadic in
+                    let res =
+                      ojs
+                        (if is_unit ty_res then "call_unit" else "call")
+                        [var x; str s; concrete_args]
+                    in
+                    func formal_args (map_res res ty_res)
+                | MethodCall s, ty_res ->
+                    let res =
+                      ojs
+                        (if is_unit ty_res then "call_unit" else "call")
+                        [var x; str s; Exp.array []]
+                    in
+                    map_res res ty_res
+                | _ -> error method_loc Binding_type_mismatch
+              in
+              Cf.method_ (mknoloc method_name) Public (Cf.concrete Fresh body)
+          | Inherit super ->
+              let e = Cl.apply (Cl.constr super []) [Nolabel, var x] in
+              Cf.inherit_ Fresh e None
+        in
+        Cl.let_ Nonrecursive cast_funcs
+          (Cl.structure
+             (Cstr.mk (Pat.any()) (List.map gen_field class_fields)))
+      in
+      let class_decl =
+        let x = fresh() in
+        Ci.mk
+          (mknoloc class_name)
+          (Cl.fun_ Nolabel None (Pat.constraint_ (Pat.var (mknoloc x)) ojs_typ) (mk_object x))
+      in
+      class_decl
+  | Constructor { class_name; js_class_name; class_args; class_variadic_arg; super_class } ->
+      let args = List.map (fun ty -> ty, fresh()) class_args in
+      let formal_args = List.map snd args in
+      let concrete_args = Exp.array (List.map (function (ty, x) -> ml2js ty (var x)) args) in
+      let formal_args, concrete_args =
+        match class_variadic_arg with
+        | None -> formal_args, concrete_args
+        | Some ty_arg ->
+            let arg = fresh() in
+            formal_args @ [arg], array_append concrete_args (array_of_list (list_map (ml2js_fun ty_arg) (var arg)))
+      in
+      let obj = ojs "new_obj" [str js_class_name; concrete_args] in
+      let e =
+        Cl.structure
+          (Cstr.mk (Pat.any()) [Cf.inherit_ Fresh (Cl.apply (Cl.constr (mknoloc (Longident.parse super_class)) []) [Nolabel, obj]) None])
+      in
+      let f e x = Cl.fun_ Nolabel None (Pat.var (mknoloc x)) e in
+      Ci.mk (mknoloc class_name) (List.fold_left f e (List.rev formal_args))
 
-and gen_class_cast { class_name; class_fields = _ } =
-  let class_typ = Typ.constr (mknoloc (Longident.parse class_name)) [] in
-  let to_js =
-    let arg = fresh() in
-    Vb.mk (Pat.var (mknoloc (class_name ^ "_to_js"))) (Exp.fun_ Nolabel None (Pat.constraint_ (Pat.var (mknoloc arg)) class_typ) (Exp.constraint_ (Exp.send (var arg) "to_js") ojs_typ))
-  in
-  let of_js =
-    let arg = fresh() in
-    Vb.mk (Pat.var (mknoloc (class_name ^ "_of_js"))) (Exp.fun_ Nolabel None (Pat.constraint_ (Pat.var (mknoloc arg)) ojs_typ) (Exp.constraint_ (Exp.apply (Exp.new_ (mknoloc (Longident.Lident class_name))) [Nolabel, var arg]) class_typ))
-  in
-  [to_js; of_js]
+and gen_class_cast = function
+  | Declaration { class_name; class_fields = _ } ->
+      let class_typ = Typ.constr (mknoloc (Longident.parse class_name)) [] in
+      let to_js =
+        let arg = fresh() in
+        Vb.mk (Pat.var (mknoloc (class_name ^ "_to_js"))) (Exp.fun_ Nolabel None (Pat.constraint_ (Pat.var (mknoloc arg)) class_typ) (Exp.constraint_ (Exp.send (var arg) "to_js") ojs_typ))
+      in
+      let of_js =
+        let arg = fresh() in
+        Vb.mk (Pat.var (mknoloc (class_name ^ "_of_js"))) (Exp.fun_ Nolabel None (Pat.constraint_ (Pat.var (mknoloc arg)) ojs_typ) (Exp.constraint_ (Exp.apply (Exp.new_ (mknoloc (Longident.Lident class_name))) [Nolabel, var arg]) class_typ))
+      in
+      [to_js; of_js]
+  | Constructor { class_name = _; js_class_name = _; class_args = _; super_class = _ } -> []
 
 and gen_def loc decl ty =
   match decl, ty with
