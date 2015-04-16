@@ -138,6 +138,8 @@ module Str: sig
       method value_of: string [@@js.meth]
     end
 
+  class str: string -> t [@@js.new "String"]
+
   val create: string -> t
   [@@js.new "String"]
 end

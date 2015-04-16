@@ -27,15 +27,14 @@
       }
 
       function Person(name, foo) {
-        var that = this;
         this.name = name;
         this.foo = foo;
         this.get = function () {
-          return [that.name, that.foo];
+          return [this.name, this.foo];
         };
         this.set = function (a) {
-          that.name = a[0];
-          that.foo = a[1];
+          this.name = a[0];
+          this.foo = a[1];
         };
         console.log("New Person object created");
       }
