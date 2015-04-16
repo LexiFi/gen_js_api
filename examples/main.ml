@@ -154,9 +154,7 @@ let () =
   Element.appendChild body
     (div (List.map (fun x -> txt (string_of_person_obj x)) [alice_obj; bob_obj]));
 
-  let s = Str.create "Hello" in
-  let s = s # concat_string ", world!" in
-  let s = s # concat2 (Str.create "plouf") in
+  let s = (Str.create "") # concat [Str.create "Hello"; Str.create ", "; Str.create "world"; Str.create "!"] in
   Console.log_string console (s # to_string);
 
   let l = Document.getElementsByClassName doc "myClass" in
