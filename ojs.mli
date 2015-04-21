@@ -55,3 +55,8 @@ val variable: string -> t
 val new_obj: string -> t array -> t
 
 val type_of: t -> string
+
+class obj: t ->
+  object
+    method to_js: t
+  end

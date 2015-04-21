@@ -49,6 +49,8 @@ module Window : sig
   val t_to_js: t -> Ojs.t
 
   val document: t -> Document.t
+
+  val set_onload: t -> (unit -> unit) -> unit
 end
 
 val window: Window.t
@@ -57,6 +59,17 @@ val alert: string -> unit
   [@@js.global]
 
 val setTimeout: (unit -> unit) -> int -> unit
+
+module Console: sig
+  type t = private Ojs.t
+
+  val log: t -> Ojs.t -> unit
+
+  val log_string: t -> string -> unit
+  [@@js.meth "log"]
+end
+
+val console: Console.t
 
 module Person: sig
   module Foo: sig
@@ -78,4 +91,57 @@ module Person: sig
   [@@js.meth]
   val set: t -> string * Foo.t -> unit
   [@@js.meth]
+end
+
+module PersonObj: sig
+  class t: Ojs.t ->
+     object
+       inherit Ojs.obj
+       method name: string
+       method set_name: string -> unit
+       method foo: Person.Foo.t
+       method set_foo: Person.Foo.t -> unit
+       method get: string * Person.Foo.t [@@js.meth]
+       method set: string * Person.Foo.t -> unit [@@js.meth]
+     end
+
+  class person: string -> Person.Foo.t -> (int list [@js.variadic]) -> t
+
+  val create: string -> Person.Foo.t -> t
+  [@@js.new "Person"]
+
+  val of_person: Person.t -> t
+  [@@js.cast]
+end
+
+module Str: sig
+  class t: Ojs.t ->
+    object
+      inherit Ojs.obj
+      method char_at: int -> t
+      method char_code_at: int -> int
+      method concat: (t list [@js.variadic]) -> t
+      method from_char_code: (int list [@js.variadic]) -> t
+      method index_of: t -> int
+      method index_of_from: t -> int -> int [@@js.meth "indexOf"]
+      method last_index_of: t -> int
+      method last_index_of_from: t -> int -> int [@@js.meth "indexOf"]
+      method length: int
+      method locale_compare: t -> int
+      method slice: int -> int -> t
+      method split: t -> t array
+      method substr: int -> int -> t
+      method substring: int -> int -> t
+      method to_locale_lower_case: t [@@js.meth]
+      method to_locale_upper_case: t [@@js.meth]
+      method to_lower_case: t [@@js.meth]
+      method to_upper_case: t [@@js.meth]
+      method to_string: string [@@js.meth]
+      method value_of: string [@@js.meth]
+    end
+
+  class str: string -> t [@@js.new "String"]
+
+  val create: string -> t
+  [@@js.new "String"]
 end
