@@ -98,6 +98,28 @@ Interfaces processed by gen_js_api can currently contain:
     The next section documents possible forms for value declarations.
 
 
+  - Class declarations:
+
+    ````
+    class my_class: Ojs.t ->
+      object
+        inherit Ojs.obj
+        ....
+      end
+    ````
+
+    The argument can be `Ojs.t`, but also any other JS-able type.
+    The class must inherit from `Ojs.obj` directly or indirectly.
+
+    This declaration produces an OCaml class to wrap JS objects.
+
+    TODO:
+
+       - specify how method types + attributes are interpreted
+       - document class rebinding
+
+
+
 JS-able types
 -------------
 
@@ -151,6 +173,14 @@ put an arbitrary attribute on the resulting type:
 Without the attribute, such a type would be parsed as a function of
 arity 2 (returning type `t3`).
 
+
+Variadic functions are supported, by adding a `[@js.variadic]`
+attribute on the last parameter (which will represent all remaining
+arguments):
+
+  ````
+    val sep: string -> (string list [@js.variadic]) -> string
+  ````
 
 The `unit` type can only be used in specific contexts: as the return
 type of functions or methods, or as the unique argument.
@@ -371,6 +401,13 @@ Value bindings
 
   TODO
 
+
+Class declarations
+------------------
+
+TODO
+
+
 Name conversion
 ---------------
 
@@ -501,6 +538,8 @@ TODOs
     end
   ````
 
+  (DONE, to be documented and polished.)
+
 
 
 - Support really abstract types (treated as `Ojs.t` in the implementation).
@@ -508,11 +547,9 @@ TODOs
 - Optimize generated code (for instance, lift calls to string_of_js on
   literals).
 
-- For enum, allow adding a default case:
+- Document class wrapping.
 
-
-  Only `int` or `string` are supported for the default.
-
+- Finish support for variadic functions.
 
 
 About
