@@ -108,7 +108,6 @@ Interfaces processed by gen_js_api can currently contain:
       end
     ````
 
-    The argument can be `Ojs.t`, but also any other JS-able type.
     The class must inherit from `Ojs.obj` directly or indirectly.
 
     This declaration produces an OCaml class to wrap JS objects.
