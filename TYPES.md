@@ -9,23 +9,23 @@ Javascript objects.
 
 The following types are supported out-of-the-box:
 
- - Arrows (see section below).
+ - Basic built-in types: `string`, `int`, `bool`, `float` and `Ojs.t`.
 
  - Tuples of JS-table types (mapped to JS arrays).
+
+ - Sequences of JS-able types: `array` and `list`, both mapped to JS
+   arrays (which are assumed to be indexed by integers 0..length-1).
+
+ - Options on JS-able types.  They are mapped to the same type as
+   their parameter: `None` is mapped to JS `null` value, and both
+   `null` and `undefined` are mapped back to `None`.  This encoding
+   doesn't support nested options in a faithful way.
+
+ - Arrows (see section below).
 
  - Polymorphic variants with only constant variants are supported
    (See the section on enums below).
 
- - Basic built-in types: `string`, `int`, `bool`, `float`, `array`,
-   `list`, `option` and `Ojs.t`.
-
- - Sequences: `array` and `list`, both mapped to JS arrays
-   (which are assumed to be indexed by integers 0..length-1).
-
- - Options are mapped to the same type as their parameter: `None` is
-   mapped to JS `null` value, and both `null` and `undefined` are
-   mapped back to `None`.  This encoding doesn't support nested
-   options in a faithful way.
 
 
 An arbitrary non-parametrized type with path `M.t` is JS-able if the
