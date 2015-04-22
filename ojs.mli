@@ -64,3 +64,5 @@ class obj: t ->
   object
     method to_js: t
   end
+
+val iterate_properties: t -> (string -> unit) -> unit
