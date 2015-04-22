@@ -11,6 +11,9 @@ include
 
      val caller_unit: (unit -> unit) -> unit
          [@@js.global "caller"]
+
+     val test_variadic: ((int list [@js.variadic]) -> int) -> unit
+     val test_variadic2: (string -> (int list [@js.variadic]) -> int) -> unit
    end)
 
 module LocalBindings : sig
@@ -27,7 +30,10 @@ let () =
   Printf.printf "%i\n%!" ([%js.to: int] (Ojs.array_get s 1));
   Printf.printf "%i\n%!" ([%js.to: int] (Ojs.array_get s 2))
 
-
+let () =
+  let sum xs = List.fold_left ( + ) 0 xs in
+  test_variadic sum;
+  test_variadic2 (fun msg xs -> Printf.printf "%s\n%!" msg; sum xs)
 
 val myArray: int array
     [@@js]

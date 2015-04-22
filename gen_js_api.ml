@@ -537,7 +537,7 @@ let rec js2ml ty exp =
   | Enum params -> js2ml_of_enum ~variant:true params exp
   | Tuple typs ->
       let f x =
-        Exp.tuple (List.mapi (fun i typ -> js2ml typ (apply_fun "Ojs.array_get" [x; int i])) typs)
+        Exp.tuple (List.mapi (fun i typ -> js2ml typ (ojs "array_get" [x; int i])) typs)
       in
       let_exp_in exp f
 
@@ -576,7 +576,7 @@ and js2ml_of_enum ~variant {enums; string_default; int_default} exp =
         let case_int = Exp.case (Pat.constant (Const_string ("number", None))) (mk_match "int" int_cases) in
         let case_string = Exp.case (Pat.constant (Const_string ("string", None))) (mk_match "string" string_cases) in
         let case_default = Exp.case (Pat.any ()) assert_false in
-        Exp.match_ (apply_fun "Ojs.type_of" [exp]) [case_int; case_string; case_default]
+        Exp.match_ (ojs "type_of" [exp]) [case_int; case_string; case_default]
   in
   let_exp_in exp to_ml
 
@@ -588,27 +588,30 @@ and ml2js ty exp =
       let s = if builtin_type s then "Ojs." ^ s else s in
       let args = List.map ml2js_fun tl in
       app (var (s ^ "_to_js")) (args @ [exp])
-  | Arrow (ty_args, None, ty_res) ->
-      let args = gen_args ~map:js2ml ty_args in
-      let formal_args, concrete_args = List.map fst args, List.map snd args in
-      let res = app exp concrete_args in
-      let f = func formal_args (map_res ~map:ml2js res ty_res) in
-      ojs "fun_to_js" [f]
-  | Arrow (ty_args, Some ty_variadic, ty_res) -> (* TODO *)
-      assert (1 = 2);
-      let n_args = List.length ty_args in
-      let args = gen_args ~map:js2ml ty_args in
-      let formal_args, concrete_args = List.map fst args, List.map snd args in
-      let extra_arg =
-        let array_class = ojs "variable" [str "Array"] in
-        let array_proto = ojs "get" [array_class; str "prototype"] in
-        let slice = ojs "get" [array_proto; str "slice"] in
-        let arguments = ojs "variable" [str "arguments"] in
-        js2ml (Name ("list", [ty_variadic])) (ojs "call" [slice; str "call"; Exp.array [ arguments; ojs "int_to_js" [int n_args] ]])
+  | Arrow (ty_args, ty_variadic, ty_res) ->
+      let arguments = fresh() in
+      let n_args, concrete_args =
+        match ty_args with
+        | [Unit _] -> 0, []
+        | _ ->
+            List.length ty_args,
+            List.mapi (fun i ty_arg -> js2ml ty_arg (ojs "array_get" [var arguments; int i])) ty_args
       in
-      let res = app exp (concrete_args @ [extra_arg]) in
-      let f = func formal_args (Exp.fun_ Nolabel None (Pat.any ()) (map_res ~map:ml2js res ty_res)) in
-      ojs "fun_to_js" [f]
+      let concrete_args =
+        match ty_variadic with
+        | None -> concrete_args
+        | Some ty_variadic ->
+            let extra_arg =
+              let array_class = ojs "variable" [str "Array"] in
+              let array_proto = ojs "get" [array_class; str "prototype"] in
+              let slice = ojs "get" [array_proto; str "slice"] in
+              js2ml (Name ("list", [ty_variadic])) (ojs "call" [slice; str "call"; Exp.array [ var arguments; ojs "int_to_js" [ int n_args ] ]])
+            in
+            concrete_args @ [extra_arg]
+      in
+      let res = app exp concrete_args in
+      let f = func [arguments] (map_res ~map:ml2js res ty_res) in
+      ojs (if is_unit ty_res then "fun_unit_to_js" else "fun_to_js") [f]
   | Unit loc ->
       error loc Unit_not_supported_here
   | Enum params -> ml2js_of_enum ~variant:true params exp
@@ -618,10 +621,10 @@ and ml2js ty exp =
       Exp.let_ Nonrecursive [Vb.mk pat exp] begin
         let n = List.length typs in
         let a = fresh () in
-        let new_array = apply_fun "Ojs.array_make" [int n] in
+        let new_array = ojs "array_make" [int n] in
         Exp.let_ Nonrecursive [Vb.mk (Pat.var (mknoloc a)) new_array] begin
           let f e (i, typ, x) =
-            Exp.sequence (apply_fun "Ojs.array_set" [var a; int i; ml2js typ (var x)]) e
+            Exp.sequence (ojs "array_set" [var a; int i; ml2js typ (var x)]) e
           in
           List.fold_left f (var a) (List.rev typed_vars)
         end
