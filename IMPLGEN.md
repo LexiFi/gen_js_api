@@ -9,9 +9,10 @@ to be imported and how they should be reflected within OCaml.
 Usage
 -----
 
-    ````
-       $ gen_js_api my_module.mli > my_module.ml
-    ````
+
+````
+  $ gen_js_api my_module.mli > my_module.ml
+````
 
 
 

@@ -8,9 +8,9 @@ a ppx preprocessor on an .ml file directly to insert local JS bindings.
 The `-ppx` command-line option must be the first argument passed
 to gen_js_api to enable the ppx mode:
 
-    ````
-       $ ocamlc -c -ppx "gen_js_api -ppx" ...
-    ````
+````
+   $ ocamlc -c -ppx "gen_js_api -ppx" ...
+````
 
 
 Several forms are supported:
