@@ -142,12 +142,15 @@ literal.
     ````
 
 
-It is possible to specify a single constructor with one argument (of
-type int or string), used to represent "all other cases" of JS values.
+It is possible to specify constructors with one argument of
+type either int or string, used to represent "all other cases" of JS values.
 
   ````
     type status =
       | OK [@js 1]
       | KO [@js 2]
-      | Other of int [@js.default]
+      | OtherS of string [@js.default]
+      | OtherI of int [@js.default]
   ````
+
+There cannot be two default constructors with the same argument type.
