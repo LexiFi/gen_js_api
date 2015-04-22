@@ -588,7 +588,13 @@ and ml2js ty exp =
       let s = if builtin_type s then "Ojs." ^ s else s in
       let args = List.map ml2js_fun tl in
       app (var (s ^ "_to_js")) (args @ [exp])
-  | Arrow (ty_args, ty_variadic, ty_res) ->
+  | Arrow (ty_args, None, ty_res) ->
+      let args = gen_args ~map:js2ml ty_args in
+      let formal_args, concrete_args = List.map fst args, List.map snd args in
+      let res = app exp concrete_args in
+      let f = func formal_args (map_res ~map:ml2js res ty_res) in
+      ojs (match formal_args with [] -> "fun_unit_to_js" | _ :: _ -> "fun_to_js") [f]
+  | Arrow (ty_args, Some ty_variadic, ty_res) ->
       let arguments = fresh() in
       let n_args, concrete_args =
         match ty_args with
@@ -597,13 +603,8 @@ and ml2js ty exp =
             List.length ty_args,
             List.mapi (fun i ty_arg -> js2ml ty_arg (ojs "array_get" [var arguments; int i])) ty_args
       in
-      let concrete_args =
-        match ty_variadic with
-        | None -> concrete_args
-        | Some ty_variadic ->
-            let extra_arg = ojs "list_of_js_from" [ js2ml_fun ty_variadic; var arguments; int n_args ] in
-            concrete_args @ [extra_arg]
-      in
+      let extra_arg = ojs "list_of_js_from" [ js2ml_fun ty_variadic; var arguments; int n_args ] in
+      let concrete_args = concrete_args @ [extra_arg] in
       let res = app exp concrete_args in
       let f = func [arguments] (map_res ~map:ml2js res ty_res) in
       ojs "fun_to_js_args" [f]
