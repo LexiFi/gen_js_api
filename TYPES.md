@@ -34,7 +34,7 @@ following two values are available in module `M`:
 ```ocaml
 val t_to_js: t -> Ojs.t
 val t_of_js: Ojs.t -> t
-```ocaml
+```
 
 The name of these values is obtained by appending `_of_js` or `_to_js`
 to the local name of the type.  It is thus possible to define JS-able
