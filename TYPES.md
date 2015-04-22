@@ -71,7 +71,9 @@ The function's result can be:
  - either a JS-able type;
  - or `unit`.
 
-`unit` is only allowed in these two contexts.
+`unit` is only allowed in these two contexts.  (It is planned
+to allow `unit` as an extra final argument, which would be useful
+for optional arguments.)
 
 In order to define functions that return functions, one can put an
 arbitrary attribute on the resulting type:
@@ -93,9 +95,11 @@ val sep: string -> (string list [@js.variadic]) -> string
 ````
 
 
-`unit` can also be used as the return type of functions.
-The `unit` type can only be used in specific contexts: as the return
-type of functions or methods, or as the unique argument.
+Arguments can be labelled or optional.  Labels are simply ignored on
+the JS side.  Optional arguments are treated as normal option types (
+`None` is mapped to `null` in particular), except when used on a
+`[@js.variadic]` argument, in which case a missing value is interpreted
+as an empty list (i.e. no extra arguments).
 
 
 
