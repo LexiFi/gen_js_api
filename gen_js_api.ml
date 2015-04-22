@@ -596,13 +596,8 @@ and ml2js ty exp =
       ojs (match formal_args with [] -> "fun_unit_to_js" | _ :: _ -> "fun_to_js") [f]
   | Arrow (ty_args, Some ty_variadic, ty_res) ->
       let arguments = fresh() in
-      let n_args, concrete_args =
-        match ty_args with
-        | [Unit _] -> 0, []
-        | _ ->
-            List.length ty_args,
-            List.mapi (fun i ty_arg -> js2ml ty_arg (ojs "array_get" [var arguments; int i])) ty_args
-      in
+      let n_args = List.length ty_args in
+      let concrete_args = List.mapi (fun i ty_arg -> js2ml ty_arg (ojs "array_get" [var arguments; int i])) ty_args in
       let extra_arg = ojs "list_of_js_from" [ js2ml_fun ty_variadic; var arguments; int n_args ] in
       let concrete_args = concrete_args @ [extra_arg] in
       let res = app exp concrete_args in
