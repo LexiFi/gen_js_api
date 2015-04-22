@@ -26,7 +26,8 @@ Several forms are supported:
 
    The signature is processed as it it were found in an .mli file, and
    the resulting structure is inserted in place of the `[%js]`
-   extension.
+   extension.  See [this page](IMPLGEN.md) for a list
+   of declarations supported in such interfaces.
 
  - `[@@js]` attributes on type declarations.
 
@@ -38,7 +39,8 @@ Several forms are supported:
 
    This generates the corresponding `*_of_js` and `*_to_js` functions.
    In case of a multi-type declaration, each type must be annotated
-   with `[@@js]` (if needed).
+   with `[@@js]` (if needed). See [this page](TYPES.md) for a description
+   of support forms of type declarations.
 
  - `[@@js.*]` attributes on val declarations.
 
@@ -54,7 +56,8 @@ Several forms are supported:
 
    In implementations, such `val` declarations are recognized only
    if they have some `[@@js.*]` attribute.  To enable the default
-   heuristics, one can use `[@@js]`.
+   heuristics, one can use `[@@js]`.  See [this page](VALUES.md)
+   for a description of supported forms of value bindings.
 
  - `[%js.to: ty]` and `[%js.of: ty]` extensions on expressions.
 
@@ -65,3 +68,4 @@ Several forms are supported:
    ````
 
    This form generates the mapping function associated to a JS-able type.
+   See [this page](TYPES.md) for a description of JS-able type.
