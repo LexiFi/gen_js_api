@@ -58,6 +58,20 @@ Interfaces processed by gen_js_api can currently contain:
     (which can be manually exported if needed).
 
 
+  - [Value declarations](VALUES.md):
+
+    ````
+    val f: tyexpr
+    ````
+
+    This produces in the implementation a definition for such a value,
+    whose content depends on three elements: the name of the value
+    (`f` in the example), its declared type (`tyexpr`), and possible
+    `[@@js.xxx]` attributes attached to the declaration in the interface.
+
+    See [this page] (VALUES.md) for supported forms of value declarations.
+
+
   - Sub-modules:
 
     ````
@@ -75,56 +89,27 @@ Interfaces processed by gen_js_api can currently contain:
     ````
 
 
-  - [Value declarations](VALUES.md):
-
-    ````
-    val f: tyexpr
-    ````
-
-    This produces in the implementation a definition for such a value,
-    whose content depends on three elements: the name of the value
-    (`f` in the example), its declared type (`tyexpr`), and possible
-    `[@@js.xxx]` attributes attached to the declaration in the interface.
-
-    See [this page] (VALUES.md) for supported forms of value declarations.
-
-
-  - Class declarations:
-
-    ````
-    class my_class: Ojs.t ->
-      object
-        inherit Ojs.obj
-        ....
-      end
-    ````
-
-    The class must inherit from `Ojs.obj` directly or indirectly.
-
-    This declaration produces an OCaml class to wrap JS objects.
-
-    TODO:
-
-       - specify how method types + attributes are interpreted
-       - document class rebinding
+  - [Class declarations](CLASSES.md)
 
 
 
-Value bindings
---------------
-
-Class declarations
-------------------
-
-TODO
 
 
 Name conversion
 ---------------
 
-Unless explicitly provided, the derived Javascript name is obtained
-from Caml name by (1) removing every underscore and (2) uppercasing
-every character following an underscore.
+Javascript names corresponding to bound components can always be
+specified explicitly (with the use of attributes).  When the naming is
+left implicit, a Javascript name is automatically derived from the
+OCaml name by applying the following rules:
+
+  - uppercasing every character following an underscore;
+
+  - removing every underscore;
+
+  - uppercasing the first character when generating object constructor names.
+
+
 
 
 PPX on implementations
@@ -180,7 +165,7 @@ Several forms are supported:
    if they have some `[@@js.*]` attribute.  To enable the default
    heuristics, one can use `[@@js]`.
 
- - `[%js.to: ty]` and `[%js.of: ty]` extensions an expressions.
+ - `[%js.to: ty]` and `[%js.of: ty]` extensions on expressions.
 
    Example:
 

@@ -1,11 +1,15 @@
 Value bindings in gen_js_api
 ============================
 
+
+Supported forms
+---------------
+
 - Method call:
 
   ````
   val myMethod: t -> T1 -> ... -> Tn -> T
-  [@@js.call]
+  [@@js.meth]
   ````
 
   Calling the function on a first argument `o` of type `t` corresponds
@@ -22,7 +26,7 @@ Value bindings in gen_js_api
 
   ````
   val myMethod: t -> T1 -> ... -> Tn -> T
-  [@@js.call "JavascriptMethodName"]
+  [@@js.meth "JavascriptMethodName"]
   ````
 
   A special case is when there is a single argument (in addition to
@@ -140,7 +144,7 @@ declarations in most cases.  Here are the rules, applied in order:
   to exposed the `_to_js` function generated automatically by the tool
   for a type declaration.
 
-- Similarly, iff the type has the form `Ojs.t -> t` (for a local named
+- Similarly, if the type has the form `Ojs.t -> t` (for a local named
   type `t`) and the value name is `t_to_js` (i.e. the type name
   followed by `_to_js`), then the function is assumed to be a
   `[@@js.cast]`.
@@ -159,7 +163,7 @@ declarations in most cases.  Here are the rules, applied in order:
   obtained by dropping the `new_`prefix).
 
 - If the value is a function whose first argument is a named type `t -> ...`,
-  then the definition is assumed to be a `[@@js.call]` method call.
+  then the definition is assumed to be a `[@@js.meth]` method call.
 
 - Otherwise, the declaration is assumed to be a `[@@js.global]` value.
   This applies in particular for any non-functional type.

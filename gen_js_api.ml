@@ -319,7 +319,7 @@ let id_of_expr = function
   | {pexp_desc=Pexp_construct ({txt=Lident s;_}, None); _} -> s
   | e -> error e.pexp_loc Identifier_expected
 
-let parse_attr (s, loc, ty) defs (k, v) =
+let parse_attr (s, loc, auto) defs (k, v) =
   let opt_name ?(prefix = "") () =
     match v with
     | PStr [] ->
@@ -343,7 +343,7 @@ let parse_attr (s, loc, ty) defs (k, v) =
   | "js.global" ->
       Global (opt_name ()) :: defs
   | "js" ->
-      auto s (Lazy.force ty) :: defs
+      auto () :: defs
   | "js.new" ->
       New (opt_name ~prefix:"new_" ()) :: defs
   | _ ->
@@ -352,18 +352,18 @@ let parse_attr (s, loc, ty) defs (k, v) =
 let parse_valdecl ~in_sig vd =
   let s = vd.pval_name.txt in
   let loc = vd.pval_loc in
-  let ty = lazy (parse_typ vd.pval_type) in
+  let ty = parse_typ vd.pval_type in
   let attrs = vd.pval_attributes in
-
-  let defs = List.fold_left (parse_attr (s, loc, ty)) [] attrs in
+  let auto () = auto s ty in
+  let defs = List.fold_left (parse_attr (s, loc, auto)) [] attrs in
   let r =
     match defs with
     | [x] -> x
-    | [] when in_sig -> auto s (Lazy.force ty)
+    | [] when in_sig -> auto ()
     | [] -> raise Exit
     | _ -> error loc Multiple_binding_declarations
   in
-  Val (s, Lazy.force ty, r, loc)
+  Val (s, ty, r, loc)
 
 let rec parse_sig_item s =
   match s.psig_desc with
@@ -408,15 +408,15 @@ and parse_class_decl = function
 
 and parse_class_field = function
   | {pctf_desc = Pctf_method (method_name, Public, Concrete, typ); pctf_loc; pctf_attributes} ->
-      let ty = lazy (parse_typ typ) in
-      let defs = List.fold_left (parse_attr (method_name, pctf_loc, ty)) [] pctf_attributes in
+      let ty = parse_typ typ in
+      let auto () = auto_in_object method_name ty in
+      let defs = List.fold_left (parse_attr (method_name, pctf_loc, auto)) [] pctf_attributes in
       let kind =
         match defs with
         | [x] -> x
-        | [] -> auto_in_object method_name (Lazy.force ty)
+        | [] -> auto ()
         | _ -> error pctf_loc Multiple_binding_declarations
       in
-      let method_typ = Lazy.force ty in
       let method_def =
         match kind with
         | PropGet s -> Getter s
@@ -427,7 +427,7 @@ and parse_class_field = function
       Method
         {
           method_name;
-          method_typ;
+          method_typ = ty;
           method_def;
           method_loc = pctf_loc;
         }
