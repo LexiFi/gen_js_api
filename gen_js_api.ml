@@ -801,10 +801,16 @@ and gen_classdecl cast_funcs = function
   | Declaration { class_name; class_fields } ->
       let x = fresh() in
       let obj =
-        Cl.let_ Nonrecursive cast_funcs
-          (Cl.structure
-             (Cstr.mk (Pat.any()) (List.map (gen_class_field x) class_fields)))
+        Cl.structure
+          (Cstr.mk (Pat.any()) (List.map (gen_class_field x) class_fields))
       in
+      (* generate "let _ = t_to_js in" to avoid unused decl warnings *)
+      let ign = function
+        | {pvb_pat = {ppat_desc = Ppat_var {txt}}} -> Vb.mk (Pat.any ()) (var txt)
+        | _ -> assert false
+      in
+      let obj = Cl.let_ Nonrecursive (List.map ign cast_funcs) obj in
+      let obj = Cl.let_ Nonrecursive cast_funcs obj in
       Ci.mk
         (mknoloc class_name)
         (Cl.fun_ Nolabel None (Pat.constraint_ (Pat.var (mknoloc x)) ojs_typ) obj)
