@@ -12,7 +12,7 @@ build:
 	$(OCAMLC) -I +compiler-libs -o gen_js_api.exe ocamlcommon.cma gen_js_api.ml
 
 example:
-	./gen_js_api.exe examples/test_js.mli > examples/test_js.ml
+	./gen_js_api.exe examples/test_js.mli
 	$(OCAMLC) -c -I examples examples/test_js.mli examples/test_js.ml
 	$(OCAMLC) -c -I examples -ppx "./gen_js_api.exe -ppx" examples/main.ml
 	$(OCAMLC) -no-check-prims -o examples/main.exe ojs.cmo examples/test_js.cmo examples/main.cmo

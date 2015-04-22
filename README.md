@@ -23,8 +23,10 @@ gen_js_api supports can be used in two (completementary) ways:
   - [Generating implementation from annotated interfaces](IMPLGEN.md):
 
     ````
-       $ gen_js_api my_module.mli > my_module.ml
+       $ gen_js_api my_module.mli
     ````
+
+    This generates my_module.ml.
 
 
   - As a [ppx preprocessor on implementations](PPX.md):

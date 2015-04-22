@@ -28,6 +28,8 @@ type error =
   | Default_case_in_enum
   | Multiple_default_case_in_enum
   | Invalid_variadic_type_arg
+  | No_input
+  | Multiple_inputs
 
 exception Error of Location.t * error
 
@@ -70,6 +72,10 @@ let print_error ppf = function
       Format.fprintf ppf "At most one default constructor is supported in enums for each type"
   | Invalid_variadic_type_arg ->
       Format.fprintf ppf "A variadic function argument must be of type list"
+  | No_input ->
+      Format.fprintf ppf "An input file must be provided"
+  | Multiple_inputs ->
+      Format.fprintf ppf "A single input file must be provided"
 
 let () =
   Location.register_error_of_exn
@@ -1015,15 +1021,35 @@ let mapper =
 
 (** Main *)
 
+let out = ref ""
+
+let specs =
+  [
+    "-o", Arg.Set_string out, "  Specify output .ml file (- for stdout).";
+  ]
+
+let usage = "gen_js_api [-o mymodule.ml] mymodule.mli"
 
 let standalone () =
+  let files = ref [] in
+  Arg.parse specs (fun s -> files := s :: !files) usage;
+  let src =
+    match !files with
+    | [src] -> src
+    | [] -> error Location.none No_input
+    | _ -> error Location.none Multiple_inputs
+  in
+  if !out = "" then out := Filename.chop_extension src ^ ".ml";
+  let oc = if !out = "-" then stdout else open_out !out in
   let sg =
     Pparse.parse_interface Format.err_formatter
       ~tool_name:"gen_js_iface"
-      Sys.argv.(1)
+      src
   in
   let res = str_of_sg sg in
-  Format.printf "%a@." Pprintast.structure res
+  Format.fprintf (Format.formatter_of_out_channel oc) "%a@."
+    Pprintast.structure res;
+  if !out <> "-" then close_out oc
 
 
 let () =

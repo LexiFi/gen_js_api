@@ -11,8 +11,10 @@ Usage
 
 
 ````
-  $ gen_js_api my_module.mli > my_module.ml
+  $ gen_js_api my_module.mli
 ````
+
+This generates my_module.ml.
 
 
 
