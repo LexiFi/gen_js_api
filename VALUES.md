@@ -7,10 +7,10 @@ Supported forms
 
 - Method call:
 
-  ````
+  ```ocaml
   val myMethod: t -> T1 -> ... -> Tn -> T
   [@@js.meth]
-  ````
+  ```
 
   Calling the function on a first argument `o` of type `t` corresponds
   to calling the method `myMethod` on the underlying JS object, with
@@ -24,10 +24,10 @@ Supported forms
   different types given to the same JS method):
 
 
-  ````
+  ```ocaml
   val myMethod: t -> T1 -> ... -> Tn -> T
   [@@js.meth "JavascriptMethodName"]
-  ````
+  ```
 
   A special case is when there is a single argument (in addition to
   the object itself) of type `unit`.  This is interpreted as a JS
@@ -35,10 +35,10 @@ Supported forms
 
 - Object creation:
 
-  ````
+  ```ocaml
   val new_myClass: T1 -> ... -> Tn -> t
   [@@js.new]
-  ````
+  ```
 
   Corresponds to creating an object of class `myClass` with other
   arguments passed to it.
@@ -49,14 +49,14 @@ Supported forms
   the class name.  It is also possible to specify a custom name
   explicitly.
 
-  ````
+  ```ocaml
   val new_myClass: T1 -> ... -> Tn -> t
   [@@js.new "JavascriptClassName"]
-  ````
+  ```
 
 - Global value or function:
 
-  ````
+  ```ocaml
   val x: t
   [@@js.global]
   ```
@@ -66,40 +66,40 @@ Supported forms
   the `window` object) and global functions (e.g. `alert`).  It is also
   possible to specify a custom name for the Javascript variable:
 
-  ````
+  ```ocaml
   val x: t
   [@@js.global "JavascriptValueName"]
-  ````
+  ```
 
   Example:
-  ````
+  ```ocaml
   val alert: string -> unit
   [@@js.global]
-  ````
+  ```
 
 - Property getter
 
-  ````
+  ```ocaml
   val prop: t -> T
   [@@js.get]
-  ````
+  ```
 
   Calling the function on a first argument `o` of type `t` corresponds
   to getting the `prop` property of the underlying JS object. A custom
   name for the JS property can be specified:
 
-  ````
+  ```ocaml
   val get_property: t -> T
   [@@js.get "MypProp"]
-  ````
+  ```
 
 
 - Property setter
 
-  ````
+  ```ocaml
   val set_prop: t -> T -> unit
   [@@js.set]
-  ````
+  ```
 
   Calling the function on a first argument `o` of type `t` corresponds
   to setting the `prop` property of the underlying JS object.  Note that
@@ -109,17 +109,17 @@ Supported forms
   A custom name for the JS property can also be specified (in which
   case the name of the value can be arbitrary):
 
-  ````
+  ```ocaml
   val modify_prop: t -> T -> unit
   [@@js.set "prop"]
-  ````
+  ```
 
 - Cast
 
-  ```
+  ```ocaml
   val cast: t1 -> t2
   [@@js.cast]
-  ````
+  ```
 
   Calling this function performs an unchecked cast from type `t1` to
   type `t2`, going through the Javascript representation (i.e.
