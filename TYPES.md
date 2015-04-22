@@ -5,17 +5,42 @@ JS-able types
 -------------
 
 A JS-able type is an OCaml type whose values can be mapped to and from
-Javascript objects.  Technically, a non-parametrized type with path
-`M.t` is JS-able if the following two values are available in module
-`M`:
+Javascript objects.
 
- ````
- val t_to_js: t -> Ojs.t
- val t_of_js: Ojs.t -> t
- ````
+The following types are supported out-of-the-box:
+
+ - Arrows (see section below).
+
+ - Tuples of JS-table types (mapped to JS arrays).
+
+ - Polymorphic variants with only constant variants are supported
+   (See the section on enums below).
+
+ - Basic built-in types: `string`, `int`, `bool`, `float`, `array`,
+   `list`, `option` and `Ojs.t`.
+
+ - Sequences: `array` and `list`, both mapped to JS arrays
+   (which are assumed to be indexed by integers 0..length-1).
+
+ - Options are mapped to the same type as their parameter: `None` is
+   mapped to JS `null` value, and both `null` and `undefined` are
+   mapped back to `None`.  This encoding doesn't support nested
+   options in a faithful way.
+
+
+An arbitrary non-parametrized type with path `M.t` is JS-able if the
+following two values are available in module `M`:
+
+````
+val t_to_js: t -> Ojs.t
+val t_of_js: Ojs.t -> t
+````
 
 The name of these values is obtained by appending `_of_js` or `_to_js`
-to the local name of the type.
+to the local name of the type.  It is thus possible to define JS-able
+manually by defining these two functions.  Type and class declarations
+processed by gen_js_api (see sections below) create JS-able type (by
+generating those functions automatically).
 
 Parametrized types can also be JS-able.  It is currently assumed that
 such types are covariant in each of their parameter.  Mapping
@@ -23,33 +48,37 @@ functions take extra arguments corresponding to the mapper for each
 parameter.  For instance, a type `'a t` would need to come with the following
 functions:
 
- ````
- val t_to_js: ('a -> Ojs.t) -> 'a t -> Ojs.t
- val t_of_js: (Ojs.t -> 'a) -> Ojs.t -> 'a t
- ````
+````
+val t_to_js: ('a -> Ojs.t) -> 'a t -> Ojs.t
+val t_of_js: (Ojs.t -> 'a) -> Ojs.t -> 'a t
+````
 
-Some built-in types are treated in a special way to make them JS-able:
-`string`, `int`, `bool`, `float`, `array`, `list`, `option`.  Arrays
-and lists are mapped to JS arrays (which are assumed to be indexed by
-integers 0..length-1).  Options are mapped to the same type as their
-parameter: `None` is mapped to JS `null` value, and both `null` and
-`undefined` are mapped back to `None`.  This encoding doesn't support
-nested options in a faithful way.
 
-JS-able type can be defined manually by defining `*_to_js` and
-`*_of_js` functions.  They can also be created by gen_js_api
-automatically when it processed type declarations.
 
-The `Ojs.t` type itself is JS-able.
+Arrow types
+-----------
 
 Arrow types can also be used in contexts that expect JS-able
-types. The JS function's arity is obtained by counting arrows.  A
-special case is when the OCaml arity is 1, with a single argument of
-type unit, in which case the JS function is assumed to have no
-argument.  In order to define functions that return functions, one can
-put an arbitrary attribute on the resulting type:
+types. The JS function's arity is obtained by counting arrows.
 
-   ```t1 -> (t2 -> t3 [@foo])```
+Arguments can be:
+
+ - either a sequence of JS-able types;
+ - or `unit` (when the corresponding JS function takes no argument).
+
+The function's result can be:
+
+ - either a JS-able type;
+ - or `unit`.
+
+`unit` is only allowed in these two contexts.
+
+In order to define functions that return functions, one can put an
+arbitrary attribute on the resulting type:
+
+````
+t1 -> (t2 -> t3 [@foo])
+```
 
 Without the attribute, such a type would be parsed as a function of
 arity 2 (returning type `t3`).
@@ -59,15 +88,15 @@ Variadic functions are supported, by adding a `[@js.variadic]`
 attribute on the last parameter (which will represent all remaining
 arguments):
 
-  ````
-    val sep: string -> (string list [@js.variadic]) -> string
-  ````
+````
+val sep: string -> (string list [@js.variadic]) -> string
+````
 
+
+`unit` can also be used as the return type of functions.
 The `unit` type can only be used in specific contexts: as the return
 type of functions or methods, or as the unique argument.
 
-Polymorphic types with only constant variants are supported.  See the section
-on Enums below.
 
 
 Type declarations
@@ -122,8 +151,8 @@ implementation).  Mutually recursive type declarations are supported.
 - Sum type declaration, mapped to enums (see Enums section).
 
 
-Enums
------
+Enums mapped to polymorphic variants or sum types
+-------------------------------------------------
 
 Either polymorphic variants or normal sum types (all with constant
 constructors) can be used to bind to "enums" in Javascript.  By
@@ -132,25 +161,25 @@ name, but a custom translation can be provided with a `[@js]`
 attribute.  This custom translation can be a string or an integer
 literal.
 
-    ````
-    type t =
-      | Foo [@js "foo"]
-      | Bar [@js 42]
-      | Baz
+````
+type t =
+  | Foo [@js "foo"]
+  | Bar [@js 42]
+  | Baz
 
-    type t = [`foo | `bar [@js 42] | `Baz]
-    ````
+type t = [`foo | `bar [@js 42] | `Baz]
+````
 
 
 It is possible to specify constructors with one argument of
 type either int or string, used to represent "all other cases" of JS values.
 
-  ````
-    type status =
-      | OK [@js 1]
-      | KO [@js 2]
-      | OtherS of string [@js.default]
-      | OtherI of int [@js.default]
-  ````
+````
+type status =
+  | OK [@js 1]
+  | KO [@js 2]
+  | OtherS of string [@js.default]
+  | OtherI of int [@js.default]
+````
 
 There cannot be two default constructors with the same argument type.
