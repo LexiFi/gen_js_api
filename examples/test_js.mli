@@ -90,7 +90,9 @@ module Person: sig
   val get: t -> unit -> string * Foo.t
   [@@js.meth]
   val set: t -> string * Foo.t -> unit
-  [@@js.meth]
+      [@@js.meth]
+
+  val cast: t -> Ojs.t [@@js.cast]
 end
 
 module PersonObj: sig

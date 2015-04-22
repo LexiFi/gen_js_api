@@ -70,7 +70,6 @@ let div = elt "div"
 let () =
   Array.iter (Printf.printf "[%i]\n") myArray;
 
-
   Ojs.array_set myArray2 0 (Ojs.int_to_js 10);
   Ojs.array_set myArray2 1 (Ojs.array_to_js Ojs.int_to_js [| 100; 200; 300 |]);
 (*  Ojs.array_set myArray2 1 ([%to_js: int array] [| 100; 200; 300 |]); *)
@@ -125,6 +124,8 @@ let () =
   let bob = Person.create "Bob" Person.Foo.Bar in
   let charlie = Person.create "Charlie" (Person.Foo.OtherString "bla") in
   let eve = Person.create "Eve" (Person.Foo.OtherInt 2713) in
+
+  Ojs.iterate_properties (Person.cast alice) (Format.printf "%s\n%!");
 
   let alice_obj = PersonObj.create "Alice" Person.Foo.Foo in
   let bob_obj = PersonObj.of_person bob in

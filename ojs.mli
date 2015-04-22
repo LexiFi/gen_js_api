@@ -27,13 +27,17 @@ val array_to_js: ('a -> t) -> 'a array -> t
 val list_of_js: (t -> 'a) -> t -> 'a list
 val list_to_js: ('a -> t) -> 'a list -> t
 
+val array_of_js_from: (t -> 'a) -> t -> int -> 'a array
+val list_of_js_from: (t -> 'a) -> t -> int -> 'a list
+
 val option_of_js: (t -> 'a) -> t -> 'a option
 (** Both [null] and [undefined] are mapped to [None]. *)
 val option_to_js: ('a -> t) -> 'a option -> t
 (** [None] is mapped to [null]. *)
 
-val fun_to_js: (t -> t) -> t
-val fun_unit_to_js: (t -> unit) -> t
+val fun_to_js: (t -> 'a) -> t
+val fun_unit_to_js: (unit -> 'a) -> t
+val fun_to_js_args: (t -> 'a) -> t
 
 val call: t -> string -> t array -> t
 val call_unit: t -> string -> t array -> unit
@@ -60,3 +64,5 @@ class obj: t ->
   object
     method to_js: t
   end
+
+val iterate_properties: t -> (string -> unit) -> unit
