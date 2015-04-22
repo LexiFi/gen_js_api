@@ -856,10 +856,7 @@ and gen_classdecl cast_funcs = function
             formal_args @ [arg], array_append concrete_args (array_of_list (list_map (ml2js_fun ty_arg) (var arg)))
       in
       let obj = ojs "new_obj" [str js_class_name; concrete_args] in
-      let e =
-        Cl.structure
-          (Cstr.mk (Pat.any()) [Cf.inherit_ Fresh (Cl.apply (Cl.constr (mknoloc (Longident.parse super_class)) []) [Nolabel, obj]) None])
-      in
+      let e = Cl.apply (Cl.constr (mknoloc (Longident.parse super_class)) []) [Nolabel, obj] in
       let f e x = Cl.fun_ Nolabel None (Pat.var (mknoloc x)) e in
       Ci.mk (mknoloc class_name) (List.fold_left f e (List.rev formal_args))
 
