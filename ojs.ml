@@ -65,10 +65,11 @@ let array_make n = new_obj "Array" [|int_to_js n|]
 let array_get t i = internal_get t (int_to_js i)
 let array_set t i x = internal_set t (int_to_js i) x
 
-let array_of_js f objs =
-  Array.init
-    (int_of_js (get objs "length"))
-    (fun i -> f (array_get objs i))
+let array_of_js_from f objs start =
+  let n = int_of_js (get objs "length") in
+  Array.init (n - start) (fun i -> f (array_get objs (start + i)))
+
+let array_of_js f objs = array_of_js_from f objs 0
 
 let array_to_js f arr =
   let n = Array.length arr in
@@ -78,8 +79,9 @@ let array_to_js f arr =
   done;
   a
 
-let list_of_js f objs =
-  Array.to_list (array_of_js f objs)
+let list_of_js_from f objs start = Array.to_list (array_of_js_from f objs start)
+
+let list_of_js f objs = list_of_js_from f objs 0
 
 let list_to_js f l =
   array_to_js f (Array.of_list l)
@@ -98,7 +100,7 @@ class obj (x:t) =
   end
 
 external internal_eval: string -> t = "caml_js_eval_string"
-let () = set global "caml_js_wrapfun" (internal_eval "(function (f) { return function() { return f(Array.prototype.slice.call(arguments)); }; })")
+let () = set global "caml_js_wrapfun" (internal_eval "(function (f) { return function() { return f(arguments); }; })")
 
 external internal_fun_to_js: (t -> 'a) -> t = "caml_js_wrap_callback"
 

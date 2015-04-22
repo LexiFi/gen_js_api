@@ -601,12 +601,7 @@ and ml2js ty exp =
         match ty_variadic with
         | None -> concrete_args
         | Some ty_variadic ->
-            let extra_arg =
-              let array_class = ojs "variable" [str "Array"] in
-              let array_proto = ojs "get" [array_class; str "prototype"] in
-              let slice = ojs "get" [array_proto; str "slice"] in
-              js2ml (Name ("list", [ty_variadic])) (ojs "call" [slice; str "call"; Exp.array [ var arguments; ojs "int_to_js" [ int n_args ] ]])
-            in
+            let extra_arg = ojs "list_of_js_from" [ js2ml_fun ty_variadic; var arguments; int n_args ] in
             concrete_args @ [extra_arg]
       in
       let res = app exp concrete_args in
