@@ -537,7 +537,7 @@ let rec js2ml ty exp =
   | Enum params -> js2ml_of_enum ~variant:true params exp
   | Tuple typs ->
       let f x =
-        Exp.tuple (List.mapi (fun i typ -> js2ml typ (apply_fun "Ojs.array_get" [x; int i])) typs)
+        Exp.tuple (List.mapi (fun i typ -> js2ml typ (ojs "array_get" [x; int i])) typs)
       in
       let_exp_in exp f
 
@@ -576,7 +576,7 @@ and js2ml_of_enum ~variant {enums; string_default; int_default} exp =
         let case_int = Exp.case (Pat.constant (Const_string ("number", None))) (mk_match "int" int_cases) in
         let case_string = Exp.case (Pat.constant (Const_string ("string", None))) (mk_match "string" string_cases) in
         let case_default = Exp.case (Pat.any ()) assert_false in
-        Exp.match_ (apply_fun "Ojs.type_of" [exp]) [case_int; case_string; case_default]
+        Exp.match_ (ojs "type_of" [exp]) [case_int; case_string; case_default]
   in
   let_exp_in exp to_ml
 
@@ -623,10 +623,10 @@ and ml2js ty exp =
       Exp.let_ Nonrecursive [Vb.mk pat exp] begin
         let n = List.length typs in
         let a = fresh () in
-        let new_array = apply_fun "Ojs.array_make" [int n] in
+        let new_array = ojs "array_make" [int n] in
         Exp.let_ Nonrecursive [Vb.mk (Pat.var (mknoloc a)) new_array] begin
           let f e (i, typ, x) =
-            Exp.sequence (apply_fun "Ojs.array_set" [var a; int i; ml2js typ (var x)]) e
+            Exp.sequence (ojs "array_set" [var a; int i; ml2js typ (var x)]) e
           in
           List.fold_left f (var a) (List.rev typed_vars)
         end
