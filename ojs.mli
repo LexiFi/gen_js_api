@@ -45,8 +45,8 @@ val call_unit: t -> string -> t array -> unit
 external apply: t -> t array -> t = "caml_js_fun_call"
 val apply_unit: t -> t array -> unit
 
-val get: t -> string -> t
-val set: t -> string -> t -> unit
+external get: t -> string -> t = "caml_js_get"
+external set: t -> string -> t -> unit = "caml_js_set"
 
 external obj: (string * t) array -> t = "caml_js_object"
 

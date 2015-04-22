@@ -37,8 +37,8 @@ external variable: string -> t = "caml_js_var"
 external internal_get: t -> t -> t = "caml_js_get"
 external internal_set: t -> t -> t -> unit = "caml_js_set"
 
-let get x name = internal_get x (string_to_js name)
-let set x name y = internal_set x (string_to_js name) y
+external get: t -> string -> t = "caml_js_get"
+external set: t -> string -> t -> unit = "caml_js_set"
 
 external internal_type_of: t -> t = "caml_js_typeof"
 let type_of x = string_of_js (internal_type_of x)
