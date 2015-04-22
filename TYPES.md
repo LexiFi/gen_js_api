@@ -34,7 +34,7 @@ following two values are available in module `M`:
 ```ocaml
 val t_to_js: t -> Ojs.t
 val t_of_js: Ojs.t -> t
-```
+```ocaml
 
 The name of these values is obtained by appending `_of_js` or `_to_js`
 to the local name of the type.  It is thus possible to define JS-able
@@ -48,10 +48,10 @@ functions take extra arguments corresponding to the mapper for each
 parameter.  For instance, a type `'a t` would need to come with the following
 functions:
 
-````
+```ocaml
 val t_to_js: ('a -> Ojs.t) -> 'a t -> Ojs.t
 val t_of_js: (Ojs.t -> 'a) -> Ojs.t -> 'a t
-````
+```
 
 
 
@@ -78,7 +78,7 @@ for optional arguments.)
 In order to define functions that return functions, one can put an
 arbitrary attribute on the resulting type:
 
-````
+```ocaml
 t1 -> (t2 -> t3 [@foo])
 ```
 
@@ -90,9 +90,9 @@ Variadic functions are supported, by adding a `[@js.variadic]`
 attribute on the last parameter (which will represent all remaining
 arguments):
 
-````
+```ocaml
 val sep: string -> (string list [@js.variadic]) -> string
-````
+```
 
 
 Arguments can be labelled or optional.  Labels are simply ignored on
@@ -115,9 +115,9 @@ implementation).  Mutually recursive type declarations are supported.
 
 - "Abstract" subtype of `Ojs.t`:
 
-    ````
+    ```ocaml
     type t = private Ojs.t
-    ````
+    ```
 
   This is used to bind to JS "opaque" objects, with no runtime mapping
   involved when moving between OCaml and JS (mapping functions are the
@@ -125,9 +125,9 @@ implementation).  Mutually recursive type declarations are supported.
 
 - Type abbreviation:
 
-    ````
+    ```ocaml
     type t = tyexp
-    ````
+    ```
 
   (formally, abstract types with a manifest).  This assumes that the
   abbreviated type expression is itself JS-able.  Note that the first
@@ -137,9 +137,9 @@ implementation).  Mutually recursive type declarations are supported.
 
 - Record declaration:
 
-    ````
+    ```ocaml
     type t = { .... }
-    ````
+    ```
 
   This assumes that the type for all fields are JS-able.  Fields can
   be mutabled, but polymorphic fields are not yet supported.
@@ -148,9 +148,9 @@ implementation).  Mutually recursive type declarations are supported.
   property per field).  By default, property names are equal to OCaml
   labels, but this can be changed manually with a `[@js]` attribute.
 
-  ````
+  ```ocaml
   type myType = { x : int; y : int [@js "Y"]}
-  ````
+  ```
 
 - Sum type declaration, mapped to enums (see Enums section).
 
@@ -165,25 +165,25 @@ name, but a custom translation can be provided with a `[@js]`
 attribute.  This custom translation can be a string or an integer
 literal.
 
-````
+```ocaml
 type t =
   | Foo [@js "foo"]
   | Bar [@js 42]
   | Baz
 
 type t = [`foo | `bar [@js 42] | `Baz]
-````
+```
 
 
 It is possible to specify constructors with one argument of
 type either int or string, used to represent "all other cases" of JS values.
 
-````
+```ocaml
 type status =
   | OK [@js 1]
   | KO [@js 2]
   | OtherS of string [@js.default]
   | OtherI of int [@js.default]
-````
+```
 
 There cannot be two default constructors with the same argument type.
