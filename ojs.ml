@@ -100,6 +100,6 @@ class obj (x:t) =
 external internal_eval: string -> t = "caml_js_eval_string"
 let () = set global "caml_js_wrapfun" (internal_eval "(function (f) { return function() { return f(Array.prototype.slice.call(arguments)); }; })")
 
-let fun_to_js (f:t->t) : t = apply (variable "caml_js_wrapfun") [|Obj.magic f|]
-let fun_unit_to_js (f:t->unit) : t = apply (variable "caml_js_wrapfun") [|Obj.magic f|]
-(* external fun_to_js: ('a -> 'b) -> t = "caml_js_wrap_callback" *)
+external internal_fun_to_js: (t -> 'a) -> t = "caml_js_wrap_callback"
+
+let fun_to_js_args (f:t -> 'a) : t = apply (variable "caml_js_wrapfun") [|internal_fun_to_js f|]

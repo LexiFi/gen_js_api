@@ -611,7 +611,7 @@ and ml2js ty exp =
       in
       let res = app exp concrete_args in
       let f = func [arguments] (map_res ~map:ml2js res ty_res) in
-      ojs (if is_unit ty_res then "fun_unit_to_js" else "fun_to_js") [f]
+      ojs "fun_to_js_args" [f]
   | Unit loc ->
       error loc Unit_not_supported_here
   | Enum params -> ml2js_of_enum ~variant:true params exp
