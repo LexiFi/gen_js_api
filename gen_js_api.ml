@@ -799,48 +799,15 @@ and gen_decl = function
 
 and gen_classdecl cast_funcs = function
   | Declaration { class_name; class_fields } ->
-      let mk_object x =
-        let gen_field = function
-          | Method {method_name; method_typ; method_def; method_loc} ->
-              let body =
-                match method_def, method_typ with
-                | Getter s, ty_res -> js2ml ty_res (ojs "get" [var x; str s])
-                | Setter s, Arrow ([ty_arg], None, Unit _) ->
-                    mkfun (fun arg -> ojs "set" [var x; str s; ml2js ty_arg arg])
-                | MethodCall s, Arrow (ty_args, ty_variadic, ty_res) ->
-                    let args = gen_args ty_args in
-                    let formal_args, concrete_args = add_variadic_arg args ty_variadic in
-                    let res =
-                      ojs
-                        (if is_unit ty_res then "call_unit" else "call")
-                        [var x; str s; concrete_args]
-                    in
-                    func formal_args (map_res res ty_res)
-                | MethodCall s, ty_res ->
-                    let res =
-                      ojs
-                        (if is_unit ty_res then "call_unit" else "call")
-                        [var x; str s; Exp.array []]
-                    in
-                    map_res res ty_res
-                | _ -> error method_loc Binding_type_mismatch
-              in
-              Cf.method_ (mknoloc method_name) Public (Cf.concrete Fresh body)
-          | Inherit super ->
-              let e = Cl.apply (Cl.constr super []) [Nolabel, var x] in
-              Cf.inherit_ Fresh e None
-        in
+      let x = fresh() in
+      let obj =
         Cl.let_ Nonrecursive cast_funcs
           (Cl.structure
-             (Cstr.mk (Pat.any()) (List.map gen_field class_fields)))
+             (Cstr.mk (Pat.any()) (List.map (gen_class_field x) class_fields)))
       in
-      let class_decl =
-        let x = fresh() in
-        Ci.mk
-          (mknoloc class_name)
-          (Cl.fun_ Nolabel None (Pat.constraint_ (Pat.var (mknoloc x)) ojs_typ) (mk_object x))
-      in
-      class_decl
+      Ci.mk
+        (mknoloc class_name)
+        (Cl.fun_ Nolabel None (Pat.constraint_ (Pat.var (mknoloc x)) ojs_typ) obj)
   | Constructor { class_name; js_class_name; class_args; class_variadic_arg; super_class } ->
       let args = List.map (fun ty -> ty, fresh()) class_args in
       let formal_args = List.map snd args in
@@ -856,6 +823,36 @@ and gen_classdecl cast_funcs = function
       let e = Cl.apply (Cl.constr (mknoloc (Longident.parse super_class)) []) [Nolabel, obj] in
       let f e x = Cl.fun_ Nolabel None (Pat.var (mknoloc x)) e in
       Ci.mk (mknoloc class_name) (List.fold_left f e (List.rev formal_args))
+
+and gen_class_field x = function
+  | Method {method_name; method_typ; method_def; method_loc} ->
+    let body =
+      match method_def, method_typ with
+      | Getter s, ty_res -> js2ml ty_res (ojs "get" [var x; str s])
+      | Setter s, Arrow ([ty_arg], None, Unit _) ->
+          mkfun (fun arg -> ojs "set" [var x; str s; ml2js ty_arg arg])
+      | MethodCall s, Arrow (ty_args, ty_variadic, ty_res) ->
+          let args = gen_args ty_args in
+          let formal_args, concrete_args = add_variadic_arg args ty_variadic in
+          let res =
+            ojs
+              (if is_unit ty_res then "call_unit" else "call")
+              [var x; str s; concrete_args]
+          in
+          func formal_args (map_res res ty_res)
+      | MethodCall s, ty_res ->
+          let res =
+            ojs
+              (if is_unit ty_res then "call_unit" else "call")
+              [var x; str s; Exp.array []]
+          in
+          map_res res ty_res
+      | _ -> error method_loc Binding_type_mismatch
+    in
+    Cf.method_ (mknoloc method_name) Public (Cf.concrete Fresh body)
+  | Inherit super ->
+    let e = Cl.apply (Cl.constr super []) [Nolabel, var x] in
+    Cf.inherit_ Fresh e None
 
 and gen_class_cast = function
   | Declaration { class_name; class_fields = _ } ->
