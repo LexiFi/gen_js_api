@@ -671,21 +671,22 @@ and add_variadic_arg args ty_variadic =
   match ty_variadic with
   | None -> formal_args, concrete_args
   | Some (label, ty_arg) ->
-      let arg = fresh () in
-      let extra_args arg = array_of_list (list_map (ml2js_fun ty_arg) (var arg)) in
-      let extra_args =
-        match label with
-        | Nolabel
-        | Labelled _ -> extra_args arg
-        | Optional _ ->
-            let case_none = Exp.case (Pat.construct (mknoloc (Longident.parse "None")) None) (Exp.array []) in
-            let case_some =
-              let some_arg = fresh() in
-              Exp.case (Pat.construct (mknoloc (Longident.parse "Some")) (Some (Pat.var (mknoloc some_arg)))) (extra_args some_arg)
-            in
-            Exp.match_ (var arg) [case_none; case_some]
-      in
+      let arg, extra_args = gen_extra_arg label ty_arg in
       formal_args @ [label, arg], array_append concrete_args extra_args
+
+and gen_extra_arg label ty_arg =
+  let arg = fresh () in
+  let extra_args arg = array_of_list (list_map (ml2js_fun ty_arg) (var arg)) in
+  match label with
+  | Nolabel
+  | Labelled _ -> arg, extra_args arg
+  | Optional _ ->
+      let case_none = Exp.case (Pat.construct (mknoloc (Longident.parse "None")) None) (Exp.array []) in
+      let case_some =
+        let some_arg = fresh() in
+        Exp.case (Pat.construct (mknoloc (Longident.parse "Some")) (Some (Pat.var (mknoloc some_arg)))) (extra_args some_arg)
+      in
+      arg, Exp.match_ (var arg) [case_none; case_some]
 
 and map_res ?(map=js2ml) res ty_res =
   match ty_res with
@@ -838,20 +839,7 @@ and gen_classdecl cast_funcs = function
         match class_variadic_arg with
         | None -> formal_args, concrete_args
         | Some (label, ty_arg) ->
-            let arg = fresh() in
-            let extra_args arg = array_of_list (list_map (ml2js_fun ty_arg) (var arg)) in
-            let extra_args =
-              match label with
-              | Nolabel
-              | Labelled _ -> extra_args arg
-              | Optional _ ->
-                  let case_none = Exp.case (Pat.construct (mknoloc (Longident.parse "None")) None) (Exp.array []) in
-                  let case_some =
-                    let some_arg = fresh() in
-                    Exp.case (Pat.construct (mknoloc (Longident.parse "Some")) (Some (Pat.var (mknoloc some_arg)))) (extra_args some_arg)
-                  in
-                  Exp.match_ (var arg) [case_none; case_some]
-            in
+            let arg, extra_args = gen_extra_arg label ty_arg in
             formal_args @ [label, arg], array_append concrete_args extra_args
       in
       let obj = ojs "new_obj" [str js_class_name; concrete_args] in
