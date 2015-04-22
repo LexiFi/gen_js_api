@@ -5,6 +5,9 @@
 OCAMLFLAGS = -w +A-4-9-41-45
 OCAMLC = ocamlc $(OCAMLFLAGS)
 
+JSOO_PATH = ~/js_of_ocaml
+JSOO = $(JSOO_PATH)/compiler/js_of_ocaml --pretty --noruntime $(JSOO_PATH)/runtime/runtime.js
+
 all: build example
 
 build:
@@ -16,7 +19,7 @@ example:
 	$(OCAMLC) -c -I examples examples/test_js.mli examples/test_js.ml
 	$(OCAMLC) -c -I examples -ppx "./gen_js_api.exe -ppx" examples/main.ml
 	$(OCAMLC) -no-check-prims -o examples/main.exe ojs.cmo examples/test_js.cmo examples/main.cmo
-	js_of_ocaml -o examples/main.js ojs_runtime.js examples/main.exe
+	$(JSOO) -o examples/main.js ojs_runtime.js examples/main.exe
 
 clean:
 	rm -f *~ *.exe *.cm* .*~ primitives.lst
