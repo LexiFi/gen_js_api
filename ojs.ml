@@ -55,8 +55,6 @@ let new_obj name args =
   let constr = get global name in
   internal_new_obj constr args
 
-external fun_to_js: ('a -> 'b) -> t = "caml_js_wrap_callback"
-
 external call: t -> string -> t array -> t = "caml_js_meth_call"
 let call_unit o s args = ignore (call o s args)
 
@@ -98,3 +96,10 @@ class obj (x:t) =
   object
     method to_js = x
   end
+
+external internal_eval: string -> t = "caml_js_eval_string"
+let () = set global "caml_js_wrapfun" (internal_eval "(function (f) { return function() { return f(Array.prototype.slice.call(arguments)); }; })")
+
+let fun_to_js (f:t->t) : t = apply (variable "caml_js_wrapfun") [|Obj.magic f|]
+let fun_unit_to_js (f:t->unit) : t = apply (variable "caml_js_wrapfun") [|Obj.magic f|]
+(* external fun_to_js: ('a -> 'b) -> t = "caml_js_wrap_callback" *)
