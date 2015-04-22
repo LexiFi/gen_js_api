@@ -6,20 +6,20 @@
 
 type t
 
-val t_of_js: t -> t
-val t_to_js: t -> t
+external t_of_js: t -> t = "%identity"
+external t_to_js: t -> t = "%identity"
 
-val string_of_js: t -> string
-val string_to_js: string -> t
+external string_of_js: t -> string = "caml_js_to_string"
+external string_to_js: string -> t = "caml_js_from_string"
 
-val int_of_js: t -> int
-val int_to_js: int -> t
+external int_of_js: t -> int = "%identity"
+external int_to_js: int -> t = "%identity"
 
-val bool_of_js: t -> bool
-val bool_to_js: bool -> t
+external bool_of_js: t -> bool = "caml_js_to_bool"
+external bool_to_js: bool -> t = "caml_js_from_bool"
 
-val float_of_js: t -> float
-val float_to_js: float -> t
+external float_of_js: t -> float = "%identity"
+external float_to_js: float -> t = "%identity"
 
 val array_of_js: (t -> 'a) -> t -> 'a array
 val array_to_js: ('a -> t) -> 'a array -> t
@@ -35,26 +35,26 @@ val option_of_js: (t -> 'a) -> t -> 'a option
 val option_to_js: ('a -> t) -> 'a option -> t
 (** [None] is mapped to [null]. *)
 
-val fun_to_js: (t -> 'a) -> t
-val fun_unit_to_js: (unit -> 'a) -> t
-val fun_to_js_args: (t -> 'a) -> t
+external fun_to_js: (t -> 'a) -> t = "caml_js_wrap_callback"
+external fun_unit_to_js: (unit -> 'a) -> t = "caml_js_wrap_callback"
+external fun_to_js_args: (t -> 'a) -> t = "caml_ojs_wrap_fun_arguments"
 
-val call: t -> string -> t array -> t
+external call: t -> string -> t array -> t = "caml_js_meth_call"
 val call_unit: t -> string -> t array -> unit
 
-val apply: t -> t array -> t
+external apply: t -> t array -> t = "caml_js_fun_call"
 val apply_unit: t -> t array -> unit
 
 val get: t -> string -> t
 val set: t -> string -> t -> unit
 
-val obj: (string * t) array -> t
+external obj: (string * t) array -> t = "caml_js_object"
 
 val array_make: int -> t
 val array_get: t -> int -> t
 val array_set: t -> int -> t -> unit
 
-val variable: string -> t
+external variable: string -> t = "caml_js_var"
 
 val new_obj: string -> t array -> t
 
@@ -65,4 +65,4 @@ class obj: t ->
     method to_js: t
   end
 
-val iterate_properties: t -> (string -> unit) -> unit
+external iterate_properties: t -> (string -> unit) -> unit = "caml_ojs_iterate_properties"

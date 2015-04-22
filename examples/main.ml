@@ -174,4 +174,4 @@ let () =
        Element.appendChild e (button "Click!" draw);
        Element.appendChild e (button "XXX" (fun () -> ()));
     )
-    l;
+    l
