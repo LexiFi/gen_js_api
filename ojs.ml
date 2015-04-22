@@ -1,14 +1,15 @@
 (* The gen_js_api is released under the terms of an MIT-like license.     *)
 (* See the attached LICENSE file.                                         *)
-(* Copyright 2015 by Alain Frisch and LexiFi.                             *)
+(* Copyright 2015 by LexiFi.                                              *)
 
 (* This module (mostly) abstracts away from js_of_ocaml encoding of
    OCaml values.  It serves as a support library for the code generated
    by gen_js_api.
 
-   It would be quite easy to completely drop dependency to
-   js_of_ocaml's library (so as to only rely on its compiler and JS
-   runtime code).
+   The module could mostly be implemented on top of js_of_ocaml's Js module
+   (and in particular Js.Unsafe), but we prefer to drop the dependency
+   to js_of_ocaml's library and to rely only on its compiler and JS
+   runtime code.
 *)
 
 
