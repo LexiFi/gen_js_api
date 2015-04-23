@@ -610,6 +610,12 @@ and ml2js ty exp =
       let n_args = List.length ty_args in
       let concrete_args = List.mapi (fun i (label, ty_arg) -> label, js2ml ty_arg (ojs "array_get" [var arguments; int i])) ty_args in
       let extra_arg = ojs "list_of_js_from" [ js2ml_fun ty_variadic; var arguments; int n_args ] in
+      let extra_arg =
+        match label_variadic with
+        | Nolabel
+        | Labelled _ -> extra_arg
+        | Optional _ -> Exp.construct (mknoloc (Longident.parse "Some")) (Some extra_arg)
+      in
       let concrete_args = concrete_args @ [label_variadic, extra_arg] in
       let res = app exp concrete_args in
       let f = func [Nolabel, arguments] None (ml2js_unit ty_res res) in
