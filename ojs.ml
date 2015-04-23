@@ -98,7 +98,6 @@ class obj (x:t) =
   end
 
 external fun_to_js: int -> (t -> 'a) -> t = "caml_js_wrap_callback_strict"
-external fun_unit_to_js: int -> (unit -> 'a) -> t = "caml_js_wrap_callback_strict"
 external fun_to_js_args: (t -> 'a) -> t = "caml_ojs_wrap_fun_arguments"
 
 external iterate_properties: t -> (string -> unit) -> unit = "caml_ojs_iterate_properties"

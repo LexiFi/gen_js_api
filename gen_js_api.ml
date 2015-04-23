@@ -604,14 +604,10 @@ and ml2js ty exp =
   | Arrow (ty_args, None, unit_arg, ty_res) ->
       let args = gen_args ~map:js2ml ty_args in
       let formal_args, concrete_args = List.map fst args, List.map snd args in
-      let res = app exp concrete_args unit_arg in
-      let formal_args = List.map (fun (_, t) -> Nolabel, t) formal_args in
-      let f = func formal_args (if formal_args = [] then Some () else None) (ml2js_unit ty_res res) in
-      ojs (match formal_args, unit_arg with [], Some _ -> "fun_unit_to_js" | [], None -> assert false | _ :: _, _ -> "fun_to_js")
-        [
-          int (max 1 (List.length formal_args));
-          f
-        ]
+      let res = ml2js_unit ty_res (app exp concrete_args unit_arg) in
+      let body = if formal_args = [] then Exp.fun_ Nolabel None (Pat.any ()) res else res in
+      let f = List.fold_right (fun (_, s) -> fun_ (Nolabel, s)) formal_args body in
+      ojs "fun_to_js" [int (max 1 (List.length formal_args)); f]
   | Arrow (ty_args, Some (label_variadic, ty_variadic), unit_arg, ty_res) ->
       let arguments = fresh() in
       let n_args = List.length ty_args in
