@@ -14,3 +14,7 @@ TODO list for gen_js_api
 
 - Compile properly qualified globals [@@js.global "foo.bar"] to avoid
   js_of_ocaml warning.
+
+- Add a notion of "object builder", i.e. a function with labeled or
+  optional arguments which return an object initialized with the
+  fields correponding to labels.

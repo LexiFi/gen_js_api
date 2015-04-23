@@ -73,6 +73,11 @@ module Ajax : sig
     [@@js.set "url"]
 
 
+(* with an object builder, this could be:
+  val settings: ?complete:(t -> string -> unit) -> ?data:Ojs.t -> ... -> ?url:string -> settings
+*)
+
+
   val run: settings -> unit
     [@@js.global "jQuery.ajax"]
 
