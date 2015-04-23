@@ -5,8 +5,9 @@ Overview
 --------
 
 gen_js_api aims at simplifying the creation of OCaml bindings for
-Javascript libraries, to be used with the js_of_ocaml compiler.  It is
-based on the following ideas:
+Javascript libraries, to be used with the [js_of_ocaml
+compiler](https://github.com/ocsigen/js_of_ocaml).  It is based on the
+following ideas:
 
  - Authors of bindings write OCaml signatures for Javascript libraries
    and the tool generates automatically the actual binding code.
@@ -78,6 +79,23 @@ Documentation
   - [Value bindings](VALUES.md)
   - [Class-wrapping bindings](CLASSES.md)
   - [TODO list] (TODO.md)
+
+
+Related projects
+----------------
+
+  - [js_of_ocaml](https://github.com/ocsigen/js_of_ocaml) The compiler
+    and runtime system on which gen_js_api relies. (Note: gen_js_api
+    doesn't depend on js_of_ocaml's OCaml library, nor on its syntax
+    extension.)
+
+  - [goji](https://github.com/klakplok/goji) A DSL to describe OCaml
+    bindings for JavaScript libraries.
+
+  -[DefinitelyMaybeTyped](https://github.com/andrewray/DefinitelyMaybeTyped)
+   A project to parse
+   [DefinitelyTyped](https://github.com/borisyankov/DefinitelyTyped)
+   interfaces and produce OCaml interfaces.
 
 
 About
