@@ -605,7 +605,8 @@ and ml2js ty exp =
       let args = gen_args ~map:js2ml ty_args in
       let formal_args, concrete_args = List.map fst args, List.map snd args in
       let res = app exp concrete_args unit_arg in
-      let f = func formal_args unit_arg (ml2js_unit ty_res res) in
+      let formal_args = List.map (fun (_, t) -> Nolabel, t) formal_args in
+      let f = func formal_args (if formal_args = [] then Some () else None) (ml2js_unit ty_res res) in
       ojs (match formal_args, unit_arg with [], Some _ -> "fun_unit_to_js" | [], None -> assert false | _ :: _, _ -> "fun_to_js") [f]
   | Arrow (ty_args, Some (label_variadic, ty_variadic), unit_arg, ty_res) ->
       let arguments = fresh() in
