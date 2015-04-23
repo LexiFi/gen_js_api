@@ -52,7 +52,7 @@ module Ajax : sig
     (** The type describing all settings of an AJAX call. *)
 
   type t = private Ojs.t
-    (** Correponds to jQuery's jqXHR object. *)
+    (** Corresponds to jQuery's jqXHR object. *)
 
   val settings: unit -> settings
     [@@js.new "Object"]
@@ -74,7 +74,8 @@ module Ajax : sig
 
 
 (* with an object builder, this could be:
-  val settings: ?complete:(t -> string -> unit) -> ?data:Ojs.t -> ... -> ?url:string -> settings
+  val settings: ?complete:(t -> string -> unit) -> ?data:Ojs.t -> ... -> ?url:string -> unit -> settings
+   [@@js.builder]
 *)
 
 
