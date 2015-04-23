@@ -498,6 +498,22 @@ let app f args unit_arg =
 
 let ojs s args = app (Exp.ident (mknoloc (Ldot (Lident "Ojs", s)))) (nolabel args) false
 
+let split sep s =
+  let n = String.length s in
+  let rec aux start i =
+    if i < n then
+      if s.[i] = sep then String.sub s start (i - start) :: aux (i+1) (i+1)
+      else aux start (i+1)
+    else [String.sub s start (i - start)]
+  in
+  aux 0 0
+
+let ojs_variable s =
+  let path = split '.' s in
+  match path with
+  | [] -> assert false
+  | x :: xs -> List.fold_left (fun o x -> ojs "get" [o; str x]) (ojs "variable" [str x]) xs
+
 let def s ty body =
   Str.value Nonrecursive [ Vb.mk (Pat.constraint_ (Pat.var (mknoloc s)) ty) body ]
 
@@ -929,7 +945,7 @@ and gen_def loc decl ty =
         )
 
   | Global s, ty_res ->
-      let res = ojs "variable" [str s] in
+      let res = ojs_variable s in
       js2ml ty_res res
 
   | Expr e, Arrow (ty_args, None, false, ty_res) -> (* TODO: handle variadic argument *)
@@ -956,8 +972,7 @@ and gen_expr loc ids = function
           str meth;
           Exp.array (List.map (gen_expr loc ids) args)
         ]
-  | Call (Id "global", [Str s]) ->
-      ojs "variable" [str s]
+  | Call (Id "global", [Str s]) -> ojs_variable s
   | Str s ->
       ml2js (Name ("string", [])) (str s)
   | Id s ->
