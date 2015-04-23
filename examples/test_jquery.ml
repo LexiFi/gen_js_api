@@ -5,6 +5,22 @@ val alert: string -> unit
 
 let ( !! ) = Jquery.selector
 
+let ajax_test () =
+  let open Ajax in
+  let s = settings () in
+  meth s `GET;
+  url s "test_jquery.ml";
+  data_type s "text";
+  complete s
+    (fun h -> function
+       | "success" ->
+           let pre = !!"<pre>" in
+           set_text pre (response_text h);
+           append !!"body" pre
+       | status -> alert (Printf.sprintf "status = %s" status)
+    );
+  run s
+
 let on_ready () =
   let main = !!"#main" in
   print_endline (text main);
@@ -35,11 +51,10 @@ let on_ready () =
 
   on input "input" (fun _ -> set_text div (get_val input));
 
-  let btn = !! "<button>SUBMIT</button>" in
-  on btn "click" (fun _ -> alert "Submitted...");
-  append main btn;
+  let btn = !! "<button>SHOW SOURCE CODE</button>" in
+  on btn "click" (fun _ -> ajax_test ());
+  append main btn
 
-  ()
 
 let () =
   ready on_ready
