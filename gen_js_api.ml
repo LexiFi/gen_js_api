@@ -606,7 +606,7 @@ and ml2js ty exp =
       let formal_args, concrete_args = List.map fst args, List.map snd args in
       let res = app exp concrete_args unit_arg in
       let f = func formal_args unit_arg (ml2js_unit ty_res res) in
-      ojs (match formal_args with [] -> "fun_unit_to_js" | _ :: _ -> "fun_to_js") [f]
+      ojs (match formal_args, unit_arg with [], Some _ -> "fun_unit_to_js" | [], None -> assert false | _ :: _, _ -> "fun_to_js") [f]
   | Arrow (ty_args, Some (label_variadic, ty_variadic), unit_arg, ty_res) ->
       let arguments = fresh() in
       let n_args = List.length ty_args in
