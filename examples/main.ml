@@ -47,6 +47,10 @@ val alert_bool: bool -> unit
 val alert_float: float -> unit
     [@@js.global "alert"]
 
+
+val test_opt_args: (?foo:int -> ?bar:int -> unit-> string) -> unit
+  [@@js.global]
+
 let doc = Window.document window
 
 let elt name ?(attrs = []) ?onclick subs =
@@ -174,4 +178,10 @@ let () =
        Element.appendChild e (button "Click!" draw);
        Element.appendChild e (button "XXX" (fun () -> ()));
     )
-    l
+    l;
+
+  test_opt_args
+    (fun ?(foo = 0) ?(bar = 0) () -> string_of_int foo ^ "/" ^ string_of_int bar)
+
+
+

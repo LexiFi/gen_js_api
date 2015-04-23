@@ -35,8 +35,8 @@ val option_of_js: (t -> 'a) -> t -> 'a option
 val option_to_js: ('a -> t) -> 'a option -> t
 (** [None] is mapped to [null]. *)
 
-external fun_to_js: (t -> 'a) -> t = "caml_js_wrap_callback"
-external fun_unit_to_js: (unit -> 'a) -> t = "caml_js_wrap_callback"
+external fun_to_js: int -> (t -> 'a) -> t = "caml_js_wrap_callback_strict"
+external fun_unit_to_js: int -> (unit -> 'a) -> t = "caml_js_wrap_callback_strict"
 external fun_to_js_args: (t -> 'a) -> t = "caml_ojs_wrap_fun_arguments"
 
 external call: t -> string -> t array -> t = "caml_js_meth_call"
