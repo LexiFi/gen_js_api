@@ -164,7 +164,7 @@ let is_unit = function
 
 let rec parse_expr e =
   match e.pexp_desc with
-  | Pexp_ident {txt=Lident s} -> Id s
+  | Pexp_ident {txt=Lident s; loc = _} -> Id s
   | Pexp_constant (Const_string (s, _)) -> Str s
   | Pexp_apply (e, args) ->
       Call
@@ -256,7 +256,7 @@ let rec parse_typ ty =
           | _ -> Arrow ([t1], None, None, tres)
           end
       end
-  | Ptyp_constr ({txt = lid}, tl) ->
+  | Ptyp_constr ({txt = lid; loc = _}, tl) ->
       begin match String.concat "." (Longident.flatten lid), tl with
       | "unit", [] -> Unit ty.ptyp_loc
       | "Ojs.t", [] -> Js
@@ -392,7 +392,7 @@ let rec parse_sig_item s =
 and parse_sig s = List.map parse_sig_item s
 
 and parse_class_decl = function
-  | {pci_virt = Concrete; pci_params = []; pci_name; pci_expr = {pcty_desc = Pcty_arrow (Nolabel, {ptyp_desc = Ptyp_constr ({txt = Longident.Ldot (Lident "Ojs", "t"); loc = _}, []); _}, {pcty_desc = Pcty_signature {pcsig_self = {ptyp_desc = Ptyp_any; _}; pcsig_fields}; _})}} ->
+  | {pci_virt = Concrete; pci_params = []; pci_name; pci_expr = {pcty_desc = Pcty_arrow (Nolabel, {ptyp_desc = Ptyp_constr ({txt = Longident.Ldot (Lident "Ojs", "t"); loc = _}, []); _}, {pcty_desc = Pcty_signature {pcsig_self = {ptyp_desc = Ptyp_any; _}; pcsig_fields}; _}); _}; _} ->
       let class_name = pci_name.txt in
       Declaration { class_name; class_fields = List.map parse_class_field pcsig_fields }
   | {pci_virt = Concrete; pci_params = []; pci_name; pci_expr; pci_attributes; pci_loc} ->
@@ -470,14 +470,14 @@ let array_append a1 a2 =
 
 let fun_ (label, s) e =
   match e.pexp_desc with
-  | Pexp_apply (f, [Nolabel, {pexp_desc = Pexp_ident {txt = Lident x}}])
+  | Pexp_apply (f, [Nolabel, {pexp_desc = Pexp_ident {txt = Lident x; loc = _}; _}])
       when x = s -> f
   | _ ->
       Exp.fun_ label None (Pat.var (mknoloc s)) e
 
 let fun_unit e =
   match e.pexp_desc with
-  | Pexp_apply (f, [Nolabel, {pexp_desc = Pexp_construct ({txt = Lident "()"}, None)}]) ->
+  | Pexp_apply (f, [Nolabel, {pexp_desc = Pexp_construct ({txt = Lident "()"; loc = _}, None); _}]) ->
       f
   | _ ->
       Exp.fun_ Nolabel None (Pat.construct (mknoloc (Lident "()")) None) e
@@ -849,7 +849,7 @@ and gen_classdecl cast_funcs = function
       in
       (* generate "let _ = t_to_js in" to avoid unused decl warnings *)
       let ign = function
-        | {pvb_pat = {ppat_desc = Ppat_var {txt}}} -> Vb.mk (Pat.any ()) (var txt)
+        | {pvb_pat = {ppat_desc = Ppat_var {txt; loc = _}; _}; _} -> Vb.mk (Pat.any ()) (var txt)
         | _ -> assert false
       in
       let obj = Cl.let_ Nonrecursive (List.map ign cast_funcs) obj in
@@ -911,7 +911,7 @@ and gen_class_cast = function
         Vb.mk (Pat.var (mknoloc (class_name ^ "_of_js"))) (Exp.fun_ Nolabel None (Pat.constraint_ (Pat.var (mknoloc arg)) ojs_typ) (Exp.constraint_ (Exp.apply (Exp.new_ (mknoloc (Longident.Lident class_name))) [Nolabel, var arg]) class_typ))
       in
       [to_js; of_js]
-  | Constructor { class_name = _; js_class_name = _; class_args = _; super_class = _ } -> []
+  | Constructor { class_name = _; js_class_name = _; class_args = _; super_class = _; class_variadic_arg = _; class_unit_arg = _ } -> []
 
 and gen_def loc decl ty =
   match decl, ty with
@@ -1010,8 +1010,8 @@ let mapper =
   let module_expr self mexp =
     let mexp = super.module_expr self mexp in
     match mexp.pmod_desc with
-    | Pmod_constraint({pmod_desc=Pmod_extension ({txt="js"}, PStr[])},
-                      ({pmty_desc=Pmty_signature sg} as mty)) ->
+    | Pmod_constraint({pmod_desc=Pmod_extension ({txt="js"; loc = _}, PStr[]); _},
+                      ({pmty_desc=Pmty_signature sg; _} as mty)) ->
         Mod.constraint_ (Mod.structure (str_of_sg sg))
           mty
     | _ -> mexp
@@ -1052,8 +1052,8 @@ let mapper =
   let expr self e =
     let e = super.expr self e in
     match e.pexp_desc with
-    | Pexp_extension ({txt="js.to"}, PTyp ty) -> js2ml_fun (parse_typ ty)
-    | Pexp_extension ({txt="js.of"}, PTyp ty) -> ml2js_fun (parse_typ ty)
+    | Pexp_extension ({txt="js.to"; loc = _}, PTyp ty) -> js2ml_fun (parse_typ ty)
+    | Pexp_extension ({txt="js.of"; loc = _}, PTyp ty) -> ml2js_fun (parse_typ ty)
     | _ ->
         e
   in

@@ -2,7 +2,7 @@
 # See the attached LICENSE file.
 # Copyright 2015 by LexiFi.
 
-OCAMLFLAGS = -w +A-4-9-41-45
+OCAMLFLAGS = -w +A-4-41-45
 OCAMLC = ocamlc $(OCAMLFLAGS)
 
 JSOO_PATH = ~/js_of_ocaml
