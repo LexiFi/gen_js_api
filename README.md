@@ -84,15 +84,15 @@ Documentation
 Related projects
 ----------------
 
-  - [js_of_ocaml](https://github.com/ocsigen/js_of_ocaml) The compiler
+  - [js_of_ocaml](https://github.com/ocsigen/js_of_ocaml): The compiler
     and runtime system on which gen_js_api relies. (Note: gen_js_api
     doesn't depend on js_of_ocaml's OCaml library, nor on its syntax
     extension.)
 
-  - [goji](https://github.com/klakplok/goji) A DSL to describe OCaml
+  - [goji](https://github.com/klakplok/goji): A DSL to describe OCaml
     bindings for JavaScript libraries.
 
-  - [DefinitelyMaybeTyped](https://github.com/andrewray/DefinitelyMaybeTyped)
+  - [DefinitelyMaybeTyped](https://github.com/andrewray/DefinitelyMaybeTyped):
     A project to parse
     [DefinitelyTyped](https://github.com/borisyankov/DefinitelyTyped)
     interfaces and produce OCaml interfaces.
