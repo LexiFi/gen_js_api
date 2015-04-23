@@ -532,8 +532,8 @@ let rec js2ml ty exp =
   | Arrow (ty_args, ty_variadic, ty_res) ->
       let args = gen_args ty_args in
       let formal_args, concrete_args = add_variadic_arg args ty_variadic in
-      let res = ojs (if is_unit ty_res then "apply_unit" else "apply") [exp; concrete_args] in
-      func formal_args (map_res res ty_res)
+      let res = ojs "apply" [exp; concrete_args] in
+      func formal_args (js2ml_unit ty_res res)
   | Unit loc ->
       error loc Unit_not_supported_here
   | Enum params -> js2ml_of_enum ~variant:true params exp
@@ -594,7 +594,7 @@ and ml2js ty exp =
       let args = gen_args ~map:js2ml ty_args in
       let formal_args, concrete_args = List.map fst args, List.map snd args in
       let res = app exp concrete_args in
-      let f = func formal_args (map_res ~map:ml2js res ty_res) in
+      let f = func formal_args (ml2js_unit ty_res res) in
       ojs (match formal_args with [] -> "fun_unit_to_js" | _ :: _ -> "fun_to_js") [f]
   | Arrow (ty_args, Some (label_variadic, ty_variadic), ty_res) ->
       let arguments = fresh() in
@@ -603,7 +603,7 @@ and ml2js ty exp =
       let extra_arg = ojs "list_of_js_from" [ js2ml_fun ty_variadic; var arguments; int n_args ] in
       let concrete_args = concrete_args @ [label_variadic, extra_arg] in
       let res = app exp concrete_args in
-      let f = func [Nolabel, arguments] (map_res ~map:ml2js res ty_res) in
+      let f = func [Nolabel, arguments] (ml2js_unit ty_res res) in
       ojs "fun_to_js_args" [f]
   | Unit loc ->
       error loc Unit_not_supported_here
@@ -688,10 +688,15 @@ and gen_extra_arg label ty_arg =
       in
       arg, Exp.match_ (var arg) [case_none; case_some]
 
-and map_res ?(map=js2ml) res ty_res =
+and ml2js_unit ty_res res =
   match ty_res with
   | Unit _ -> res
-  | _ -> map ty_res res
+  | _ -> ml2js ty_res res
+
+and js2ml_unit ty_res res =
+  match ty_res with
+  | Unit _ -> app (var "ignore") [ Nolabel, res ]
+  | _ -> js2ml ty_res res
 
 and gen_typ = function
   | Name (s, tyl) ->
@@ -857,19 +862,10 @@ and gen_class_field x = function
       | MethodCall s, Arrow (ty_args, ty_variadic, ty_res) ->
           let args = gen_args ty_args in
           let formal_args, concrete_args = add_variadic_arg args ty_variadic in
-          let res =
-            ojs
-              (if is_unit ty_res then "call_unit" else "call")
-              [var x; str s; concrete_args]
-          in
-          func formal_args (map_res res ty_res)
+          let res = ojs "call" [var x; str s; concrete_args] in
+          func formal_args (js2ml_unit ty_res res)
       | MethodCall s, ty_res ->
-          let res =
-            ojs
-              (if is_unit ty_res then "call_unit" else "call")
-              [var x; str s; Exp.array []]
-          in
-          map_res res ty_res
+          js2ml_unit ty_res (ojs "call" [var x; str s; Exp.array []])
       | _ -> error method_loc Binding_type_mismatch
     in
     Cf.method_ (mknoloc method_name) Public (Cf.concrete Fresh body)
@@ -913,17 +909,13 @@ and gen_def loc decl ty =
   | MethCall s, Arrow ((Nolabel, ty_this) :: ty_args, ty_variadic, ty_res) ->
       let args = gen_args ty_args in
       let formal_args, concrete_args = add_variadic_arg args ty_variadic in
-      let res this =
-        ojs
-          (if is_unit ty_res then "call_unit" else "call")
-          [ ml2js ty_this this; str s; concrete_args ]
-      in
+      let res this = ojs "call" [ ml2js ty_this this; str s; concrete_args ] in
       mkfun
         (fun this ->
            match ty_args, ty_variadic with
-           | [], None -> map_res (res this) ty_res
+           | [], None -> js2ml_unit ty_res (res this)
            | [], Some _
-           | _ :: _, _ -> func formal_args (map_res (res this) ty_res)
+           | _ :: _, _ -> func formal_args (js2ml_unit ty_res (res this))
         )
 
   | Global s, ty_res ->
@@ -932,7 +924,7 @@ and gen_def loc decl ty =
 
   | Expr e, Arrow (ty_args, None, ty_res) -> (* TODO: handle variadic argument *)
       let args = gen_args ~name:(Printf.sprintf "arg%i") ty_args in
-      func (List.map fst args) (map_res (gen_expr loc args e) ty_res)
+      func (List.map fst args) (js2ml_unit ty_res (gen_expr loc args e))
 
   | Expr e, ty ->
       js2ml ty (gen_expr loc [] e)
@@ -941,7 +933,7 @@ and gen_def loc decl ty =
       let args = gen_args ty_args in
       let formal_args, concrete_args = add_variadic_arg args ty_variadic in
       let res = ojs "new_obj" [str name; concrete_args] in
-      func formal_args (map_res res ty_res)
+      func formal_args (js2ml ty_res res)
 
   | _ ->
       error loc Binding_type_mismatch

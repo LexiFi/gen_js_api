@@ -33,15 +33,15 @@ let on_ready () =
   append main input;
   append main div;
 
-(*  on input "change" (fun _ -> set_text div (get_val input)); *)
   on input "input" (fun _ -> set_text div (get_val input));
 
   let btn = !! "<button>SUBMIT</button>" in
   on btn "click" (fun _ -> alert "Submitted...");
   append main btn;
 
-
   ()
 
 let () =
   ready on_ready
+
+

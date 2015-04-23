@@ -57,10 +57,7 @@ let new_obj name args =
   internal_new_obj constr args
 
 external call: t -> string -> t array -> t = "caml_js_meth_call"
-let call_unit o s args = ignore (call o s args)
-
 external apply: t -> t array -> t = "caml_js_fun_call"
-let apply_unit f x = ignore (apply f x)
 
 let array_make n = new_obj "Array" [|int_to_js n|]
 let array_get t i = internal_get t (int_to_js i)

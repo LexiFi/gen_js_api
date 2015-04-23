@@ -40,10 +40,7 @@ external fun_unit_to_js: (unit -> 'a) -> t = "caml_js_wrap_callback"
 external fun_to_js_args: (t -> 'a) -> t = "caml_ojs_wrap_fun_arguments"
 
 external call: t -> string -> t array -> t = "caml_js_meth_call"
-val call_unit: t -> string -> t array -> unit
-
 external apply: t -> t array -> t = "caml_js_fun_call"
-val apply_unit: t -> t array -> unit
 
 external get: t -> string -> t = "caml_js_get"
 external set: t -> string -> t -> unit = "caml_js_set"
