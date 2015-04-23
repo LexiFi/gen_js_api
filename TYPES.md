@@ -58,24 +58,31 @@ val t_of_js: (Ojs.t -> 'a) -> Ojs.t -> 'a t
 Arrow types
 -----------
 
-Arrow types can also be used in contexts that expect JS-able
-types. The JS function's arity is obtained by counting arrows.
+Arrow types can also be used in contexts that expect JS-able types.
+All arguments must be JS-able types, and a final `unit`
+pseudo-argument is allowed (and mandatory when there is no real
+argument).  The function's result can be either a JS-able type or
+`unit`.  Note that `unit` is not considered as a proper JS-able type:
+it is only allowed in these two contexts (as the result, or the final
+pseudo-argument).
 
-Arguments can be:
+Arguments can be **labelled or optional**.  Labels are simply ignored on
+the JS side.  Optional arguments are treated as normal option types (
+`None` is mapped to `null` in particular), except when used on a
+`[@js.variadic]` argument (see below), in which case a missing value
+is interpreted as an empty list (i.e. no extra arguments).
 
- - either a sequence of JS-able types;
- - or `unit` (when the corresponding JS function takes no argument).
 
-The function's result can be:
+When mapping an OCaml function to JS, the **function arity** is the
+number of real arguments (not counting the final `unit`) and the
+semantics is the standard one for JS functions: missing arguments are
+filled with `undefined` and extra arguments are dropped.  The correct
+way to support a calling convention where the JS caller might not
+provide all arguments to a function defined in OCaml is to use
+optional arguments (or just arguments with option types) on the OCaml
+side.
 
- - either a JS-able type;
- - or `unit`.
-
-`unit` is only allowed in these two contexts.  (It is planned
-to allow `unit` as an extra final argument, which would be useful
-for optional arguments.)
-
-In order to define functions that return functions, one can put an
+In order to define **functions that return functions**, one can put an
 arbitrary attribute on the resulting type:
 
 ```ocaml
@@ -86,7 +93,7 @@ Without the attribute, such a type would be parsed as a function of
 arity 2 (returning type `t3`).
 
 
-Variadic functions are supported, by adding a `[@js.variadic]`
+**Variadic functions** are supported, by adding a `[@js.variadic]`
 attribute on the last parameter (which will represent all remaining
 arguments):
 
@@ -95,11 +102,6 @@ val sep: string -> (string list [@js.variadic]) -> string
 ```
 
 
-Arguments can be labelled or optional.  Labels are simply ignored on
-the JS side.  Optional arguments are treated as normal option types (
-`None` is mapped to `null` in particular), except when used on a
-`[@js.variadic]` argument, in which case a missing value is interpreted
-as an empty list (i.e. no extra arguments).
 
 
 
