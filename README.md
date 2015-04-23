@@ -92,10 +92,10 @@ Related projects
   - [goji](https://github.com/klakplok/goji) A DSL to describe OCaml
     bindings for JavaScript libraries.
 
-  -[DefinitelyMaybeTyped](https://github.com/andrewray/DefinitelyMaybeTyped)
-   A project to parse
-   [DefinitelyTyped](https://github.com/borisyankov/DefinitelyTyped)
-   interfaces and produce OCaml interfaces.
+  - [DefinitelyMaybeTyped](https://github.com/andrewray/DefinitelyMaybeTyped)
+    A project to parse
+    [DefinitelyTyped](https://github.com/borisyankov/DefinitelyTyped)
+    interfaces and produce OCaml interfaces.
 
 
 About
