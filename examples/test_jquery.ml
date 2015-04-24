@@ -14,8 +14,7 @@ let ajax_test () =
         append !!"body" pre
     | status -> alert (Printf.sprintf "status = %s" status)
   in
-  let s = settings ~meth:`GET ~url:"test_jquery.ml" ~data_type:"text" ~complete () in
-  run s
+  run (settings ~meth:`GET ~url:"test_jquery.ml" ~data_type:"text" ~complete ())
 
 let on_ready () =
   let main = !!"#main" in
