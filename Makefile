@@ -12,7 +12,7 @@ all: build example test_jquery
 
 build:
 	$(OCAMLC) -c ojs.mli ojs.ml
-	$(OCAMLC) -I +compiler-libs -o gen_js_api.exe ocamlcommon.cma gen_js_api.ml
+	$(OCAMLC) -I +compiler-libs -o gen_js_api.exe ocamlcommon.cma gen_js_api.mli gen_js_api.ml
 
 example:
 	./gen_js_api.exe examples/test_js.mli
