@@ -103,3 +103,5 @@ external fun_to_js_args: (t -> 'a) -> t = "caml_ojs_wrap_fun_arguments"
 external iterate_properties: t -> (string -> unit) -> unit = "caml_ojs_iterate_properties"
 
 let empty_obj () = new_obj "Object" [||]
+
+external caml_array_append: t array -> t array -> t array = "caml_array_append"

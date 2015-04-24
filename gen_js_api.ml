@@ -526,10 +526,10 @@ let incl = function
   | [x] -> x
   | str -> Str.include_ (Incl.mk (Mod.structure str))
 
+let nolabel args = List.map (function x -> Nolabel, x) args
 
 let ojs_typ = Typ.constr (mknoloc (Longident.parse "Ojs.t")) []
-
-let nolabel args = List.map (function x -> Nolabel, x) args
+let ojs s args = Exp.apply (Exp.ident (mknoloc (Ldot (Lident "Ojs", s)))) (nolabel args)
 
 let list_map f x =
   Exp.apply (Exp.ident (mknoloc (Longident.parse "List.map"))) (nolabel [f; x])
@@ -538,9 +538,11 @@ let array_of_list x =
   Exp.apply (Exp.ident (mknoloc (Longident.parse "Array.of_list"))) (nolabel [x])
 
 let array_append a1 a2 =
+  (* perhaps use a specialized runtime primitive which returns
+     one of the arrays if the other one is empty *)
   match a1.pexp_desc with
   | Pexp_array [] -> a2
-  | _ -> Exp.apply (Exp.ident (mknoloc (Longident.parse "Array.append"))) (nolabel [a1; a2])
+  | _ -> ojs "caml_array_append" [a1; a2]
 
 let fun_ (label, s) e =
   match e.pexp_desc with
@@ -596,7 +598,6 @@ let app f args unit_arg =
   let args = if unit_arg then args @ [Nolabel, unit_expr] else args in
   apply f args
 
-let ojs s args = app (Exp.ident (mknoloc (Ldot (Lident "Ojs", s)))) (nolabel args) false
 
 let split sep s =
   let n = String.length s in
@@ -785,17 +786,14 @@ and add_variadic_arg args ty_variadic =
   match ty_variadic with
   | None -> formal_args, concrete_args
   | Some (label, _, ty_arg) ->
-      let arg, extra_args = gen_extra_arg label ty_arg in
+      let arg = fresh () in
+      let extra_args arg = array_of_list (list_map (ml2js_fun ty_arg) arg) in
+      let extra_args = match label with
+        | Nolabel | Labelled _ -> extra_args (var arg)
+        | Optional _ ->
+            match_some_none ~none:(Exp.array []) ~some:extra_args (var arg)
+      in
       formal_args @ [label, arg], array_append concrete_args extra_args
-
-and gen_extra_arg label ty_arg =
-  let arg = fresh () in
-  let extra_args arg = array_of_list (list_map (ml2js_fun ty_arg) arg) in
-  arg,
-  match label with
-  | Nolabel | Labelled _ -> extra_args (var arg)
-  | Optional _ ->
-      match_some_none ~none:(Exp.array []) ~some:extra_args (var arg)
 
 and ml2js_unit ty_res res =
   match ty_res with

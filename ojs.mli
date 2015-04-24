@@ -68,3 +68,6 @@ class obj: t ->
   end
 
 external iterate_properties: t -> (string -> unit) -> unit = "caml_ojs_iterate_properties"
+
+
+external caml_array_append: t array -> t array -> t array = "caml_array_append"
