@@ -21,20 +21,12 @@ following ideas:
 
 gen_js_api supports can be used in two (completementary) ways:
 
-  - [Generating implementation from annotated interfaces](IMPLGEN.md):
+  - [Generating .ml implementations from annotated .mli interfaces](IMPLGEN.md),
+    in order to create the code for stub libraries.
 
-    ````
-       $ gen_js_api my_module.mli
-    ````
+  - As a [ppx preprocessor on implementations](PPX.md) to define local
+    bindings.
 
-    This generates my_module.ml.
-
-
-  - As a [ppx preprocessor on implementations](PPX.md):
-
-    ````
-       $ ocamlc -c -ppx "gen_js_api -ppx" ...
-    ````
 
 
 Usage (with ocamlfind)
