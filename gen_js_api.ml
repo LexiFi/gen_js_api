@@ -158,6 +158,7 @@ type decl =
   | Type of rec_flag * Parsetree.type_declaration list
   | Val of string * typ * valdef * Location.t
   | Class of classdecl list
+  | Verbatim of Parsetree.signature_item
 
 (** Parsing *)
 
@@ -381,7 +382,17 @@ let rec parse_sig_item s =
   | _ ->
       error s.psig_loc Cannot_parse_sigitem
 
-and parse_sig s = List.map parse_sig_item s
+and parse_sig = function
+  | [] -> []
+  | {psig_desc = Psig_attribute ({txt="js.stop"; _}, _); _} :: rest ->
+      parse_sig_verbatim rest
+  | s :: rest -> parse_sig_item s :: parse_sig rest
+
+and parse_sig_verbatim = function
+  | [] -> []
+  | {psig_desc = Psig_attribute ({txt="js.start"; _}, _); _} :: rest ->
+      parse_sig rest
+  | s :: rest -> Verbatim s :: parse_sig_verbatim rest
 
 and parse_class_decl = function
   | {pci_virt = Concrete; pci_params = []; pci_name; pci_expr = {pcty_desc = Pcty_arrow (Nolabel, {ptyp_desc = Ptyp_constr ({txt = Longident.Ldot (Lident "Ojs", "t"); loc = _}, []); _}, {pcty_desc = Pcty_signature {pcsig_self = {ptyp_desc = Ptyp_any; _}; pcsig_fields}; _}); _}; _} ->
@@ -832,6 +843,9 @@ and gen_decl = function
       let cast_funcs = List.concat (List.map gen_class_cast decls) in
       let classes = List.map (gen_classdecl cast_funcs) decls in
       [Str.class_ classes; Str.value Nonrecursive cast_funcs]
+
+  | Verbatim _ ->
+      [ ]
 
 and gen_classdecl cast_funcs = function
   | Declaration { class_name; class_fields } ->

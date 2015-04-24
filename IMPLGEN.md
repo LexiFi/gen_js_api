@@ -68,3 +68,20 @@ Interfaces processed by gen_js_api can currently contain:
   - [Class declarations](CLASSES.md)
 
 
+
+Verbatim section
+----------------
+
+A floating attribute `[@@@js.stop]` tells the tool to ignore the
+remaining items until the end of the current (possibly nested)
+signature.  This can be reverted with a floating attribute
+`[@@@js.start]`.  This system makes it possible to specify fragments
+of the interface that should not generate any code in the
+implementation.
+
+
+TODO:
+
+ - Floating attribute `[@@@js.implem stritems...]` to specify custom
+   code to be inserted in the implementation.
+
