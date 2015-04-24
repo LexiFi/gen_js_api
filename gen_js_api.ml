@@ -2,7 +2,6 @@
 (* See the attached LICENSE file.                                         *)
 (* Copyright 2015 by LexiFi.                                              *)
 
-
 open Location
 open Asttypes
 open Parsetree
@@ -20,7 +19,6 @@ type error =
   | Cannot_parse_type
   | Cannot_parse_sigitem
   | Cannot_parse_classdecl
-  | Cannot_parse_classsig
   | Cannot_parse_classfield
   | Implicit_name of string
   | Unit_not_supported_here
@@ -56,8 +54,6 @@ let print_error ppf = function
       Format.fprintf ppf "Cannot parse signature item"
   | Cannot_parse_classdecl ->
       Format.fprintf ppf "Cannot parse class declaration"
-  | Cannot_parse_classsig ->
-      Format.fprintf ppf "Cannot parse class signature"
   | Cannot_parse_classfield ->
       Format.fprintf ppf "Cannot parse class field"
   | Implicit_name prefix ->
@@ -155,10 +151,6 @@ type decl =
   | Type of rec_flag * Parsetree.type_declaration list
   | Val of string * typ * valdef * Location.t
   | Class of classdecl list
-
-let is_unit = function
-  | Unit _ -> true
-  | _ -> false
 
 (** Parsing *)
 
@@ -303,13 +295,6 @@ let check_suffix ~suffix s =
     Some (String.sub s 0 (String.length s - l))
   else
     None
-
-let has_suffix ~suffix s = check_suffix ~suffix s <> None
-
-let drop_suffix ~suffix s =
-  match check_suffix ~suffix s with
-  | Some x -> x
-  | None -> assert false
 
 let auto s = function
   | Arrow ([Nolabel, Name (t, [])], None, false, Js) when check_suffix ~suffix:"_to_js" s = Some t -> Cast
@@ -487,8 +472,6 @@ let func args unit_arg body =
   List.fold_right (fun s rest -> fun_ s rest) args body
 
 let apply f args = Exp.apply f args
-
-let apply_fun f args = apply (var f) args
 
 let unit_lid = mknoloc (Lident "()")
 
