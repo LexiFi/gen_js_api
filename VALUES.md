@@ -8,7 +8,7 @@ Supported forms
 - Method call:
 
   ```ocaml
-  val myMethod: t -> T1 -> ... -> Tn -> T
+  val my_method: t -> T1 -> ... -> Tn -> T
   [@@js.meth]
   ```
 
@@ -25,23 +25,20 @@ Supported forms
 
 
   ```ocaml
-  val myMethod: t -> T1 -> ... -> Tn -> T
+  val my_method: t -> T1 -> ... -> Tn -> T
   [@@js.meth "JavascriptMethodName"]
   ```
 
-  A special case is when there is a single argument (in addition to
-  the object itself) of type `unit`.  This is interpreted as a JS
-  method with no argument at all.
 
-- Object creation:
+- Object constructor:
 
   ```ocaml
-  val new_myClass: T1 -> ... -> Tn -> t
+  val new_my_class: T1 -> ... -> Tn -> t
   [@@js.new]
   ```
 
-  Corresponds to creating an object of class `myClass` with other
-  arguments passed to it.
+  Corresponds to calling a JS constructor with arguments
+  passed to it.
 
   By default, the name of the class on the JS side is derived from the
   name of the OCaml value (`myClass` above): in this case, the value
@@ -50,7 +47,7 @@ Supported forms
   explicitly.
 
   ```ocaml
-  val new_myClass: T1 -> ... -> Tn -> t
+  val f: T1 -> ... -> Tn -> t
   [@@js.new "JavascriptClassName"]
   ```
 
@@ -125,6 +122,31 @@ Supported forms
   type `t2`, going through the Javascript representation (i.e.
   applying mapper from `t1` to the underlying JS object, and back
   using the mapper for `t2`).
+
+
+- Literal object builder:
+
+  ```ocaml
+  val make: l1:T1 -> ... -> ln:tn -> t
+  [@@js.builder]
+  ```
+
+  Corresponds to create a JS plain object with fields `l1`,...`ln`
+  initialized with the provided values.  The name of the function
+  (`make` in the example) does not correspond to any concept in JS.
+  By default, the JS field names are derived from OCaml labels, but
+  it is also possible to override that with a `[@js]` attribute on
+  the argument's type.  All fields must be labeled or optional, or
+  come with such an attribute.
+
+  Example:
+
+  ``ocaml
+  type t  = private Ojs.t
+
+  val person: ?parent:t -> age:int -> string[@js "name"] -> t
+  ```
+
 
 - Custom expressions
 
