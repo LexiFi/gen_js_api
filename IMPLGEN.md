@@ -69,8 +69,8 @@ Interfaces processed by gen_js_api can currently contain:
 
 
 
-Verbatim section
-----------------
+Verbatim sections
+-----------------
 
 A floating attribute `[@@@js.stop]` tells the tool to ignore the
 remaining items until the end of the current (possibly nested)
@@ -79,9 +79,27 @@ signature.  This can be reverted with a floating attribute
 of the interface that should not generate any code in the
 implementation.
 
+A floating `[@@@js.implem ...]` tells the tool to generate some custom
+code in the implementation. The payload `...` is an OCaml structure,
+which is processed in the same way as in [ppx mode](PPX.md).
 
-TODO:
 
- - Floating attribute `[@@@js.implem stritems...]` to specify custom
-   code to be inserted in the implementation.
+Example:
 
+```ocaml
+
+  [@@@js.stop]
+     val foo: int -> unit
+  [@@@js.start]
+
+  [@@@js.implem
+
+       val foo_internal: string -> int -> unit
+         [@@js.global "foo"]
+       let foo = foo_internal ""
+
+  ]
+```
+
+
+TODO: merge [@@@js.start] and [@@@js.implem]?
