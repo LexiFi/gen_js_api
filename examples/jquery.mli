@@ -14,10 +14,8 @@ val text: t -> string
 val set_text: t -> string -> unit
     [@@js.meth "text"]
 
-
 val update_text: t -> (int -> string -> string) -> unit
     [@@js.meth "text"]
-
 
 val append_html: t -> string -> unit
     [@@js.meth "append"]
@@ -60,7 +58,6 @@ module Ajax : sig
     ?meth:([`GET | `POST | `PUT] [@js "method"]) ->
     ?url:string ->
     unit -> settings
-
     [@@js.builder]
 
   val run: settings -> unit
