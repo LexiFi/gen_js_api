@@ -26,6 +26,19 @@ val append: t -> (t list [@js.variadic]) -> unit
 val get_val: t -> string
     [@@js.meth "val"]
 
+val hide: t -> unit
+    [@@js.meth "hide"]
+
+val detach: t -> unit
+    [@@js.meth]
+
+
+(** {2 Animations} *)
+
+val fade_in: t -> ?duration:int -> ?finished:(unit -> unit) -> unit -> unit
+    [@@js.meth]
+val fade_out: t -> ?duration:int -> ?finished:(unit -> unit) -> unit -> unit
+    [@@js.meth]
 
 (** {2 Events} *)
 

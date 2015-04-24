@@ -11,7 +11,13 @@ let ajax_test () =
     | "success" ->
         let pre = !!"<pre>" in
         set_text pre (response_text h);
-        append !!"body" [pre]
+        hide pre;
+        append !!"body" [pre];
+        fade_in pre ~duration:2000
+          ~finished:(fun () ->
+              fade_out pre ~finished:(fun () -> detach pre) ()
+            )
+          ()
     | status -> alert (Printf.sprintf "status = %s" status)
   in
   run (settings ~meth:`GET ~url:"test_jquery.ml" ~data_type:"text" ~complete ())
@@ -46,9 +52,7 @@ let on_ready () =
 
   let btn = !! "<button>SHOW SOURCE CODE</button>" in
   on btn "click" (fun _ -> ajax_test ());
-(*  append main [btn]; *)
-
-  append2 main btn []
+  append main [btn]
 
 let () =
   ready on_ready
