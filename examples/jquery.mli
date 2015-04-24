@@ -1,3 +1,12 @@
+(* The gen_js_api is released under the terms of an MIT-like license.     *)
+(* See the attached LICENSE file.                                         *)
+(* Copyright 2015 by LexiFi.                                              *)
+
+(** Partial binding to jQuery, serving as an illustration
+    of gen_js_api.  The binding is far from complete! *)
+
+
+
 (** {2 Sets of elements} *)
 
 type t = private Ojs.t

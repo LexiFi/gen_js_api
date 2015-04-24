@@ -64,6 +64,13 @@ Usage (with ocamlfind)
    js_of_ocaml -o my_prog.js +gen_js_api/ojs_runtime.js my_prog
    ```
 
+Examples
+--------
+
+The repository contains some initial [OCaml bindings to
+jQuery](examples/jquery.mli) created with gen_js_api and some [sample
+code](examples/test_jquery.ml) using these bindings.
+
 
 Low-level binding to Javascript
 -------------------------------
