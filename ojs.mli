@@ -50,6 +50,7 @@ external get: t -> string -> t = "caml_js_get"
 external set: t -> string -> t -> unit = "caml_js_set"
 
 external obj: (string * t) array -> t = "caml_js_object"
+val empty_obj: unit -> t
 
 val array_make: int -> t
 val array_get: t -> int -> t
