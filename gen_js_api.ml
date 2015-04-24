@@ -1016,21 +1016,18 @@ and gen_def loc decl ty =
       let args = gen_args ty_args in
       let formal_args = List.map fst args in
       let concrete_args = List.map snd args in
-      let body =
-        let x = fresh() in
-        let f init (label, js_label, e) =
-          let js_label =
-            match js_label, label with
-            | None, Nolabel -> error loc Unlabelled_argument_in_builder
-            | None, (Labelled s | Optional s) -> js_name s
-            | Some s, _ -> s
-          in
-          let e = ojs "set" [var x; str js_label; e] in
-          Exp.sequence e init
+      let f x init (label, js_label, e) =
+        let js_label =
+          match js_label, label with
+          | None, Nolabel -> error loc Unlabelled_argument_in_builder
+          | None, (Labelled s | Optional s) -> js_name s
+          | Some s, _ -> s
         in
-        let init = List.fold_left f (js2ml_unit ty_res (var x)) (List.rev concrete_args) in
-        Exp.let_ Nonrecursive [Vb.mk (Pat.var (mknoloc x)) (ojs "empty_obj" [unit_expr])] init
+        let e = ojs "set" [x; str js_label; e] in
+        Exp.sequence e init
       in
+      let init x = List.fold_left (f x) (js2ml_unit ty_res x) (List.rev concrete_args) in
+      let body = let_exp_in (ojs "empty_obj" [unit_expr]) init in
       func formal_args unit_arg body
 
   | _ ->
@@ -1148,7 +1145,7 @@ let standalone () =
       src
   in
   let res = str_of_sg sg in
-  Format.fprintf (Format.formatter_of_out_channel oc) "%a@."
+    Format.fprintf (Format.formatter_of_out_channel oc) "%a@."
     Pprintast.structure res;
   if !out <> "-" then close_out oc
 
