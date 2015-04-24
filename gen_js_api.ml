@@ -30,18 +30,26 @@ type error =
   | No_input
   | Multiple_inputs
   | Unlabelled_argument_in_builder
+  | Ignored_attribute
 
 exception Error of Location.t * error
 
+let used_attributes_tbl = Hashtbl.create 16
+let register_loc loc = Hashtbl.replace used_attributes_tbl loc ()
+let is_registered_loc loc = Hashtbl.mem used_attributes_tbl loc
+
 let error loc err = raise (Error (loc, err))
 
-let has_attribute key attrs =
-  let p ({txt; loc = _}, _) = txt = key in
-  List.exists p attrs
+let filter_attr key = function ({txt; loc}, _) ->
+  if txt = key then begin
+    register_loc loc;
+    true
+  end else false
+
+let has_attribute key attrs = List.exists (filter_attr key) attrs
 
 let get_attribute key attrs =
-  let p ({txt; loc = _}, _) = txt = key in
-  match List.find p attrs with
+  match List.find (filter_attr key) attrs with
   | exception Not_found -> None
   | (k, v) -> Some (k, v)
 
@@ -111,6 +119,8 @@ let print_error ppf = function
       Format.fprintf ppf "A single input file must be provided"
   | Unlabelled_argument_in_builder ->
       Format.fprintf ppf "Arguments of builder must be named"
+  | Ignored_attribute ->
+      Format.fprintf ppf "Ignored attribute"
 
 let () =
   Location.register_error_of_exn
@@ -241,7 +251,7 @@ let prepare_enum label loc attributes =
   List.iter
     (fun (k, v) ->
       match k.txt with
-      | "js" -> js := expr_of_payload k.loc v
+      | "js" -> register_loc k.loc; js := expr_of_payload k.loc v
       | _ -> ()
     )
     attributes;
@@ -364,22 +374,31 @@ let parse_attr (s, loc, auto) defs (k, v) =
   in
   match k.txt with
   | "js.cast" ->
+      register_loc k.loc;
       Cast :: defs
   | "js.expr" ->
+      register_loc k.loc;
       Expr (parse_expr (expr_of_payload k.loc v)) :: defs
   | "js.get" ->
+      register_loc k.loc;
       PropGet (opt_name ()) :: defs
   | "js.set" ->
+      register_loc k.loc;
       PropSet (opt_name ~prefix:"set_" ()) :: defs
   | "js.meth" ->
+      register_loc k.loc;
       MethCall (opt_name ()) :: defs
   | "js.global" ->
+      register_loc k.loc;
       Global (opt_name ()) :: defs
   | "js" ->
+      register_loc k.loc;
       auto () :: defs
   | "js.new" ->
+      register_loc k.loc;
       New (opt_name ~prefix:"new_" ()) :: defs
   | "js.builder" ->
+      register_loc k.loc;
       Builder :: defs
   | _ ->
       defs
@@ -409,7 +428,8 @@ let rec parse_sig_item s =
   | Psig_module {pmd_name; pmd_type = {pmty_desc = Pmty_signature si; _}; _} ->
       Module (pmd_name.txt, parse_sig si)
   | Psig_class cs -> Class (List.map parse_class_decl cs)
-  | Psig_attribute ({txt="js.implem"; _}, PStr str) ->
+  | Psig_attribute ({txt="js.implem"; loc}, PStr str) ->
+      register_loc loc;
       Implem str
   | _ ->
       error s.psig_loc Cannot_parse_sigitem
@@ -427,7 +447,8 @@ and parse_sig = function
 
 and parse_sig_verbatim = function
   | [] -> []
-  | {psig_desc = Psig_attribute ({txt="js.start"; _}, _); _} :: rest ->
+  | {psig_desc = Psig_attribute ({txt="js.start"; loc}, _); _} :: rest ->
+      register_loc loc;
       parse_sig rest
   | _ :: rest -> parse_sig_verbatim rest
 
@@ -451,9 +472,9 @@ and parse_class_decl = function
       in
       let class_name = pci_name.txt in
       let js_class_name =
-        match List.find (function ({txt; loc = _}, _) -> txt = "js.new") pci_attributes with
-        | exception Not_found -> js_name (String.capitalize_ascii class_name)
-        | (k, v) -> id_of_expr (expr_of_payload k.loc v)
+        match get_string_attribute "js.new" pci_attributes with
+        | None -> js_name (String.capitalize_ascii class_name)
+        | Some s -> s
       in
       Constructor {class_name; js_class_name; class_arrow}
   | {pci_loc; _} -> error pci_loc Cannot_parse_classdecl
@@ -824,7 +845,7 @@ and gen_funs_record lbls =
     List.iter
       (fun (k, v) ->
          match k.txt with
-         | "js" -> js := id_of_expr (expr_of_payload k.loc v)
+         | "js" -> register_loc k.loc; js := id_of_expr (expr_of_payload k.loc v)
          | _ -> ()
       )
       l.pld_attributes;
@@ -1126,13 +1147,23 @@ and mapper =
   let expr self e =
     let e = super.expr self e in
     match e.pexp_desc with
-    | Pexp_extension ({txt="js.to"; loc = _}, PTyp ty) -> js2ml_fun (parse_typ ty)
-    | Pexp_extension ({txt="js.of"; loc = _}, PTyp ty) -> ml2js_fun (parse_typ ty)
+    | Pexp_extension ({txt="js.to"; loc}, PTyp ty) -> register_loc loc; js2ml_fun (parse_typ ty)
+    | Pexp_extension ({txt="js.of"; loc}, PTyp ty) -> register_loc loc; ml2js_fun (parse_typ ty)
     | _ ->
         e
   in
   {super with module_expr; structure_item; expr}
 
+let check_loc_mapper =
+  let mapper = Ast_mapper.default_mapper in
+  let attribute _this (({txt; loc}, _) as attr) =
+    if txt = "js" || has_prefix ~prefix:"js." txt then begin
+      if is_registered_loc loc then ()
+      else error loc Ignored_attribute
+    end;
+    attr
+  in
+  { mapper with Ast_mapper.attribute }
 
 (** Main *)
 
@@ -1162,15 +1193,20 @@ let standalone () =
       src
   in
   let res = str_of_sg sg in
-    Format.fprintf (Format.formatter_of_out_channel oc) "%a@."
+  ignore (check_loc_mapper.Ast_mapper.signature check_loc_mapper sg);
+  Format.fprintf (Format.formatter_of_out_channel oc) "%a@."
     Pprintast.structure res;
   if !out <> "-" then close_out oc
-
 
 let () =
   try
     if Array.length Sys.argv < 4 || Sys.argv.(1) <> "-ppx" then standalone ()
-    else Ast_mapper.run_main (fun _ -> mapper)
+    else
+      Ast_mapper.run_main
+        (fun _ ->
+           { mapper with
+             Ast_mapper.structure = (fun _this str -> check_loc_mapper.Ast_mapper.structure check_loc_mapper (mapper.Ast_mapper.structure mapper str)) }
+        )
   with exn ->
     Format.eprintf "%a@." Location.report_exception exn;
     exit 2

@@ -29,5 +29,5 @@ test_jquery:
 	$(JSOO) -o examples/test_jquery.js ojs_runtime.js examples/test_jquery.exe
 
 clean:
-	rm -f *~ *.exe *.cm* .*~ primitives.lst
+	rm -f *~ *.exe *.cm* .*~
 	cd examples && rm -f *~ *.exe *.cm* main.js test_js.ml test_jquery.js jquery.ml
