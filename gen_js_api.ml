@@ -506,7 +506,6 @@ let incl = function
   | str -> Str.include_ (Incl.mk (Mod.structure str))
 
 
-
 let ojs_typ = Typ.constr (mknoloc (Longident.parse "Ojs.t")) []
 
 let nolabel args = List.map (function x -> Nolabel, x) args
@@ -540,11 +539,35 @@ let func args unit_arg body =
   let body = if unit_arg then fun_unit body else body in
   List.fold_right (fun s rest -> fun_ s rest) args body
 
+let uid = ref 0
+
+let fresh () =
+  incr uid;
+  Printf.sprintf "x%i" !uid
+
+let mkfun f =
+  let s = fresh () in
+  fun_ (Nolabel, s) (f (var s))
+
 let apply f args = Exp.apply f args
 
 let unit_lid = mknoloc (Lident "()")
 let unit_expr = Exp.construct unit_lid None
 let unit_pat = Pat.construct unit_lid None
+
+let some_pat arg =
+  Pat.construct (mknoloc (Longident.parse "Some")) (Some arg)
+
+let none_pat () =
+  Pat.construct (mknoloc (Longident.parse "None")) None
+
+let match_some_none ~some ~none exp =
+  let s = fresh () in
+  Exp.match_ exp
+    [
+      Exp.case (some_pat (Pat.var (mknoloc s))) (some (var s));
+      Exp.case (none_pat ()) none;
+    ]
 
 let erase_js_labels args = List.map (fun (label, _, e) -> label, e) args
 
@@ -573,15 +596,6 @@ let ojs_variable s =
 let def s ty body =
   Str.value Nonrecursive [ Vb.mk (Pat.constraint_ (Pat.var (mknoloc s)) ty) body ]
 
-let uid = ref 0
-
-let fresh () =
-  incr uid;
-  Printf.sprintf "x%i" !uid
-
-let mkfun f =
-  let s = fresh () in
-  fun_ (Nolabel, s) (f (var s))
 
 
 let builtin_type = function
@@ -755,17 +769,12 @@ and add_variadic_arg args ty_variadic =
 
 and gen_extra_arg label ty_arg =
   let arg = fresh () in
-  let extra_args arg = array_of_list (list_map (ml2js_fun ty_arg) (var arg)) in
+  let extra_args arg = array_of_list (list_map (ml2js_fun ty_arg) arg) in
+  arg,
   match label with
-  | Nolabel
-  | Labelled _ -> arg, extra_args arg
+  | Nolabel | Labelled _ -> extra_args (var arg)
   | Optional _ ->
-      let case_none = Exp.case (Pat.construct (mknoloc (Longident.parse "None")) None) (Exp.array []) in
-      let case_some =
-        let some_arg = fresh() in
-        Exp.case (Pat.construct (mknoloc (Longident.parse "Some")) (Some (Pat.var (mknoloc some_arg)))) (extra_args some_arg)
-      in
-      arg, Exp.match_ (var arg) [case_none; case_some]
+      match_some_none ~none:(Exp.array []) ~some:extra_args (var arg)
 
 and ml2js_unit ty_res res =
   match ty_res with
@@ -1013,19 +1022,27 @@ and gen_def loc decl ty =
       func formal_args unit_arg (js2ml ty_res res)
 
   | Builder, Arrow {ty_args; ty_vararg = None; unit_arg; ty_res} ->
-      let args = gen_args ty_args in
+      let gen_arg (label, js_label, ty) =
+        let s = fresh () in
+        (label, s),
+        fun x ->
+          let js_label =
+            match js_label, label with
+            | None, Nolabel -> error loc Unlabelled_argument_in_builder
+            | None, (Labelled s | Optional s) -> js_name s
+            | Some s, _ -> s
+          in
+          let code exp = ojs "set" [x; str js_label; ml2js ty exp] in
+          (* special logic to avoid setting optional argument to 'null' *)
+          match label with
+          | Optional _ -> match_some_none (var s) ~none:unit_expr ~some:code
+          | Nolabel | Labelled _ -> code (var s)
+      in
+
+      let args = List.map gen_arg ty_args in
       let formal_args = List.map fst args in
       let concrete_args = List.map snd args in
-      let f x init (label, js_label, e) =
-        let js_label =
-          match js_label, label with
-          | None, Nolabel -> error loc Unlabelled_argument_in_builder
-          | None, (Labelled s | Optional s) -> js_name s
-          | Some s, _ -> s
-        in
-        let e = ojs "set" [x; str js_label; e] in
-        Exp.sequence e init
-      in
+      let f x init code = Exp.sequence (code x) init in
       let init x = List.fold_left (f x) (js2ml_unit ty_res x) (List.rev concrete_args) in
       let body = let_exp_in (ojs "empty_obj" [unit_expr]) init in
       func formal_args unit_arg body

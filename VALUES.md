@@ -131,13 +131,19 @@ Supported forms
   [@@js.builder]
   ```
 
-  Corresponds to create a JS plain object with fields `l1`,...`ln`
-  initialized with the provided values.  The name of the function
-  (`make` in the example) does not correspond to any concept in JS.
-  By default, the JS field names are derived from OCaml labels, but
-  it is also possible to override that with a `[@js]` attribute on
-  the argument's type.  All fields must be labeled or optional, or
-  come with such an attribute.
+  Corresponds to creating a JS plain object with fields initialized
+  with the provided values.  The name of the function (`make` in the
+  example) does not correspond to any concept in JS.  By default, the
+  JS field names are derived from OCaml labels, but it is also
+  possible to override that with a `[@js]` attribute on the argument's
+  type.  All fields must be labeled or optional, or come with such an
+  attribute.
+
+  Optional arguments (but not non-optional argument with optional
+  type) are treated in a special way: no field is created in the JS
+  object if the parameter is not provided on the call site (without
+  this special behavior, the treatment would be to set the field to
+  `null`, which is the encoding of `None`).
 
   Example:
 
