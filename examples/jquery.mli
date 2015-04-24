@@ -9,36 +9,42 @@ val selector: string -> t
 
 
 val text: t -> string
-    [@@js.meth]
+    [@@js.call]
 
 val set_text: t -> string -> unit
-    [@@js.meth "text"]
+    [@@js.call "text"]
 
 val update_text: t -> (int -> string -> string) -> unit
-    [@@js.meth "text"]
+    [@@js.call "text"]
 
 val append_html: t -> string -> unit
-    [@@js.meth "append"]
+    [@@js.call "append"]
 
 val append: t -> (t list [@js.variadic]) -> unit
-    [@@js.meth "append"]
+    [@@js.call "append"]
 
 val get_val: t -> string
-    [@@js.meth "val"]
+    [@@js.call "val"]
 
 val hide: t -> unit
-    [@@js.meth "hide"]
+    [@@js.call "hide"]
 
 val detach: t -> unit
-    [@@js.meth]
+    [@@js.call]
+
+val remove: t -> unit
+    [@@js.call]
+
+val empty: t -> unit
+    [@@js.call]
 
 
 (** {2 Animations} *)
 
 val fade_in: t -> ?duration:int -> ?finished:(unit -> unit) -> unit -> unit
-    [@@js.meth]
+    [@@js.call]
 val fade_out: t -> ?duration:int -> ?finished:(unit -> unit) -> unit -> unit
-    [@@js.meth]
+    [@@js.call]
 
 (** {2 Events} *)
 

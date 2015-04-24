@@ -45,3 +45,24 @@ TODO list for gen_js_api
       ...
   ]
 ```
+
+
+- Optional arguments on JS methods are usually at the end.  But this
+  forces to add a `unit` pseudo-argument.  One could have an
+  (optional) convention to push optional arguments at the end of the JS
+  call even though there are not in the OCaml type.  This would also
+  work for instance methods:
+
+  ```caml
+  val foo: ?bla:int -> t -> int
+  ```
+
+  instead of:
+
+  ```caml
+  val foo: t -> ?bla:int -> unit -> int
+
+   foo ~bla x ()
+   foo x ~bla ()
+   foo x () ~bla
+  ```

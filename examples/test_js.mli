@@ -66,7 +66,7 @@ module Console: sig
   val log: t -> Ojs.t -> unit
 
   val log_string: t -> string -> unit
-  [@@js.meth "log"]
+  [@@js.call "log"]
 end
 
 val console: Console.t
@@ -88,9 +88,9 @@ module Person: sig
   val name: t -> string
   val foo: t -> Foo.t
   val get: t -> unit -> string * Foo.t
-  [@@js.meth]
+  [@@js.call]
   val set: t -> string * Foo.t -> unit
-      [@@js.meth]
+      [@@js.call]
 
   val cast: t -> Ojs.t [@@js.cast]
 end
@@ -103,8 +103,8 @@ module PersonObj: sig
        method set_name: string -> unit
        method foo: Person.Foo.t
        method set_foo: Person.Foo.t -> unit
-       method get: string * Person.Foo.t [@@js.meth]
-       method set: string * Person.Foo.t -> unit [@@js.meth]
+       method get: string * Person.Foo.t [@@js.call]
+       method set: string * Person.Foo.t -> unit [@@js.call]
      end
 
   class person: string -> Person.Foo.t -> (int list [@js.variadic]) -> t
@@ -125,21 +125,21 @@ module Str: sig
       method concat: (t list [@js.variadic]) -> t
       method from_char_code: (int list [@js.variadic]) -> t
       method index_of: t -> int
-      method index_of_from: t -> int -> int [@@js.meth "indexOf"]
+      method index_of_from: t -> int -> int [@@js.call "indexOf"]
       method last_index_of: t -> int
-      method last_index_of_from: t -> int -> int [@@js.meth "indexOf"]
+      method last_index_of_from: t -> int -> int [@@js.call "indexOf"]
       method length: int
       method locale_compare: t -> int
       method slice: int -> int -> t
       method split: t -> t array
       method substr: int -> int -> t
       method substring: int -> int -> t
-      method to_locale_lower_case: t [@@js.meth]
-      method to_locale_upper_case: t [@@js.meth]
-      method to_lower_case: t [@@js.meth]
-      method to_upper_case: t [@@js.meth]
-      method to_string: string [@@js.meth]
-      method value_of: string [@@js.meth]
+      method to_locale_lower_case: t [@@js.call]
+      method to_locale_upper_case: t [@@js.call]
+      method to_lower_case: t [@@js.call]
+      method to_upper_case: t [@@js.call]
+      method to_string: string [@@js.call]
+      method value_of: string [@@js.call]
     end
 
   class str: string -> t [@@js.new "String"]

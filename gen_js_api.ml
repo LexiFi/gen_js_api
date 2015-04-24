@@ -385,7 +385,7 @@ let parse_attr (s, loc, auto) defs (k, v) =
   | "js.set" ->
       register_loc k.loc;
       PropSet (opt_name ~prefix:"set_" ()) :: defs
-  | "js.meth" ->
+  | "js.call" ->
       register_loc k.loc;
       MethCall (opt_name ()) :: defs
   | "js.global" ->

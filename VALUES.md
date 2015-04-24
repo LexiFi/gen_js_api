@@ -9,7 +9,7 @@ Supported forms
 
   ```ocaml
   val my_method: t -> T1 -> ... -> Tn -> T
-  [@@js.meth]
+  [@@js.call]
   ```
 
   Calling the function on a first argument `o` of type `t` corresponds
@@ -26,7 +26,7 @@ Supported forms
 
   ```ocaml
   val my_method: t -> T1 -> ... -> Tn -> T
-  [@@js.meth "JavascriptMethodName"]
+  [@@js.call "JavascriptMethodName"]
   ```
 
 
@@ -213,7 +213,7 @@ declarations in most cases.  Here are the rules, applied in order:
   obtained by dropping the `new_`prefix).
 
 - If the value is a function whose first argument is a named type `t -> ...`,
-  then the definition is assumed to be a `[@@js.meth]` method call.
+  then the definition is assumed to be a `[@@js.call]` method call.
 
 - Otherwise, the declaration is assumed to be a `[@@js.global]` value.
   This applies in particular for any non-functional type.
