@@ -982,7 +982,7 @@ and gen_def loc decl ty =
       let res = ojs "new_obj" [str name; concrete_args] in
       func formal_args unit_arg (js2ml ty_res res)
 
-  | Builder, Arrow {ty_args; ty_vararg = None; unit_arg; ty_res = Name (_, [])} ->
+  | Builder, Arrow {ty_args; ty_vararg = None; unit_arg; ty_res} ->
       let args = gen_args ty_args in
       let formal_args = List.map fst args in
       let concrete_args = List.map snd args in
@@ -998,7 +998,7 @@ and gen_def loc decl ty =
           let e = ojs "set" [var x; str js_label; e] in
           Exp.sequence e init
         in
-        let init = List.fold_left f (var x) (List.rev concrete_args) in
+        let init = List.fold_left f (js2ml_unit ty_res (var x)) (List.rev concrete_args) in
         Exp.let_ Nonrecursive [Vb.mk (Pat.var (mknoloc x)) (ojs "empty_obj" [unit_expr])] init
       in
       func formal_args unit_arg body
