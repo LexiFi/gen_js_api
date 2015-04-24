@@ -10,9 +10,15 @@ Usage
 -----
 
 
-````
+```
   $ gen_js_api my_module.mli
-````
+```
+
+or with findlib:
+
+```
+  $ ocamlfind gen_js_api/gen_js_api my_module.mli
+```
 
 This generates my_module.ml.
 
