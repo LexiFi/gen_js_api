@@ -102,4 +102,29 @@ Example:
 ```
 
 
-TODO: merge [@@@js.start] and [@@@js.implem]?
+For the common case where verbatim sections are used to create custom
+value bindings, a `[@@js.custom]` attribute can be applied to a `val`
+declaration.  The effect is that the `val` declaration itself is ignored
+(nothing is generated in the implementation), and a structure can be
+provided as the payload of the attribute.  The example above is equivalent
+to:
+
+```ocaml
+  val foo: int -> int
+  [@@js.custom
+       val foo_internal: string -> int -> unit
+         [@@js.global "foo"]
+       let foo = foo_internal ""
+  ]
+```
+
+and to:
+
+```ocaml
+  val foo: int -> int
+  [@@js.custom]
+
+  [@@js.implem
+        ...
+  ]
+```

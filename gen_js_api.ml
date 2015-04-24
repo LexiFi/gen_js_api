@@ -13,6 +13,7 @@ open Ast_helper
 type error =
   | Expression_expected
   | Identifier_expected
+  | Structure_expected
   | Invalid_expression
   | Multiple_binding_declarations
   | Binding_type_mismatch
@@ -44,6 +45,10 @@ let get_attribute key attrs =
   | exception Not_found -> None
   | (k, v) -> Some (k, v)
 
+let unoption = function
+  | Some x -> x
+  | None -> assert false
+
 let expr_of_stritem = function
   | {pstr_desc=Pstr_eval (e, _); _} -> e
   | p -> error p.pstr_loc Expression_expected
@@ -51,6 +56,10 @@ let expr_of_stritem = function
 let expr_of_payload loc = function
   | PStr [x] -> expr_of_stritem x
   | _ -> error loc Expression_expected
+
+let str_of_payload loc = function
+  | PStr x -> x
+  | _ -> error loc Structure_expected
 
 let id_of_expr = function
   | {pexp_desc=Pexp_constant (Const_string (s, _)); _}
@@ -66,6 +75,8 @@ let get_string_attribute key attrs =
 let print_error ppf = function
   | Expression_expected ->
       Format.fprintf ppf "Expression expected"
+  | Structure_expected ->
+      Format.fprintf ppf "Structure expected"
   | Identifier_expected ->
       Format.fprintf ppf "String literal expected"
   | Invalid_expression ->
@@ -140,7 +151,8 @@ type typ =
   | Tuple of typ list
 
 and arrow_params =
-  { ty_args: (arg_label * string option * typ) list;
+  {
+    ty_args: (arg_label * string option * typ) list;
     ty_vararg: (arg_label * string option * typ) option;
     unit_arg: bool;
     ty_res: typ;
@@ -187,7 +199,6 @@ type decl =
   | Type of rec_flag * Parsetree.type_declaration list
   | Val of string * typ * valdef * Location.t
   | Class of classdecl list
-  | Verbatim of Parsetree.signature_item
   | Implem of Parsetree.structure
 
 (** Parsing *)
@@ -407,13 +418,18 @@ and parse_sig = function
   | [] -> []
   | {psig_desc = Psig_attribute ({txt="js.stop"; _}, _); _} :: rest ->
       parse_sig_verbatim rest
+  | {psig_desc = Psig_value vd; _} :: rest when
+      has_attribute "js.custom" vd.pval_attributes ->
+      let (k, v) = unoption (get_attribute "js.custom" vd.pval_attributes) in
+      let str = str_of_payload k.loc v in
+      Implem str :: parse_sig rest
   | s :: rest -> parse_sig_item s :: parse_sig rest
 
 and parse_sig_verbatim = function
   | [] -> []
   | {psig_desc = Psig_attribute ({txt="js.start"; _}, _); _} :: rest ->
       parse_sig rest
-  | s :: rest -> Verbatim s :: parse_sig_verbatim rest
+  | _ :: rest -> parse_sig_verbatim rest
 
 and parse_class_decl = function
   | {pci_virt = Concrete; pci_params = []; pci_name; pci_expr = {pcty_desc = Pcty_arrow (Nolabel, {ptyp_desc = Ptyp_constr ({txt = Longident.Ldot (Lident "Ojs", "t"); loc = _}, []); _}, {pcty_desc = Pcty_signature {pcsig_self = {ptyp_desc = Ptyp_any; _}; pcsig_fields}; _}); _}; _} ->
@@ -882,9 +898,6 @@ and gen_decl = function
       let cast_funcs = List.concat (List.map gen_class_cast decls) in
       let classes = List.map (gen_classdecl cast_funcs) decls in
       [Str.class_ classes; Str.value Nonrecursive cast_funcs]
-
-  | Verbatim _ ->
-      [ ]
 
   | Implem str ->
       mapper.Ast_mapper.structure mapper str

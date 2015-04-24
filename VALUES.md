@@ -141,7 +141,7 @@ Supported forms
 
   Example:
 
-  ``ocaml
+  ```ocaml
   type t  = private Ojs.t
 
   val mk: ?children:t list -> age:int -> (string[@js "name"]) -> t
@@ -151,7 +151,28 @@ Supported forms
 
 - Custom expressions
 
-  TODO
+  ```ocaml
+  val f: ...
+  [@@js.expr]
+  ```
+
+  Currently undocumented.
+
+
+- Custom binding:
+
+  ```ocaml
+  val f: ...
+    [@@js.custom
+          let f = ...
+    ]
+  ```
+
+  The val declaration itself doesn't produce anything in the
+  implementation.  Instead, custom OCaml code that goes into the
+  implementation must be provided explicitly.
+
+  See [Verbatim section](IMPLGEN.md) for more details and examples.
 
 
 Automatic binding
