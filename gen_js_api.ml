@@ -30,7 +30,7 @@ type error =
   | No_input
   | Multiple_inputs
   | Unlabelled_argument_in_builder
-  | Ignored_attribute
+  | Spurious_attribute
 
 exception Error of Location.t * error
 
@@ -119,8 +119,8 @@ let print_error ppf = function
       Format.fprintf ppf "A single input file must be provided"
   | Unlabelled_argument_in_builder ->
       Format.fprintf ppf "Arguments of builder must be named"
-  | Ignored_attribute ->
-      Format.fprintf ppf "Ignored attribute"
+  | Spurious_attribute ->
+      Format.fprintf ppf "Spurious js.* attribute"
 
 let () =
   Location.register_error_of_exn
@@ -1159,7 +1159,7 @@ let check_loc_mapper =
   let attribute _this (({txt; loc}, _) as attr) =
     if txt = "js" || has_prefix ~prefix:"js." txt then begin
       if is_registered_loc loc then ()
-      else error loc Ignored_attribute
+      else error loc Spurious_attribute
     end;
     attr
   in

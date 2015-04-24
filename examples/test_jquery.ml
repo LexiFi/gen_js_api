@@ -51,6 +51,5 @@ let on_ready () =
   on btn "click" (fun _ -> ajax_test ());
   append main btn
 
-
 let () =
   ready on_ready

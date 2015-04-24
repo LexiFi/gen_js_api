@@ -66,3 +66,4 @@ module Ajax : sig
   val response_text: t -> string
     [@@js.get]
 end
+
