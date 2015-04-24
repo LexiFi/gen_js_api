@@ -12,19 +12,36 @@ TODO list for gen_js_api
 - Optimize generated code (for instance, lift calls to string_of_js on
   literals).
 
-- Compile properly qualified globals [@@js.global "foo.bar"] to avoid
-  js_of_ocaml warning.
+- Idea: to facilitate binding and calling multiple methods at once,
+  provide something like (jQuery example):
 
-- Add a notion of "object builder", i.e. a function with labeled or
-  optional arguments which return an object initialized with the
-  fields correponding to labels:
+    val set: ?text:string -> ?hide:unit -> ?css:(string * string) -> t -> unit
+     [@@js.multicall]
 
 
-   ```ocaml
-   type t = private Ojs.t
-   val make: ?foo:int -> bar:string -> ?ty:(string[@js"type"]) -> unit -> t
-     [@@js.builder]
-   ```
+  One can then write:
 
-  This would return a JS object with fields initialized as provided.
-  Typical example:  the "settings" argument to jQuery's ajax function.
+     set
+       ~text:"Hello"
+       ~hide:()
+       node
+
+  Each provided argument yield one method call (in the order where
+  arguments are declared, of course).  This is mostly interesting when
+  methods are used to "set" internal properties, and when the different
+  calls commute.
+
+  This could be simulated with:
+
+```ocaml
+
+    val set: ?text:string -> ?hide:unit -> ?css:(string * string) -> t -> unit
+  [@@@js.custom]
+    val set_text: t -> string -> unit
+      [@@js.meth "text"]
+
+    let set ?text ... x =
+      Option.iter (set_text x) text;
+      ...
+  ]
+```

@@ -13,6 +13,7 @@ open Ast_helper
 type error =
   | Expression_expected
   | Identifier_expected
+  | Structure_expected
   | Invalid_expression
   | Multiple_binding_declarations
   | Binding_type_mismatch
@@ -52,6 +53,10 @@ let get_attribute key attrs =
   | exception Not_found -> None
   | (k, v) -> Some (k, v)
 
+let unoption = function
+  | Some x -> x
+  | None -> assert false
+
 let expr_of_stritem = function
   | {pstr_desc=Pstr_eval (e, _); _} -> e
   | p -> error p.pstr_loc Expression_expected
@@ -59,6 +64,10 @@ let expr_of_stritem = function
 let expr_of_payload loc = function
   | PStr [x] -> expr_of_stritem x
   | _ -> error loc Expression_expected
+
+let str_of_payload loc = function
+  | PStr x -> x
+  | _ -> error loc Structure_expected
 
 let id_of_expr = function
   | {pexp_desc=Pexp_constant (Const_string (s, _)); _}
@@ -74,6 +83,8 @@ let get_string_attribute key attrs =
 let print_error ppf = function
   | Expression_expected ->
       Format.fprintf ppf "Expression expected"
+  | Structure_expected ->
+      Format.fprintf ppf "Structure expected"
   | Identifier_expected ->
       Format.fprintf ppf "String literal expected"
   | Invalid_expression ->
@@ -150,7 +161,8 @@ type typ =
   | Tuple of typ list
 
 and arrow_params =
-  { ty_args: (arg_label * string option * typ) list;
+  {
+    ty_args: (arg_label * string option * typ) list;
     ty_vararg: (arg_label * string option * typ) option;
     unit_arg: bool;
     ty_res: typ;
@@ -197,7 +209,6 @@ type decl =
   | Type of rec_flag * Parsetree.type_declaration list
   | Val of string * typ * valdef * Location.t
   | Class of classdecl list
-  | Verbatim of Parsetree.signature_item
   | Implem of Parsetree.structure
 
 (** Parsing *)
@@ -425,9 +436,13 @@ let rec parse_sig_item s =
 
 and parse_sig = function
   | [] -> []
-  | {psig_desc = Psig_attribute ({txt="js.stop"; loc}, _); _} :: rest ->
-      register_loc loc;
+  | {psig_desc = Psig_attribute ({txt="js.stop"; _}, _); _} :: rest ->
       parse_sig_verbatim rest
+  | {psig_desc = Psig_value vd; _} :: rest when
+      has_attribute "js.custom" vd.pval_attributes ->
+      let (k, v) = unoption (get_attribute "js.custom" vd.pval_attributes) in
+      let str = str_of_payload k.loc v in
+      Implem str :: parse_sig rest
   | s :: rest -> parse_sig_item s :: parse_sig rest
 
 and parse_sig_verbatim = function
@@ -435,7 +450,7 @@ and parse_sig_verbatim = function
   | {psig_desc = Psig_attribute ({txt="js.start"; loc}, _); _} :: rest ->
       register_loc loc;
       parse_sig rest
-  | s :: rest -> Verbatim s :: parse_sig_verbatim rest
+  | _ :: rest -> parse_sig_verbatim rest
 
 and parse_class_decl = function
   | {pci_virt = Concrete; pci_params = []; pci_name; pci_expr = {pcty_desc = Pcty_arrow (Nolabel, {ptyp_desc = Ptyp_constr ({txt = Longident.Ldot (Lident "Ojs", "t"); loc = _}, []); _}, {pcty_desc = Pcty_signature {pcsig_self = {ptyp_desc = Ptyp_any; _}; pcsig_fields}; _}); _}; _} ->
@@ -905,9 +920,6 @@ and gen_decl = function
       let classes = List.map (gen_classdecl cast_funcs) decls in
       [Str.class_ classes; Str.value Nonrecursive cast_funcs]
 
-  | Verbatim _ ->
-      [ ]
-
   | Implem str ->
       mapper.Ast_mapper.structure mapper str
 
@@ -1025,21 +1037,18 @@ and gen_def loc decl ty =
       let args = gen_args ty_args in
       let formal_args = List.map fst args in
       let concrete_args = List.map snd args in
-      let body =
-        let x = fresh() in
-        let f init (label, js_label, e) =
-          let js_label =
-            match js_label, label with
-            | None, Nolabel -> error loc Unlabelled_argument_in_builder
-            | None, (Labelled s | Optional s) -> js_name s
-            | Some s, _ -> s
-          in
-          let e = ojs "set" [var x; str js_label; e] in
-          Exp.sequence e init
+      let f x init (label, js_label, e) =
+        let js_label =
+          match js_label, label with
+          | None, Nolabel -> error loc Unlabelled_argument_in_builder
+          | None, (Labelled s | Optional s) -> js_name s
+          | Some s, _ -> s
         in
-        let init = List.fold_left f (js2ml_unit ty_res (var x)) (List.rev concrete_args) in
-        Exp.let_ Nonrecursive [Vb.mk (Pat.var (mknoloc x)) (ojs "empty_obj" [unit_expr])] init
+        let e = ojs "set" [x; str js_label; e] in
+        Exp.sequence e init
       in
+      let init x = List.fold_left (f x) (js2ml_unit ty_res x) (List.rev concrete_args) in
+      let body = let_exp_in (ojs "empty_obj" [unit_expr]) init in
       func formal_args unit_arg body
 
   | _ ->
@@ -1171,7 +1180,6 @@ let standalone () =
   Format.fprintf (Format.formatter_of_out_channel oc) "%a@."
     Pprintast.structure res;
   if !out <> "-" then close_out oc
-
 
 let () =
   try

@@ -7,18 +7,14 @@ let ( !! ) = Jquery.selector
 
 let ajax_test () =
   let open Ajax in
-  let s = settings () in
-  meth s `GET;
-  url s "test_jquery.ml";
-  data_type s "text";
-  complete s
-    (fun h -> function
-       | "success" ->
-           let pre = !!"<pre>" in
-           set_text pre (response_text h);
-           append !!"body" pre
-       | status -> alert (Printf.sprintf "status = %s" status)
-    );
+  let complete h = function
+    | "success" ->
+        let pre = !!"<pre>" in
+        set_text pre (response_text h);
+        append !!"body" pre
+    | status -> alert (Printf.sprintf "status = %s" status)
+  in
+  let s = settings ~meth:`GET ~url:"test_jquery.ml" ~data_type:"text" ~complete () in
   run s
 
 let on_ready () =
