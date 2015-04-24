@@ -54,7 +54,13 @@ module Ajax : sig
   type t = private Ojs.t
     (** Corresponds to jQuery's jqXHR object. *)
 
-  val settings: ?complete:(t -> string -> unit) -> ?data:Ojs.t -> ?data_type:string -> ?meth:([`GET | `POST | `PUT] [@js "method"]) -> ?url:string -> unit -> settings
+  val settings:
+    ?complete:(t -> string -> unit) ->
+    ?data:Ojs.t -> ?data_type:string ->
+    ?meth:([`GET | `POST | `PUT] [@js "method"]) ->
+    ?url:string ->
+    unit -> settings
+
     [@@js.builder]
 
   val run: settings -> unit
