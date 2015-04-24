@@ -144,7 +144,8 @@ Supported forms
   ``ocaml
   type t  = private Ojs.t
 
-  val person: ?parent:t -> age:int -> string[@js "name"] -> t
+  val mk: ?children:t list -> age:int -> (string[@js "name"]) -> t
+  [@@js.builder]
   ```
 
 

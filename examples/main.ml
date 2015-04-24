@@ -181,7 +181,9 @@ let () =
     l;
 
   test_opt_args
-    (fun ?(foo = 0) ?(bar = 0) () -> string_of_int foo ^ "/" ^ string_of_int bar)
+    (fun ?(foo = 0) ?(bar = 0) () -> string_of_int foo ^ "/" ^ string_of_int bar);
+
+  alert Person2.(to_json (mk ~children:[mk ~age:6 "Johnny"] ~age:42 "John Doe"))
 
 
 

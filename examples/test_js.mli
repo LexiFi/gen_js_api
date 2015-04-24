@@ -147,3 +147,14 @@ module Str: sig
   val create: string -> t
   [@@js.new "String"]
 end
+
+
+module Person2: sig
+  type t = private Ojs.t
+
+  val mk: ?children:t list -> age:int -> (string[@js "name"]) -> t
+  [@@js.builder]
+
+  val to_json:  t -> string
+  [@@js.global "JSON.stringify"]
+end
