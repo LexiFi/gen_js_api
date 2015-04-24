@@ -11,7 +11,7 @@ let ajax_test () =
     | "success" ->
         let pre = !!"<pre>" in
         set_text pre (response_text h);
-        append !!"body" pre
+        append !!"body" [pre]
     | status -> alert (Printf.sprintf "status = %s" status)
   in
   run (settings ~meth:`GET ~url:"test_jquery.ml" ~data_type:"text" ~complete ())
@@ -25,8 +25,7 @@ let on_ready () =
   let elts = !!".tofill" in
   update_text elts (Printf.sprintf "[%i:%s]");
 
-  append main elts;
-  append main (!! "<b>XXX</b>");
+  append main [elts; !! "<b>XXX</b>"];
 
   let on_click evt =
     let open Event in
@@ -41,14 +40,15 @@ let on_ready () =
 
   let div = !! "<div>" in
   let input = !! "<input>" in
-  append main input;
-  append main div;
+  append main [input; div];
 
   on input "input" (fun _ -> set_text div (get_val input));
 
   let btn = !! "<button>SHOW SOURCE CODE</button>" in
   on btn "click" (fun _ -> ajax_test ());
-  append main btn
+(*  append main [btn]; *)
+
+  append2 main btn []
 
 let () =
   ready on_ready

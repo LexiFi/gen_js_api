@@ -20,12 +20,11 @@ val update_text: t -> (int -> string -> string) -> unit
 val append_html: t -> string -> unit
     [@@js.meth "append"]
 
-val append: t -> t -> unit
+val append: t -> (t list [@js.variadic]) -> unit
     [@@js.meth "append"]
 
-
 val get_val: t -> string
-  [@@js.meth "val"]
+    [@@js.meth "val"]
 
 
 (** {2 Events} *)
