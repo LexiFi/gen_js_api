@@ -43,10 +43,14 @@ and js_regexp: Ojs.t ->
 module String: sig
   class t: string -> js_string [@@js.new "String"]
 
+  val create: string -> js_string [@@js.new "String"]
+
   val from_char_code: (int list [@js.variadic]) -> js_string [@@js.global "String.fromCharCode"]
 end
 
 module RegExp: sig
   class t: string -> ?flags:string -> unit -> js_regexp [@@js.new "RegExp"]
+
+  val create: string -> ?flags:string -> unit -> js_string [@@js.new "RegExp"]
 end
 

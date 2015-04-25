@@ -10,6 +10,11 @@ let () =
   print_endline res # to_string
 
 let () =
+  let str = String.create "HELLO WORLD" in
+  let res = str # char_at (str # length - 1) in
+  print_endline res # to_string
+
+let () =
   let str = new String.t "HELLO WORLD" in
   let n = str # char_code_at 0 in
   print_endline (string_of_int n)
