@@ -16,10 +16,28 @@ class js_string: Ojs.t ->
     method locale_compare: js_string -> int
     method match_: js_regexp -> js_string array
     method replace: js_regexp -> js_string -> js_string
+    method search: js_regexp -> int
+    method slice: start:int -> ?end_:int -> unit -> js_string
+    method split: ?separator:js_string -> ?limit:int -> unit -> js_string array
+    method substr: start:int -> ?length:int -> unit -> js_string
+    method substring: start:int -> ?end_:int -> unit -> js_string
+    method to_locale_lower_case: js_string [@@js.call]
+    method to_locale_upper_case: js_string [@@js.call]
+    method to_lower_case: js_string [@@js.call]
+    method to_upper_case: js_string [@@js.call]
+    method trim: js_string [@@js.call]
+    method value_of: string [@@js.call]
   end
 and js_regexp: Ojs.t ->
   object
     inherit js_object
+    method global: bool
+    method ignore_case: bool
+    method multiline: bool
+    method source: string
+    method last_index: int
+    method exec: js_string -> js_string option
+    method test: js_string -> bool
   end
 
 module String: sig
