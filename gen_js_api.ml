@@ -622,7 +622,7 @@ let def s ty body =
 
 let builtin_type = function
   | "int" | "string" | "bool" | "float"
-  | "array" | "list" | "option" | "optdef" -> true
+  | "array" | "list" | "option" | "Ojs.optdef" -> true
   | _ -> false
 
 let let_exp_in exp f =
@@ -774,7 +774,7 @@ and gen_args ?(name = fun _ -> fresh ()) ?(map = ml2js) args =
       match label with
       | Nolabel
       | Labelled _ -> ty
-      | Optional _ -> Name ("optdef", [ty])
+      | Optional _ -> Name ("Ojs.optdef", [ty])
     in
     (label, s), (label, js_label, map ty (var s))
   in

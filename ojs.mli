@@ -35,6 +35,8 @@ val option_of_js: (t -> 'a) -> t -> 'a option
 val option_to_js: ('a -> t) -> 'a option -> t
 (** [None] is mapped to [null]. *)
 
+type 'a optdef = 'a option
+
 val optdef_of_js: (t -> 'a) -> t -> 'a option
 (** Both [null] and [undefined] are mapped to [None]. *)
 val optdef_to_js: ('a -> t) -> 'a option -> t

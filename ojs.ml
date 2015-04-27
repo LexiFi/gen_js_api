@@ -92,6 +92,8 @@ let option_to_js f = function
   | Some x -> f x
   | None -> null
 
+type 'a optdef = 'a option
+
 let optdef_of_js = option_of_js
 let optdef_to_js f = function
   | Some x -> f x
