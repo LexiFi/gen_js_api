@@ -31,6 +31,7 @@ type error =
   | Multiple_inputs
   | Unlabelled_argument_in_builder
   | Spurious_attribute
+  | Union_not_supported_here
 
 exception Error of Location.t * error
 
@@ -121,6 +122,8 @@ let print_error ppf = function
       Format.fprintf ppf "Arguments of builder must be named"
   | Spurious_attribute ->
       Format.fprintf ppf "Spurious js.* attribute"
+  | Union_not_supported_here ->
+      Format.fprintf ppf "js.union not supported in this context"
 
 let () =
   Location.register_error_of_exn
@@ -158,6 +161,7 @@ type typ =
   | Js
   | Name of string * typ list
   | Enum of enum_params
+  | Union of Location.t * (string * typ option) list
   | Tuple of typ list
 
 and arrow_params =
@@ -306,6 +310,13 @@ let rec parse_typ ty =
       | "Ojs.t", [] -> Js
       | s, tl -> Name (s, List.map parse_typ tl)
       end
+  | Ptyp_variant (rows, Closed, None) when has_attribute "js.union" ty.ptyp_attributes ->
+      let prepare_row = function
+        | Rtag (label, _attributes, true, []) -> (label, None)
+        | Rtag (label, _attributes, false, [typ]) -> (label, Some (parse_typ typ))
+        | _ -> error ty.ptyp_loc Cannot_parse_type
+      in
+      Union (ty.ptyp_loc, List.map prepare_row rows)
   | Ptyp_variant (rows, Closed, None) ->
       let prepare_row = function
         | Rtag (label, attributes, true, []) ->
@@ -648,6 +659,7 @@ let rec js2ml ty exp =
   | Unit loc ->
       error loc Unit_not_supported_here
   | Enum params -> js2ml_of_enum ~variant:true params exp
+  | Union (loc, _) -> error loc Union_not_supported_here
   | Tuple typs ->
       let f x =
         Exp.tuple (List.mapi (fun i typ -> js2ml typ (ojs "array_get" [x; int i])) typs)
@@ -726,6 +738,19 @@ and ml2js ty exp =
   | Unit loc ->
       error loc Unit_not_supported_here
   | Enum params -> ml2js_of_enum ~variant:true params exp
+  | Union (_, cases) ->
+      let f (label, params) =
+        match params with
+        | None ->
+            let pat = Pat.variant label None in
+            Exp.case pat (ojs "null" [])
+        | Some ty ->
+            let x = fresh () in
+            let pat = Pat.variant label (Some (Pat.var (mknoloc x))) in
+            Exp.case pat (ml2js ty (var x))
+      in
+      let cases = List.map f cases in
+      Exp.match_ (Exp.constraint_ exp (gen_typ ty)) cases
   | Tuple typs ->
       let typed_vars = List.mapi (fun i typ -> i, typ, fresh ()) typs in
       let pat = Pat.tuple (List.map (function (_, _, x) -> Pat.var (mknoloc x)) typed_vars) in
@@ -831,6 +856,14 @@ and gen_typ = function
       let rows = opt_cons (gen_default "string" string_default) [] in
       let rows = opt_cons (gen_default "int" int_default) rows in
       let rows = List.map f enums @ rows in
+      Typ.variant rows Closed None
+  | Union (_loc, cases) ->
+      let f (label, params) =
+        match params with
+        | None -> Rtag (label, [], true, [])
+        | Some typ -> Rtag (label, [], false, [gen_typ typ])
+      in
+      let rows = List.map f cases in
       Typ.variant rows Closed None
   | Tuple typs ->
       Typ.tuple (List.map gen_typ typs)
