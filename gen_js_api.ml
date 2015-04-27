@@ -516,8 +516,9 @@ let int n = Exp.constant (Const_int n)
 
 let attr s e = Str.attribute (mknoloc s, PStr [Str.eval e])
 
-let disable_warnings = attr "ocaml.warning" (str "-32-39")
-    (* 32: unused value declarations (when *_of_js, *_to_js are not needed)
+let disable_warnings = attr "ocaml.warning" (str "-7-32-39")
+    (*  7: method overridden.
+       32: unused value declarations (when *_of_js, *_to_js are not needed)
        39: unused rec flag (for *_of_js, *_to_js functions, when the
            type is not actually recursive) *)
 
