@@ -28,6 +28,20 @@ gen_js_api supports can be used in two (completementary) ways:
     bindings.
 
 
+Installation (with OPAM)
+------------------------
+
+gen_js_api currently relies on the trunk version of OCaml and the development
+version of js_of_ocaml (and since this development version doesn't install,
+I suggest to use a fork as below):
+
+   ```
+   opam switch 4.03.0+trunk
+   opam pin add js_of_ocaml git@github.com:alainfrisch/js_of_ocaml.git
+   opam pin add gen_js_api git@github.com:alainfrisch/gen_js_api.git
+   ```
+
+
 
 Usage (with ocamlfind)
 ----------------------
