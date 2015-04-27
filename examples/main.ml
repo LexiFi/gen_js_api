@@ -192,4 +192,38 @@ let () =
   test_opt_args
     (fun ?(foo = 0) ?(bar = 0) () -> string_of_int foo ^ "/" ^ string_of_int bar);
 
-  alert Person2.(to_json (mk ~children:[mk ~age:6 "Johnny"] ~age:42 "John Doe"))
+  print_endline Person2.(to_json (mk ~children:[mk ~age:6 "Johnny"] ~age:42 "John Doe"))
+
+
+
+(* Custom mapping between association lists and JS objects *)
+
+module Dict : sig
+  type 'a t = (string * 'a) list
+  val t_to_js: ('a -> Ojs.t) -> 'a t -> Ojs.t
+  val t_of_js: (Ojs.t -> 'a) -> Ojs.t -> 'a t
+end = struct
+  type 'a t = (string * 'a) list
+
+  let t_to_js ml2js l =
+    let o = Ojs.empty_obj () in
+    List.iter (fun (k, v) -> Ojs.set o k (ml2js v)) l;
+    o
+
+  let t_of_js js2ml o =
+    let l = ref [] in
+    Ojs.iterate_properties o
+      (fun k -> l := (k, js2ml (Ojs.get o k)) :: !l);
+    !l
+end
+
+val int_dict_to_json_string: int Dict.t -> string
+  [@@js.global "JSON.stringify"]
+
+val myDict: string Dict.t
+  [@@js.global "myDict"]
+
+let () =
+  print_endline (int_dict_to_json_string ["hello", 1; "world", 2]);
+  List.iter (fun (k, v) -> Printf.printf "%s -> %s\n%!" k v) myDict;
+
