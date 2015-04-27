@@ -516,8 +516,9 @@ let int n = Exp.constant (Const_int n)
 
 let attr s e = Str.attribute (mknoloc s, PStr [Str.eval e])
 
-let disable_warnings = attr "ocaml.warning" (str "-32-39")
-    (* 32: unused value declarations (when *_of_js, *_to_js are not needed)
+let disable_warnings = attr "ocaml.warning" (str "-7-32-39")
+    (*  7: method overridden.
+       32: unused value declarations (when *_of_js, *_to_js are not needed)
        39: unused rec flag (for *_of_js, *_to_js functions, when the
            type is not actually recursive) *)
 
@@ -774,7 +775,7 @@ and gen_args ?(name = fun _ -> fresh ()) ?(map = ml2js) args =
       match label with
       | Nolabel
       | Labelled _ -> ty
-      | Optional _ -> Name ("option", [ty])
+      | Optional _ -> Name ("Ojs.optdef", [ty])
     in
     (label, s), (label, js_label, map ty (var s))
   in
@@ -1052,7 +1053,7 @@ and gen_def loc decl ty =
             | Some s, _ -> s
           in
           let code exp = ojs "set" [x; str js_label; ml2js ty exp] in
-          (* special logic to avoid setting optional argument to 'null' *)
+          (* special logic to avoid setting optional argument to 'undefined' *)
           match label with
           | Optional _ -> match_some_none (var s) ~none:unit_expr ~some:code
           | Nolabel | Labelled _ -> code (var s)

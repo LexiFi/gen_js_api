@@ -13,8 +13,7 @@ include $(shell ocamlc -where)/Makefile.config
 OCAMLFLAGS = -w +A-4-41-45 -warn-error +8
 OCAMLC = ocamlc $(OCAMLFLAGS)
 
-JSOO_PATH = ~/js_of_ocaml
-JSOO = $(JSOO_PATH)/compiler/js_of_ocaml --pretty --noruntime $(JSOO_PATH)/runtime/runtime.js
+JSOO = js_of_ocaml --pretty
 
 all:
 	$(OCAMLC) -c ojs.mli ojs.ml

@@ -21,6 +21,9 @@ The following types are supported out-of-the-box:
    `null` and `undefined` are mapped back to `None`.  This encoding
    doesn't support nested options in a faithful way.
 
+ - An `'a Ojs.optdef` is defined as an alias to `'a option`, but where
+   `None` is mapped to `undefined` instead of `null`.
+
  - Arrows (see section below).
 
  - Polymorphic variants with only constant variants are supported
@@ -66,11 +69,13 @@ argument).  The function's result can be either a JS-able type or
 it is only allowed in these two contexts (as the result, or the final
 pseudo-argument).
 
-Arguments can be **labelled or optional**.  Labels are simply ignored on
-the JS side.  Optional arguments are treated as normal option types (
-`None` is mapped to `null` in particular), except when used on a
-`[@js.variadic]` argument (see below), in which case a missing value
-is interpreted as an empty list (i.e. no extra arguments).
+Arguments can be **labelled or optional**.  Labels are simply ignored
+on the JS side.  Optional arguments are treated as being of type `'a
+Ojs.optdef` (not `'a option`, which means that missing arguments are
+represented as `undefined` in Javascript).  There is a special
+treatment for optional argument on a `[@js.variadic]` argument (see
+below), in which case a missing value is interpreted as an empty list
+(i.e. no extra arguments).
 
 
 When mapping an OCaml function to JS, the **function arity** is the
