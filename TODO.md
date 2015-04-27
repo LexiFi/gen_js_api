@@ -1,11 +1,15 @@
 TODO list for gen_js_api
 ========================
 
+- Create reasonnably complete bindings for Javascript's stdlib
+  (string, regexp), for the DOM, for jQuery, etc.
 
+- Add a safe mode, where the generated code is augmented with explicit
+  checks (e.g. when casting a JS value to a string or integer, when
+  accessing a property, etc).
 
 - Support sum types / polymorphic variants with non constant constructors
   (mapped to objects with a discriminator field).
-
 
 - Support really abstract types (treated as `Ojs.t` in the implementation).
 
@@ -33,7 +37,7 @@ TODO list for gen_js_api
 
   This could be simulated with:
 
-```ocaml
+  ```ocaml
 
     val set: ?text:string -> ?hide:unit -> ?css:(string * string) -> t -> unit
   [@@@js.custom]
@@ -44,7 +48,7 @@ TODO list for gen_js_api
       Option.iter (set_text x) text;
       ...
   ]
-```
+  ```
 
 
 - Optional arguments on JS methods are usually at the end.  But this
@@ -66,6 +70,9 @@ TODO list for gen_js_api
    foo x ~bla ()
    foo x () ~bla
   ```
-- Add a safe mode, where the generated code is augmented with explicit checks (e.g. when casting a JS value to a string or integer, when accessing a property, etc).
 
-- When defining a binding to a function with `[@@js.global "foo.bar"]`, this is currently interpreted as calling this global function.  One could interpret it as calling the bar method on object foo, which would have the effect of assigning `this` during the function evaluation.
+- When defining a binding to a function with `[@@js.global
+  "foo.bar"]`, this is currently interpreted as calling this global
+  function.  One could interpret it as calling the bar method on
+  object foo, which would have the effect of assigning `this` during
+  the function evaluation.
