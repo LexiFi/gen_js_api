@@ -7,6 +7,8 @@
 (** {2 Type definitions} *)
 
 type t = private Ojs.t
+val t_of_js: Ojs.t -> t
+val t_to_js: t -> Ojs.t
 
 val now: unit -> t [@@js.new "Date"]
 val from_milliseconds: float -> t [@@js.new "Date"]
