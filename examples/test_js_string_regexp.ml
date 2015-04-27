@@ -1,4 +1,4 @@
-open Stdlib
+open Js_string_regexp
 
 let print_array f a =
   Array.iteri (fun i x -> if i > 0 then print_string ", "; print_string (f x)) a;
