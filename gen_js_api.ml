@@ -1100,7 +1100,7 @@ and gen_def loc decl ty =
       func formal_args unit_arg (js2ml ty_res res)
 
   | Builder, Arrow {ty_args; ty_vararg = None; unit_arg; ty_res} ->
-      let gen_arg (label, _default_expr, js_label, ty) =
+      let gen_arg (label, default_expr, js_label, ty) =
         let s = fresh () in
         (label, s),
         fun x ->
@@ -1113,8 +1113,14 @@ and gen_def loc decl ty =
           let code exp = ojs "set" [x; str js_label; ml2js ty exp] in
           (* special logic to avoid setting optional argument to 'undefined' *)
           match label with
-          | Optional _ -> match_some_none (var s) ~none:unit_expr ~some:code
           | Nolabel | Labelled _ -> code (var s)
+          | Optional _ ->
+              begin match default_expr with
+              | None ->
+                  match_some_none (var s) ~none:unit_expr ~some:code
+              | Some none ->
+                  code (match_some_none ~none ~some:(fun v -> v) (var s))
+              end
       in
 
       let args = List.map gen_arg ty_args in
