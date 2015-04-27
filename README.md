@@ -10,14 +10,15 @@ compiler](https://github.com/ocsigen/js_of_ocaml).  It is based on the
 following ideas:
 
  - Authors of bindings write OCaml signatures for Javascript libraries
-   and the tool generates automatically the actual binding code.
+   and the tool generates the actual binding code with a combination
+   of implicit conventions and explicit annotations.
 
  - The generated binding code takes care of translating values between
    OCaml and Javascript.
 
  - All syntactic processing is done by authors of bindings: the client
-   code looks is normal OCaml code and does not depend on custom
-   syntax nor on JS-specific types.
+   code is normal OCaml code and does not depend on custom syntax nor
+   on JS-specific types.
 
 
 gen_js_api can be used in two complementary ways:
