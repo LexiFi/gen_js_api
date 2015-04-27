@@ -140,7 +140,7 @@ end
 module Date: sig
   type t = private Ojs.t
 
-  val create: year:int -> month:int -> ?day:(int [@js.None Ojs.null]) -> unit -> t [@@js.new "Date"]
+  val create: year:int -> month:int -> ?day:(int[@js.default 0]) -> unit -> t [@@js.new "Date"]
   val to_string: t -> string [@@js.call]
 end
 

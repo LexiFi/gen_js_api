@@ -176,7 +176,7 @@ let () =
   let s = (new Str.str "") # concat [Str.create "Hello"; Str.create ", "; Str.create "world"; Str.create "!"] in
   Console.log_string console (s # to_string);
 
-  Console.log_string console (Date.to_string (Date.create ~year:2015 ~month:4 ()));
+  Console.log_string console (Date.to_string (Date.create ~year:2015 ~month:4 ~day:10 ()));
 
   let l = Document.getElementsByClassName doc "myClass" in
   Array.iter

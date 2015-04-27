@@ -8,17 +8,6 @@ TODO list for gen_js_api
   checks (e.g. when casting a JS value to a string or integer, when
   accessing a property, etc).
 
-- Use polymorphic variant to represent multiple possible types of parameters:
-
-   val foo: t -> [`Str of s | `Foo of t | `Nothing] -> unit
-
-  When mapping from OCaml to JS value, the constructor is simply
-  ignored (constant constructor are mapped to `null`).  In the other
-  direction, it's less clear what to do (either reject this case,
-  or only support cases where `typeof` can discriminate between cases).
-
-
-
 - Support sum types / polymorphic variants with non constant constructors
   (mapped to objects with a discriminator field).
 

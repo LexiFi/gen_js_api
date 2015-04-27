@@ -304,7 +304,7 @@ let rec parse_typ ty =
         match arg1 with
         | Nolabel
         | Labelled _ -> None
-        | Optional _ -> get_expr_attribute "js.None" t1.ptyp_attributes
+        | Optional _ -> get_expr_attribute "js.default" t1.ptyp_attributes
       in
       let t1 = arg1, default_expr, get_string_attribute "js" t1.ptyp_attributes, parse_typ t1 in
       begin match parse_typ t2 with
@@ -824,8 +824,7 @@ and gen_args ?(name = fun _ -> fresh ()) args =
           begin match default_expr with
           | None -> ml2js (Name ("Ojs.optdef", [ty])) (var s)
           | Some none ->
-              let some v = ml2js ty v in
-              match_some_none ~none ~some (var s)
+              ml2js ty (match_some_none ~none ~some:(fun v -> v) (var s))
           end
     in
     (label, s), (label, js_label, e)

@@ -72,16 +72,13 @@ pseudo-argument).
 Arguments can be **labelled or optional**.  Labels are simply ignored
 on the JS side.  Optional arguments are treated as being of type `'a
 Ojs.optdef` (not `'a option`, which means that missing arguments are
-represented as `undefined` in Javascript).  It is also possible to specify
-a custom JS value of type `Ojs.t` to represent a missing argument:
+represented as `undefined` in Javascript).  It is also possible to
+specify a default value for the optional argument:
 
 ```ocaml
-type t = private Ojs.t
-val create: year:int -> month:int -> ?day:(int [@js.None Ojs.null]) -> unit -> t [@@js.new "Date"]
+val f: t -> ?x:(int [@js.default 0]) -> unit -> t
 ```
 
-The attribute is required, because passing `undefined` for the third-argument
-to the `Date` constructor would not work.
 
 There is a special treatment for optional argument on a
 `[@js.variadic]` argument (see below), in which case a missing value
