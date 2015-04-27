@@ -69,10 +69,6 @@ TODO list for gen_js_api
 
   ```ocaml
   val foo: t -> ?bla:int -> unit -> int
-
-   foo ~bla x ()
-   foo x ~bla ()
-   foo x () ~bla
   ```
 
 - When defining a binding to a function with `[@@js.global
