@@ -622,7 +622,7 @@ let def s ty body =
 
 let builtin_type = function
   | "int" | "string" | "bool" | "float"
-  | "array" | "list" | "option" -> true
+  | "array" | "list" | "option" | "optdef" -> true
   | _ -> false
 
 let let_exp_in exp f =
@@ -774,7 +774,7 @@ and gen_args ?(name = fun _ -> fresh ()) ?(map = ml2js) args =
       match label with
       | Nolabel
       | Labelled _ -> ty
-      | Optional _ -> Name ("option", [ty])
+      | Optional _ -> Name ("optdef", [ty])
     in
     (label, s), (label, js_label, map ty (var s))
   in
@@ -1052,7 +1052,7 @@ and gen_def loc decl ty =
             | Some s, _ -> s
           in
           let code exp = ojs "set" [x; str js_label; ml2js ty exp] in
-          (* special logic to avoid setting optional argument to 'null' *)
+          (* special logic to avoid setting optional argument to 'undefined' *)
           match label with
           | Optional _ -> match_some_none (var s) ~none:unit_expr ~some:code
           | Nolabel | Labelled _ -> code (var s)

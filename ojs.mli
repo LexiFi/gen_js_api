@@ -35,6 +35,11 @@ val option_of_js: (t -> 'a) -> t -> 'a option
 val option_to_js: ('a -> t) -> 'a option -> t
 (** [None] is mapped to [null]. *)
 
+val optdef_of_js: (t -> 'a) -> t -> 'a option
+(** Both [null] and [undefined] are mapped to [None]. *)
+val optdef_to_js: ('a -> t) -> 'a option -> t
+(** [None] is mapped to [undefined]. *)
+
 external fun_to_js: int -> (t -> 'a) -> t = "caml_js_wrap_callback_strict"
 (** Wrap an OCaml function of known arity (>=1) into a JS function.
     Extra arguments are discarded and missing argument are filled with

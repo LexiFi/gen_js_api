@@ -90,6 +90,11 @@ let option_of_js f x =
 
 let option_to_js f = function
   | Some x -> f x
+  | None -> null
+
+let optdef_of_js = option_of_js
+let optdef_to_js f = function
+  | Some x -> f x
   | None -> undefined
 
 class obj (x:t) =
