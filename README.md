@@ -87,9 +87,13 @@ libraries created with gen_js_api:
  - Very partial [ bindings to jQuery](examples/jquery.mli), with
    some [example client code](examples/test_jquery.ml).
 
- - Very partial [bindings to Javascript strings and
+ - Partial [bindings to Javascript strings and
    regexps](examples/js_str.mli), with some [example client
    code](examples/test_js_str.ml).
+
+ - Partial [bindings to Javascript dates](examples/js_date.mli), with
+   some [example client code](examples/test_js_date.ml).
+
 
 
 Low-level binding to Javascript
