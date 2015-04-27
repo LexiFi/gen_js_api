@@ -37,7 +37,9 @@ let () =
 
 let () =
   at __LINE__;
-  let res = from_char_code [65] in
+  let l = ref [] in
+  String.iter (fun c -> l := Char.code c :: !l) "String built from char codes";
+  let res = from_char_code (List.rev !l) in
   print_endline (to_string res)
 
 let () =
