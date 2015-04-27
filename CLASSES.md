@@ -5,10 +5,19 @@ gen_js_api can bind Javascript objects into OCaml abstract types with
 associated functions (to get/set property and to call methods).  This
 form of binding is quite efficient, since the opaque OCaml values are
 just the underlying Javascript objects, with no mapping or wrapping.
-In addition to that, gen_js_api provides ways to wrap Javascript
-objects into OCaml objects.  This adds some runtime overhead, but
+In addition to that, gen_js_api provides ways to **wrap Javascript
+objects into OCaml objects**.  This adds some runtime overhead, but
 allows users to use standard OO syntax in OCaml and to rely on
 inheritance (to mimic similar hierarchy on the JS side).
+
+In addition to the runtime overhead, wrapping JS objects as OCaml
+objects also forces to define all methods at once.  With opaque
+bindings, methods of a given JS "class" can be spread over multiple
+OCaml modules.  This can be especially useful to mimic the behavior of
+JS library addins that extends the library's object prototype with
+more methods.
+
+
 
 
 Class wrapping
