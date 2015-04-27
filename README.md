@@ -81,9 +81,15 @@ Usage (with ocamlfind)
 Examples
 --------
 
-The repository contains some initial [OCaml bindings to
-jQuery](examples/jquery.mli) created with gen_js_api and some [sample
-code](examples/test_jquery.ml) using these bindings.
+The repository contains some examples of OCaml bindings to Javascript
+libraries created with gen_js_api:
+
+ - Very partial [ bindings to jQuery](examples/jquery.mli), with
+   some [example client code](examples/test_jquery.ml).
+
+ - Very partial [bindings to Javascript strings and
+   regexps](examples/js_str.mli), with some [example client
+   code](examples/test_js_str.ml).
 
 
 Low-level binding to Javascript
