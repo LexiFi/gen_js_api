@@ -19,18 +19,22 @@ TODO list for gen_js_api
 - Idea: to facilitate binding and calling multiple methods at once,
   provide something like (jQuery example):
 
+    ```ocaml
     val set: ?text:string -> ?hide:unit -> ?css:(string * string) -> t -> unit
      [@@js.multicall]
+    ```
 
 
   One can then write:
 
+     ```ocaml
      set
        ~text:"Hello"
        ~hide:()
        node
+     ```
 
-  Each provided argument yield one method call (in the order where
+  Each provided argument yields one method call (in the order where
   arguments are declared, of course).  This is mostly interesting when
   methods are used to "set" internal properties, and when the different
   calls commute.
@@ -40,14 +44,14 @@ TODO list for gen_js_api
   ```ocaml
 
     val set: ?text:string -> ?hide:unit -> ?css:(string * string) -> t -> unit
-  [@@@js.custom]
-    val set_text: t -> string -> unit
-      [@@js.meth "text"]
+      [@@@js.custom
+      val set_text: t -> string -> unit
+        [@@js.meth "text"]
 
-    let set ?text ... x =
-      Option.iter (set_text x) text;
-      ...
-  ]
+      let set ?text ... x =
+        Option.iter (set_text x) text;
+        ...
+      ]
   ```
 
 
@@ -57,13 +61,13 @@ TODO list for gen_js_api
   call even though there are not in the OCaml type.  This would also
   work for instance methods:
 
-  ```caml
+  ```ocaml
   val foo: ?bla:int -> t -> int
   ```
 
   instead of:
 
-  ```caml
+  ```ocaml
   val foo: t -> ?bla:int -> unit -> int
 
    foo ~bla x ()
