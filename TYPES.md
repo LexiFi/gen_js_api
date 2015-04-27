@@ -58,25 +58,6 @@ val t_to_js: ('a -> Ojs.t) -> 'a t -> Ojs.t
 val t_of_js: (Ojs.t -> 'a) -> Ojs.t -> 'a t
 ```
 
-Union types
------------
-
-It is common for JS functions to allow arguments of several different
-types (for instance, a string or an object).  To represent this calling
-convention, one can use polymorphic variants:
-
-```
-val f: t -> ([`Str of string | `Obj of t | `Nothing] [@js.union]) -> ...
-```
-
-The `[@js.union]` attribute can only be used on polymorphic variant
-used in contravariant context (i.e. to describe mapping from OCaml to
-Javascript, not the other way around).  Constructors with one argument
-are mapped to the same value as their argument and constant constructors
-are mapped to `null`.  The name of the constructor is always ignored.
-
-
-
 Arrow types
 -----------
 
@@ -134,9 +115,6 @@ arguments):
 ```ocaml
 val sep: string -> (string list [@js.variadic]) -> string
 ```
-
-
-
 
 
 Type declarations
@@ -223,3 +201,20 @@ type status =
 ```
 
 There cannot be two default constructors with the same argument type.
+
+Union types
+-----------
+
+It is common for JS functions to allow arguments of several different
+types (for instance, a string or an object).  To represent this calling
+convention, one can use polymorphic variants:
+
+```
+val f: t -> ([`Str of string | `Obj of t | `Nothing] [@js.union]) -> ...
+```
+
+The `[@js.union]` attribute can only be used on polymorphic variant
+used in contravariant context (i.e. to describe mapping from OCaml to
+Javascript, not the other way around).  Constructors with one argument
+are mapped to the same value as their argument and constant constructors
+are mapped to `null`.  The name of the constructor is always ignored.
