@@ -14,7 +14,8 @@ following ideas:
    of implicit conventions and explicit annotations.
 
  - The generated binding code takes care of translating values between
-   OCaml and Javascript.
+   OCaml and Javascript and of dealing with Javascript calling
+   conventions.
 
  - All syntactic processing is done by authors of bindings: the client
    code is normal OCaml code and does not depend on custom syntax nor
