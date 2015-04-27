@@ -45,23 +45,6 @@ libraries created with gen_js_api:
  - Partial [bindings to Javascript dates](examples/js_date.mli), with
    some [example client code](examples/test_js_date.ml).
 
-
-
-Name conversion
----------------
-
-Javascript names corresponding to bound components can always be
-specified explicitly (with the use of attributes).  When the naming is
-left implicit, a Javascript name is automatically derived from the
-OCaml name by applying the following rules:
-
-  - uppercasing every character following an underscore;
-
-  - removing every underscore;
-
-  - uppercasing the first character when generating object constructor names.
-
-
 Documentation
 -------------
 
@@ -69,6 +52,7 @@ Documentation
   - [Low-level binding to Javascript](LOW_LEVEL_BINDING.md)
   - [Using gen_js_api to generate .ml from .mli](IMPLGEN.md)
   - [Using gen_js_api as a ppx processor](PPX.md)
+  - [Default naming convention](NAMING.md)
   - [JS-able types and type declarations](TYPES.md)
   - [Value bindings](VALUES.md)
   - [Class-wrapping bindings](CLASSES.md)
