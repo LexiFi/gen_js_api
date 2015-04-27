@@ -27,8 +27,10 @@ The following types are supported out-of-the-box:
  - Arrows (see section below).
 
  - Polymorphic variants with only constant variants are supported
-   (See the section on enums below).
+   (see the section on enums below).
 
+ - Polymorphic variants can also be used to encode non-discriminated
+   unions on the JS side (see the section on union types below).
 
 
 An arbitrary non-parametrized type with path `M.t` is JS-able if the
@@ -56,6 +58,23 @@ val t_to_js: ('a -> Ojs.t) -> 'a t -> Ojs.t
 val t_of_js: (Ojs.t -> 'a) -> Ojs.t -> 'a t
 ```
 
+Union types
+-----------
+
+It is common for JS functions to allow arguments of several different
+types (for instance, a string or an object).  To represent this calling
+convention, one can use polymorphic variants:
+
+```
+val f: t -> ([`Str of string | `Obj of t | `Nothing] [@js.union]) -> ...
+```
+
+The `[@js.union]` attribute can only be used on polymorphic variant
+used in contravariant context (i.e. to describe mapping from OCaml to
+Javascript, not the other way around).  Constructors with one argument
+are mapped to the same value as their argument and constant constructors
+are mapped to `null`.  The name of the constructor is always ignored.
+
 
 
 Arrow types
@@ -72,10 +91,20 @@ pseudo-argument).
 Arguments can be **labelled or optional**.  Labels are simply ignored
 on the JS side.  Optional arguments are treated as being of type `'a
 Ojs.optdef` (not `'a option`, which means that missing arguments are
-represented as `undefined` in Javascript).  There is a special
-treatment for optional argument on a `[@js.variadic]` argument (see
-below), in which case a missing value is interpreted as an empty list
-(i.e. no extra arguments).
+represented as `undefined` in Javascript).  It is also possible to specify
+a custom JS value of type `Ojs.t` to represent a missing argument:
+
+```ocaml
+type t = private Ojs.t
+val create: year:int -> month:int -> ?day:(int [@js.None Ojs.null]) -> unit -> t [@@js.new "Date"]
+```
+
+The attribute is required, because passing `undefined` for the third-argument
+to the `Date` constructor would not work.
+
+There is a special treatment for optional argument on a
+`[@js.variadic]` argument (see below), in which case a missing value
+is interpreted as an empty list (i.e. no extra arguments).
 
 
 When mapping an OCaml function to JS, the **function arity** is the
