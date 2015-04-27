@@ -176,6 +176,8 @@ let () =
   let s = (new Str.str "") # concat [Str.create "Hello"; Str.create ", "; Str.create "world"; Str.create "!"] in
   Console.log_string console (s # to_string);
 
+  Console.log_string console (Date.to_string (Date.create ~year:2015 ~month:4 ()));
+
   let l = Document.getElementsByClassName doc "myClass" in
   Array.iter
     (fun e ->
@@ -191,6 +193,3 @@ let () =
     (fun ?(foo = 0) ?(bar = 0) () -> string_of_int foo ^ "/" ^ string_of_int bar);
 
   alert Person2.(to_json (mk ~children:[mk ~age:6 "Johnny"] ~age:42 "John Doe"))
-
-
-

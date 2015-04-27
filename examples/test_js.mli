@@ -137,6 +137,12 @@ module Str: sig
   [@@js.new "String"]
 end
 
+module Date: sig
+  type t = private Ojs.t
+
+  val create: year:int -> month:int -> ?day:(int [@js.None Ojs.null]) -> unit -> t [@@js.new "Date"]
+  val to_string: t -> string [@@js.call]
+end
 
 module Person2: sig
   type t = private Ojs.t
