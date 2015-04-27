@@ -20,7 +20,7 @@ following ideas:
    syntax nor on JS-specific types.
 
 
-gen_js_api can be used in two (completementary) ways:
+gen_js_api can be used in two complementary ways:
 
   - [Generating .ml implementations from annotated .mli interfaces](IMPLGEN.md),
     in order to create the code for stub libraries.
