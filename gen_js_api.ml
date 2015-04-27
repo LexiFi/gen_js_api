@@ -622,7 +622,7 @@ let def s ty body =
 
 let builtin_type = function
   | "int" | "string" | "bool" | "float"
-  | "array" | "list" | "option" | "Ojs.optdef" -> true
+  | "array" | "list" | "option" -> true
   | _ -> false
 
 let let_exp_in exp f =
