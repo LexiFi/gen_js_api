@@ -41,11 +41,13 @@ let is_registered_loc loc = Hashtbl.mem used_attributes_tbl loc
 
 let error loc err = raise (Error (loc, err))
 
-let filter_attr key = function ({txt; loc}, _) ->
+let filter_attr_name key {txt; loc} =
   if txt = key then begin
     register_loc loc;
     true
   end else false
+
+let filter_attr key (k, _) = filter_attr_name key k
 
 let has_attribute key attrs = List.exists (filter_attr key) attrs
 
@@ -250,15 +252,12 @@ let opt_cons x xs =
   | Some x -> x :: xs
 
 let prepare_enum label loc attributes =
-  let js = ref {pexp_desc = Pexp_constant (Const_string (label, None)); pexp_loc = loc; pexp_attributes = attributes} in
-  List.iter
-    (fun (k, v) ->
-      match k.txt with
-      | "js" -> register_loc k.loc; js := expr_of_payload k.loc v
-      | _ -> ()
-    )
-    attributes;
-  label, !js
+  let js =
+    match get_expr_attribute "js" attributes with
+    | None -> {pexp_desc = Pexp_constant (Const_string (js_name label, None)); pexp_loc = loc; pexp_attributes = attributes}
+    | Some e -> e
+  in
+  label, js
 
 let get_enums f l =
   let f (enums, string_default, int_default) x =
@@ -386,7 +385,7 @@ let auto_in_object s = function
   | Arrow _ -> MethCall (js_name s)
   | _ -> PropGet (js_name s)
 
-let parse_attr (s, loc, auto) defs (k, v) =
+let parse_attr (s, loc, auto) (k, v) =
   let opt_name ?(prefix = "") ?(capitalize = false) () =
     match v with
     | PStr [] ->
@@ -396,33 +395,28 @@ let parse_attr (s, loc, auto) defs (k, v) =
         end
     | _ -> id_of_expr (expr_of_payload k.loc v)
   in
-  match k.txt with
-  | "js.cast" ->
-      register_loc k.loc;
-      Cast :: defs
-  | "js.get" ->
-      register_loc k.loc;
-      PropGet (opt_name ()) :: defs
-  | "js.set" ->
-      register_loc k.loc;
-      PropSet (opt_name ~prefix:"set_" ()) :: defs
-  | "js.call" ->
-      register_loc k.loc;
-      MethCall (opt_name ()) :: defs
-  | "js.global" ->
-      register_loc k.loc;
-      Global (opt_name ()) :: defs
-  | "js" ->
-      register_loc k.loc;
-      auto () :: defs
-  | "js.new" ->
-      register_loc k.loc;
-      New (opt_name ~prefix:"new_" ~capitalize:true ()) :: defs
-  | "js.builder" ->
-      register_loc k.loc;
-      Builder :: defs
-  | _ ->
-      defs
+  let actions =
+    [ "js.cast", (fun () -> Cast);
+      "js.get", (fun () -> PropGet (opt_name ()));
+      "js.set", (fun () -> PropSet (opt_name ~prefix:"set_" ()));
+      "js.call", (fun () -> MethCall (opt_name ()));
+      "js.global", (fun () -> Global (opt_name ()));
+      "js", (fun () -> auto ());
+      "js.new", (fun () -> New (opt_name ~prefix:"new_" ~capitalize:true ()));
+      "js.builder", (fun () -> Builder);
+    ]
+  in
+  match List.find (fun (name, _) -> filter_attr_name name k) actions with
+  | exception Not_found -> None
+  | _, f -> Some (f ())
+
+let rec choose f = function
+  | [] -> []
+  | x :: xs ->
+      begin match f x with
+      | None -> choose f xs
+      | Some y -> y :: choose f xs
+      end
 
 let parse_valdecl ~in_sig vd =
   let s = vd.pval_name.txt in
@@ -430,7 +424,7 @@ let parse_valdecl ~in_sig vd =
   let ty = parse_typ vd.pval_type in
   let attrs = vd.pval_attributes in
   let auto () = auto s ty in
-  let defs = List.fold_left (parse_attr (s, loc, auto)) [] attrs in
+  let defs = choose (parse_attr (s, loc, auto)) attrs in
   let r =
     match defs with
     | [x] -> x
@@ -449,15 +443,13 @@ let rec parse_sig_item s =
   | Psig_module {pmd_name; pmd_type = {pmty_desc = Pmty_signature si; _}; _} ->
       Module (pmd_name.txt, parse_sig si)
   | Psig_class cs -> Class (List.map parse_class_decl cs)
-  | Psig_attribute ({txt="js.implem"; loc}, PStr str) ->
-      register_loc loc;
-      Implem str
+  | Psig_attribute (attr, PStr str) when filter_attr_name "js.implem" attr -> Implem str
   | _ ->
       error s.psig_loc Cannot_parse_sigitem
 
 and parse_sig = function
   | [] -> []
-  | {psig_desc = Psig_attribute ({txt="js.stop"; _}, _); _} :: rest ->
+  | {psig_desc = Psig_attribute (attr, _); _} :: rest when filter_attr_name "js.stop" attr ->
       parse_sig_verbatim rest
   | {psig_desc = Psig_value vd; _} :: rest when
       has_attribute "js.custom" vd.pval_attributes ->
@@ -468,9 +460,7 @@ and parse_sig = function
 
 and parse_sig_verbatim = function
   | [] -> []
-  | {psig_desc = Psig_attribute ({txt="js.start"; loc}, _); _} :: rest ->
-      register_loc loc;
-      parse_sig rest
+  | {psig_desc = Psig_attribute (attr, _); _} :: rest when filter_attr_name "js.start" attr -> parse_sig rest
   | _ :: rest -> parse_sig_verbatim rest
 
 and parse_class_decl = function
@@ -504,7 +494,7 @@ and parse_class_field = function
   | {pctf_desc = Pctf_method (method_name, Public, Concrete, typ); pctf_loc; pctf_attributes} ->
       let ty = parse_typ typ in
       let auto () = auto_in_object method_name ty in
-      let defs = List.fold_left (parse_attr (method_name, pctf_loc, auto)) [] pctf_attributes in
+      let defs = choose (parse_attr (method_name, pctf_loc, auto)) pctf_attributes in
       let kind =
         match defs with
         | [x] -> x
@@ -949,17 +939,13 @@ let rec gen_decls si =
 
 and gen_funs_record lbls =
   let prepare_label l =
-    let js = ref l.pld_name.txt in
-    List.iter
-      (fun (k, v) ->
-         match k.txt with
-         | "js" -> register_loc k.loc; js := id_of_expr (expr_of_payload k.loc v)
-         | _ -> ()
-      )
-      l.pld_attributes;
-
+    let js =
+      match get_string_attribute "js" l.pld_attributes with
+      | None -> js_name l.pld_name.txt
+      | Some s -> s
+    in
     mknoloc (Lident l.pld_name.txt), (* OCaml label *)
-    str !js, (* JS name *)
+    str js, (* JS name *)
     parse_typ l.pld_type
   in
   let lbls = List.map prepare_label lbls in
@@ -1198,10 +1184,7 @@ and mapper =
   let module_expr self mexp =
     let mexp = super.module_expr self mexp in
     match mexp.pmod_desc with
-    | Pmod_constraint({pmod_desc=Pmod_extension ({txt="js"; loc}, PStr[]); _},
-                      ({pmty_desc=Pmty_signature sg; _} as mty)) ->
-        register_loc loc;
-        Mod.constraint_ (Mod.structure (str_of_sg sg)) mty
+    | Pmod_constraint({pmod_desc=Pmod_extension (attr, PStr[]); _}, ({pmty_desc=Pmty_signature sg; _} as mty)) when filter_attr_name "js" attr -> Mod.constraint_ (Mod.structure (str_of_sg sg)) mty
     | _ -> mexp
   in
   let structure_item self str =
@@ -1213,12 +1196,7 @@ and mapper =
         | d -> incl (gen_decls [d])
         end
     | Pstr_type (rec_flag, decls) ->
-        let js_decls =
-          List.filter
-            (fun d ->
-               List.exists (filter_attr "js") d.ptype_attributes
-            ) decls
-        in
+        let js_decls = List.filter (fun d -> List.exists (filter_attr "js") d.ptype_attributes) decls in
         begin match js_decls with
         | [] -> str
         | l ->
@@ -1240,8 +1218,8 @@ and mapper =
   let expr self e =
     let e = super.expr self e in
     match e.pexp_desc with
-    | Pexp_extension ({txt="js.to"; loc}, PTyp ty) -> register_loc loc; js2ml_fun (parse_typ ty)
-    | Pexp_extension ({txt="js.of"; loc}, PTyp ty) -> register_loc loc; ml2js_fun (parse_typ ty)
+    | Pexp_extension (attr, PTyp ty) when filter_attr_name "js.to" attr -> js2ml_fun (parse_typ ty)
+    | Pexp_extension (attr, PTyp ty) when filter_attr_name "js.of" attr -> ml2js_fun (parse_typ ty)
     | _ ->
         e
   in
