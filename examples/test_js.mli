@@ -30,7 +30,13 @@ module Canvas : sig
       [@@js.cast]
 
   val getContext_2d: t -> RenderingContext2D.t
-      [@@js.expr call arg0 "getContext" "2d"]
+      [@@js.custom
+          val get_context: t -> string -> Ojs.t
+          [@@js.call]
+
+          let getContext_2d x =
+            get_context x "2d"
+      ]
 end
 
 

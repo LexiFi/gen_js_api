@@ -155,16 +155,6 @@ Supported forms
   ```
 
 
-- Custom expressions
-
-  ```ocaml
-  val f: ...
-  [@@js.expr]
-  ```
-
-  Currently undocumented.
-
-
 - Custom binding:
 
   ```ocaml

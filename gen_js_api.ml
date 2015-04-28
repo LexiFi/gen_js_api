@@ -194,18 +194,12 @@ let arg_label = function
   | Lab {ml; _} -> Labelled ml
   | Opt {ml; _} -> Optional ml
 
-type expr =
-  | Id of string
-  | Str of string
-  | Call of expr * expr list
-
 type valdef =
   | Cast
   | PropGet of string
   | PropSet of string
   | MethCall of string
   | Global of string
-  | Expr of expr
   | New of string
   | Builder
 
@@ -238,23 +232,6 @@ type decl =
   | Implem of Parsetree.structure
 
 (** Parsing *)
-
-let rec parse_expr e =
-  match e.pexp_desc with
-  | Pexp_ident {txt=Lident s; loc = _} -> Id s
-  | Pexp_constant (Const_string (s, _)) -> Str s
-  | Pexp_apply (e, args) ->
-      Call
-        (parse_expr e,
-         List.map
-           (function
-             | (Nolabel, e) -> parse_expr e
-             | _ -> error e.pexp_loc Invalid_expression
-           )
-           args
-        )
-  | _ ->
-     error e.pexp_loc Invalid_expression
 
 let typ_of_constant_exp x =
   match x.pexp_desc with
@@ -423,9 +400,6 @@ let parse_attr (s, loc, auto) defs (k, v) =
   | "js.cast" ->
       register_loc k.loc;
       Cast :: defs
-  | "js.expr" ->
-      register_loc k.loc;
-      Expr (parse_expr (expr_of_payload k.loc v)) :: defs
   | "js.get" ->
       register_loc k.loc;
       PropGet (opt_name ()) :: defs
@@ -1118,13 +1092,6 @@ and gen_def loc decl ty =
       let res = ojs_variable s in
       js2ml ty_res res
 
-  | Expr e, Arrow {ty_args; ty_vararg = None; unit_arg = false; ty_res} -> (* TODO: handle variadic argument *)
-      let args = gen_args ~name:(Printf.sprintf "arg%i") ty_args in
-      func (List.map fst args) false (js2ml_unit ty_res (gen_expr loc args e))
-
-  | Expr e, ty ->
-      js2ml ty (gen_expr loc [] e)
-
   | New name, Arrow {ty_args; ty_vararg; unit_arg; ty_res} ->
       let formal_args, concrete_args = add_variadic_arg (gen_args ty_args) ty_vararg in
       let res = ojs "new_obj" [ojs_variable name; concrete_args] in
@@ -1164,25 +1131,6 @@ and gen_def loc decl ty =
 
   | _ ->
       error loc Binding_type_mismatch
-
-and gen_expr loc ids = function
-  | Call (Id "call", obj :: Str meth :: args) ->
-      ojs "call"
-        [
-          gen_expr loc ids obj;
-          str meth;
-          Exp.array (List.map (gen_expr loc ids) args)
-        ]
-  | Call (Id "global", [Str s]) -> ojs_variable s
-  | Str s ->
-      ml2js (Name ("string", [])) (str s)
-  | Id s ->
-      begin match List.find (fun ((_, name), _) -> s = name) ids with
-      | (_, (_, e)) -> e
-      | exception Not_found -> error loc Invalid_expression
-      end
-  | _ ->
-      error loc Invalid_expression
 
 
 (** ppx mapper *)
