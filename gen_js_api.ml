@@ -660,7 +660,7 @@ let rec js2ml ty exp =
       let args = List.map js2ml_fun tl in
       app (var (s ^ "_of_js")) (nolabel (args @ [exp])) false
   | Arrow {ty_args; ty_vararg; unit_arg; ty_res} ->
-      let formal_args, concrete_args = add_variadic_arg (gen_args ty_args) ty_vararg in
+      let formal_args, concrete_args = prepare_args ty_args ty_vararg in
       let res = ojs "apply" [exp; concrete_args] in
       func formal_args unit_arg (js2ml_unit ty_res res)
   | Unit loc ->
@@ -814,9 +814,9 @@ and ml2js_of_enum ~variant {enums; string_default; int_default} exp =
 and js2ml_fun ty = mkfun (js2ml ty)
 and ml2js_fun ty = mkfun (ml2js ty)
 
-and gen_args ?(name = fun _ -> fresh ()) args =
-  let f i {lab; att=_; typ} =
-    let s = name i in
+and prepare_args ty_args ty_vararg =
+  let f {lab; att=_; typ} =
+    let s = fresh () in
     let e =
       match lab with
       | Arg | Lab _ -> ml2js typ (var s)
@@ -827,14 +827,11 @@ and gen_args ?(name = fun _ -> fresh ()) args =
               ml2js typ (match_some_none ~none ~some:(fun v -> v) (var s))
           end
     in
-    (arg_label lab, s), (lab, e)
+    (arg_label lab, s), e
   in
-  List.mapi f args
-
-and add_variadic_arg args ty_variadic =
-  let formal_args = List.map fst args in
-  let concrete_args =  Exp.array (List.map (fun (_, (_, e)) -> e) args) in
-  match ty_variadic with
+  let formal_args, concrete = List.split (List.map f ty_args) in
+  let concrete_args =  Exp.array concrete in
+  match ty_vararg with
   | None -> formal_args, concrete_args
   | Some {lab; att=_; typ} ->
       let arg = fresh () in
@@ -1008,7 +1005,7 @@ and gen_classdecl cast_funcs = function
         (mknoloc class_name)
         (Cl.fun_ Nolabel None (Pat.constraint_ (Pat.var (mknoloc x)) ojs_typ) obj)
   | Constructor {class_name; js_class_name; class_arrow = {ty_args; ty_vararg; unit_arg; ty_res}} ->
-      let formal_args, concrete_args = add_variadic_arg (gen_args ty_args) ty_vararg in
+      let formal_args, concrete_args = prepare_args ty_args ty_vararg in
       let obj = ojs "new_obj" [ojs_variable js_class_name; concrete_args] in
       let super_class =
         match ty_res with
@@ -1028,7 +1025,7 @@ and gen_class_field x = function
       | Setter s, Arrow {ty_args = [{lab=Arg; att=_; typ}]; ty_vararg = None; unit_arg = false; ty_res = Unit _} ->
           mkfun (fun arg -> ojs "set" [var x; str s; ml2js typ arg])
       | MethodCall s, Arrow {ty_args; ty_vararg; unit_arg; ty_res} ->
-          let formal_args, concrete_args = add_variadic_arg (gen_args ty_args) ty_vararg in
+          let formal_args, concrete_args = prepare_args ty_args ty_vararg in
           let res = ojs "call" [var x; str s; concrete_args] in
           func formal_args unit_arg (js2ml_unit ty_res res)
       | MethodCall s, ty_res ->
@@ -1078,7 +1075,7 @@ and gen_def loc decl ty =
 
   | MethCall s,
     Arrow {ty_args = {lab=Arg; att=_; typ} :: ty_args; ty_vararg; unit_arg; ty_res} ->
-      let formal_args, concrete_args = add_variadic_arg (gen_args ty_args) ty_vararg in
+      let formal_args, concrete_args = prepare_args ty_args ty_vararg in
       let res this = ojs "call" [ ml2js typ this; str s; concrete_args ] in
       mkfun
         (fun this ->
@@ -1093,7 +1090,7 @@ and gen_def loc decl ty =
       js2ml ty_res res
 
   | New name, Arrow {ty_args; ty_vararg; unit_arg; ty_res} ->
-      let formal_args, concrete_args = add_variadic_arg (gen_args ty_args) ty_vararg in
+      let formal_args, concrete_args = prepare_args ty_args ty_vararg in
       let res = ojs "new_obj" [ojs_variable name; concrete_args] in
       func formal_args unit_arg (js2ml ty_res res)
 
