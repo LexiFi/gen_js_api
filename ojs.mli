@@ -5,6 +5,9 @@
 (** Binding with JS values. *)
 
 type t
+(** The universal type representing arbitrary JS values. *)
+
+(** {2 Mapper for built-in types} *)
 
 external t_of_js: t -> t = "%identity"
 external t_to_js: t -> t = "%identity"
@@ -30,10 +33,9 @@ val list_to_js: ('a -> t) -> 'a list -> t
 val array_of_js_from: (t -> 'a) -> t -> int -> 'a array
 val list_of_js_from: (t -> 'a) -> t -> int -> 'a list
 
-val null: t
-
 val option_of_js: (t -> 'a) -> t -> 'a option
 (** Both [null] and [undefined] are mapped to [None]. *)
+
 val option_to_js: ('a -> t) -> 'a option -> t
 (** [None] is mapped to [null]. *)
 
@@ -44,6 +46,9 @@ val optdef_of_js: (t -> 'a) -> t -> 'a option
 val optdef_to_js: ('a -> t) -> 'a option -> t
 (** [None] is mapped to [undefined]. *)
 
+
+(** {2 Wrap OCaml functions as JS functions} *)
+
 external fun_to_js: int -> (t -> 'a) -> t = "caml_js_wrap_callback_strict"
 (** Wrap an OCaml function of known arity (>=1) into a JS function.
     Extra arguments are discarded and missing argument are filled with
@@ -51,23 +56,56 @@ external fun_to_js: int -> (t -> 'a) -> t = "caml_js_wrap_callback_strict"
 *)
 
 external fun_to_js_args: (t -> 'a) -> t = "caml_ojs_wrap_fun_arguments"
+(** Wrap an OCaml function taking JS arguments as a JS array. *)
 
-external call: t -> string -> t array -> t = "caml_js_meth_call"
-external apply: t -> t array -> t = "caml_js_fun_call"
+
+(** {2 JS objects} *)
 
 external get: t -> string -> t = "caml_js_get"
+
 external set: t -> string -> t -> unit = "caml_js_set"
 
 external obj: (string * t) array -> t = "caml_js_object"
+
 val empty_obj: unit -> t
+
+
+(** {2 Calling JS functions} *)
+
+external call: t -> string -> t array -> t = "caml_js_meth_call"
+(** Call a method on an object (binding 'this' to the object). *)
+
+external apply: t -> t array -> t = "caml_js_fun_call"
+(** Call a function. *)
+
+external new_obj: t -> t array -> t = "caml_js_new"
+(** Call a constructor *)
+
+val call_arr: t -> string -> t -> t
+(** Variant of [Ojs.call] where the arguments are passed as an already
+    built JS array. *)
+
+val apply_arr: t -> t -> t
+(** Variant of [Ojs.apply_arr] where the arguments are passed as an already
+    built JS array. *)
+
+external new_obj_arr: t -> t -> t = "caml_ojs_new_arr"
+(** Variant of [Ojs.new_obj] where the arguments are passed as an already
+    built JS array. *)
+
+
+(** {2 Arrays} *)
 
 val array_make: int -> t
 val array_get: t -> int -> t
 val array_set: t -> int -> t -> unit
 
-external variable: string -> t = "caml_js_var"
 
-external new_obj: t -> t array -> t = "caml_js_new"
+(** {2 Misc} *)
+
+val null: t
+
+external variable: string -> t = "caml_js_var"
 
 val type_of: t -> string
 
@@ -77,6 +115,5 @@ class obj: t ->
   end
 
 external iterate_properties: t -> (string -> unit) -> unit = "caml_ojs_iterate_properties"
-
 
 external caml_array_append: t array -> t array -> t array = "caml_array_append"

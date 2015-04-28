@@ -551,10 +551,17 @@ let incl = function
 let nolabel args = List.map (function x -> Nolabel, x) args
 
 let ojs_typ = Typ.constr (mknoloc (Longident.parse "Ojs.t")) []
-let ojs s args = Exp.apply (Exp.ident (mknoloc (Ldot (Lident "Ojs", s)))) (nolabel args)
+let ojs s args =
+  Exp.apply (Exp.ident (mknoloc (Ldot (Lident "Ojs", s)))) (nolabel args)
+
+let ojs_null =
+  Exp.ident (mknoloc (Ldot (Lident "Ojs", "null")))
 
 let list_map f x =
   Exp.apply (Exp.ident (mknoloc (Longident.parse "List.map"))) (nolabel [f; x])
+
+let list_iter f x =
+  Exp.apply (Exp.ident (mknoloc (Longident.parse "List.iter"))) (nolabel [f; x])
 
 let array_of_list x =
   Exp.apply (Exp.ident (mknoloc (Longident.parse "Array.of_list"))) (nolabel [x])
@@ -565,6 +572,7 @@ let array_append a1 a2 =
   match a1.pexp_desc with
   | Pexp_array [] -> a2
   | _ -> ojs "caml_array_append" [a1; a2]
+
 
 let fun_ (label, s) e =
   match e.pexp_desc with
@@ -618,6 +626,9 @@ let app f args unit_arg =
   let args = if unit_arg then args @ [Nolabel, unit_expr] else args in
   apply f args
 
+let exp_ignore res =
+  apply (var "ignore") [ Nolabel, res ]
+
 let split sep s =
   let n = String.length s in
   let rec aux start i =
@@ -638,7 +649,6 @@ let def s ty body =
   Str.value Nonrecursive [ Vb.mk (Pat.constraint_ (Pat.var (mknoloc s)) ty) body ]
 
 
-
 let builtin_type = function
   | "int" | "string" | "bool" | "float"
   | "array" | "list" | "option" -> true
@@ -648,6 +658,25 @@ let let_exp_in exp f =
   let x = fresh () in
   let pat = Pat.var (mknoloc x) in
   Exp.let_ Nonrecursive [Vb.mk pat exp] (f (var x))
+
+let ojs_apply_arr o = function
+  | `Simple arr -> ojs "apply" [o; arr]
+  | `Push arr ->
+      (* inline Ojs.apply_arr *)
+      ojs "call" [o; str "apply"; Exp.array [ ojs_null; arr ]]
+
+let ojs_call_arr o s = function
+  | `Simple arr -> ojs "call" [o; s; arr]
+  | `Push arr ->
+      (* inline Ojs.call_arr *)
+      let_exp_in o
+        (fun o ->
+           ojs "call" [ojs "get" [o; s]; str "apply"; Exp.array [ o; arr ]]
+        )
+
+let ojs_new_obj_arr cl = function
+  | `Simple arr -> ojs "new_obj" [cl; arr]
+  | `Push arr -> ojs "new_obj_arr" [cl; arr]
 
 let assert_false = Exp.assert_ (Exp.construct (mknoloc (Longident.parse "false")) None)
 
@@ -661,7 +690,7 @@ let rec js2ml ty exp =
       app (var (s ^ "_of_js")) (nolabel (args @ [exp])) false
   | Arrow {ty_args; ty_vararg; unit_arg; ty_res} ->
       let formal_args, concrete_args = prepare_args ty_args ty_vararg in
-      let res = ojs "apply" [exp; concrete_args] in
+      let res = ojs_apply_arr exp concrete_args in
       func formal_args unit_arg (js2ml_unit ty_res res)
   | Unit loc ->
       error loc Unit_not_supported_here
@@ -764,7 +793,7 @@ and ml2js ty exp =
         match params with
         | None ->
             let pat = Pat.variant label None in
-            Exp.case pat (ojs "null" [])
+            Exp.case pat ojs_null
         | Some ty ->
             let x = fresh () in
             let pat = Pat.variant label (Some (Pat.var (mknoloc x))) in
@@ -815,6 +844,21 @@ and js2ml_fun ty = mkfun (js2ml ty)
 and ml2js_fun ty = mkfun (ml2js ty)
 
 and prepare_args ty_args ty_vararg =
+  if ty_vararg = None &&
+     List.for_all
+       (function
+           | {lab = Arg | Lab _ | Opt {def = Some _; _}; _} -> true
+           | {lab = Opt {def = None; _}; _} -> false
+       )
+       ty_args
+  then
+    let x,y = prepare_args_simple ty_args ty_vararg in
+    x, `Simple y
+  else
+    let x, y = prepare_args_push ty_args ty_vararg in
+    x, `Push y
+
+and prepare_args_simple ty_args ty_vararg =
   let f {lab; att=_; typ} =
     let s = fresh () in
     let e =
@@ -843,6 +887,40 @@ and prepare_args ty_args ty_vararg =
       in
       formal_args @ [arg_label lab, arg], array_append concrete_args extra_args
 
+and prepare_args_push ty_args ty_vararg =
+  let push arr elt = exp_ignore (ojs "call" [arr; str "push"; Exp.array [elt]]) in
+  let f {lab; att=_; typ} =
+    let s = fresh () in
+    (arg_label lab, s),
+    fun arr ->
+      let s = var s in
+      match lab with
+      | Arg | Lab _ -> push arr (ml2js typ s)
+      | Opt {def; _} ->
+          begin match def with
+          | None ->
+              match_some_none ~none:unit_expr ~some:(fun s -> push arr (ml2js typ s)) s
+          | Some none ->
+              push arr (ml2js typ (match_some_none ~none ~some:(fun v -> v) s))
+          end
+  in
+  let formal_args, concrete_args = List.split (List.map f ty_args) in
+  let formal_args, concrete_args =
+    match ty_vararg with
+    | None -> formal_args, concrete_args
+    | Some {lab; att=_; typ} ->
+        let arg = fresh () in
+        formal_args @ [arg_label lab, arg],
+        concrete_args @ [fun arr ->
+          let extra_args = list_iter (mkfun (fun x -> push arr (ml2js typ x))) in
+          match lab with
+          | Arg | Lab _ -> extra_args (var arg)
+          | Opt _ -> match_some_none ~none:unit_expr ~some:extra_args (var arg)
+          ]
+  in
+  let body arr = List.fold_right (fun code -> Exp.sequence (code arr)) concrete_args arr in
+  formal_args, let_exp_in (ojs "new_obj" [ojs_variable "Array"; Exp.array []]) body
+
 and ml2js_unit ty_res res =
   match ty_res with
   | Unit _ -> res
@@ -850,7 +928,7 @@ and ml2js_unit ty_res res =
 
 and js2ml_unit ty_res res =
   match ty_res with
-  | Unit _ -> app (var "ignore") [ Nolabel, res ] false
+  | Unit _ -> exp_ignore res
   | _ -> js2ml ty_res res
 
 and gen_typ = function
@@ -1006,7 +1084,7 @@ and gen_classdecl cast_funcs = function
         (Cl.fun_ Nolabel None (Pat.constraint_ (Pat.var (mknoloc x)) ojs_typ) obj)
   | Constructor {class_name; js_class_name; class_arrow = {ty_args; ty_vararg; unit_arg; ty_res}} ->
       let formal_args, concrete_args = prepare_args ty_args ty_vararg in
-      let obj = ojs "new_obj" [ojs_variable js_class_name; concrete_args] in
+      let obj = ojs_new_obj_arr (ojs_variable js_class_name) concrete_args in
       let super_class =
         match ty_res with
         | Name (super_class, []) -> super_class
@@ -1026,7 +1104,7 @@ and gen_class_field x = function
           mkfun (fun arg -> ojs "set" [var x; str s; ml2js typ arg])
       | MethodCall s, Arrow {ty_args; ty_vararg; unit_arg; ty_res} ->
           let formal_args, concrete_args = prepare_args ty_args ty_vararg in
-          let res = ojs "call" [var x; str s; concrete_args] in
+          let res = ojs_call_arr (var x) (str s) concrete_args in
           func formal_args unit_arg (js2ml_unit ty_res res)
       | MethodCall s, ty_res ->
           js2ml_unit ty_res (ojs "call" [var x; str s; Exp.array []])
@@ -1076,7 +1154,7 @@ and gen_def loc decl ty =
   | MethCall s,
     Arrow {ty_args = {lab=Arg; att=_; typ} :: ty_args; ty_vararg; unit_arg; ty_res} ->
       let formal_args, concrete_args = prepare_args ty_args ty_vararg in
-      let res this = ojs "call" [ ml2js typ this; str s; concrete_args ] in
+      let res this = ojs_call_arr (ml2js typ this) (str s) concrete_args in
       mkfun
         (fun this ->
            match ty_args, ty_vararg, unit_arg with
@@ -1091,7 +1169,7 @@ and gen_def loc decl ty =
 
   | New name, Arrow {ty_args; ty_vararg; unit_arg; ty_res} ->
       let formal_args, concrete_args = prepare_args ty_args ty_vararg in
-      let res = ojs "new_obj" [ojs_variable name; concrete_args] in
+      let res = ojs_new_obj_arr (ojs_variable name) concrete_args in
       func formal_args unit_arg (js2ml ty_res res)
 
   | Builder, Arrow {ty_args; ty_vararg = None; unit_arg; ty_res} ->

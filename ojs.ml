@@ -109,3 +109,9 @@ external iterate_properties: t -> (string -> unit) -> unit = "caml_ojs_iterate_p
 let empty_obj () = new_obj (get global "Object") [||]
 
 external caml_array_append: t array -> t array -> t array = "caml_array_append"
+
+
+let apply_arr o arr = call o "apply" [| null; arr |]
+let call_arr o s arr = call (get o s) "apply" [| o; arr |]
+external new_obj_arr: t -> t -> t = "caml_ojs_new_arr"
+

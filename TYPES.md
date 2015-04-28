@@ -70,14 +70,25 @@ it is only allowed in these two contexts (as the result, or the final
 pseudo-argument).
 
 Arguments can be **labelled or optional**.  Labels are simply ignored
-on the JS side.  Optional arguments are treated as being of type `'a
-Ojs.optdef` (not `'a option`, which means that missing arguments are
-represented as `undefined` in Javascript).  It is also possible to
-specify a default value for the optional argument:
+on the JS side.  Optional arguments have different treatments:
 
-```ocaml
-val f: t -> ?x:(int [@js.default 0]) -> unit -> t
-```
+ - When mapping an OCaml function to JS (e.g. a callback), optional
+   arguments are treated as normal values of an option type (i.e.
+   both `null` and `undefined` are mapped to `None`).
+
+ - When mapping a JS function to OCaml, it is possible to specify
+   a default value to fill in a missing argument:
+
+   ```ocaml
+   val f: t -> ?x:(int [@js.default 0]) -> unit -> t
+   ```
+
+   If no default value is provided and the argument is missing, the
+   argument is *dropped* from the list of arguments passed to the JS
+   call (this apply to function/method/constructor calls).
+
+ - In `[@@js.builder]` values, missing optional arguments are ignored
+   (they don't create any property on the object).
 
 
 There is a special treatment for optional argument on a
