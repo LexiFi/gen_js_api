@@ -67,7 +67,7 @@ val array_set: t -> int -> t -> unit
 
 external variable: string -> t = "caml_js_var"
 
-val new_obj: string -> t array -> t
+external new_obj: t -> t array -> t = "caml_js_new"
 
 val type_of: t -> string
 

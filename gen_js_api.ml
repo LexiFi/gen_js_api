@@ -1008,7 +1008,7 @@ and gen_classdecl cast_funcs = function
         (Cl.fun_ Nolabel None (Pat.constraint_ (Pat.var (mknoloc x)) ojs_typ) obj)
   | Constructor {class_name; js_class_name; class_arrow = {ty_args; ty_vararg; unit_arg; ty_res}} ->
       let formal_args, concrete_args = add_variadic_arg (gen_args ty_args) ty_vararg in
-      let obj = ojs "new_obj" [str js_class_name; concrete_args] in
+      let obj = ojs "new_obj" [ojs_variable js_class_name; concrete_args] in
       let super_class =
         match ty_res with
         | Name (super_class, []) -> super_class
@@ -1096,7 +1096,7 @@ and gen_def loc decl ty =
 
   | New name, Arrow {ty_args; ty_vararg; unit_arg; ty_res} ->
       let formal_args, concrete_args = add_variadic_arg (gen_args ty_args) ty_vararg in
-      let res = ojs "new_obj" [str name; concrete_args] in
+      let res = ojs "new_obj" [ojs_variable name; concrete_args] in
       func formal_args unit_arg (js2ml ty_res res)
 
   | Builder, Arrow {ty_args; ty_vararg = None; unit_arg; ty_res} ->
