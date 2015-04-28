@@ -385,7 +385,7 @@ let auto_in_object s = function
   | Arrow _ -> MethCall (js_name s)
   | _ -> PropGet (js_name s)
 
-let parse_attr (s, loc, auto) defs (k, v) =
+let parse_attr (s, loc, auto) (k, v) =
   let opt_name ?(prefix = "") ?(capitalize = false) () =
     match v with
     | PStr [] ->
@@ -407,8 +407,16 @@ let parse_attr (s, loc, auto) defs (k, v) =
     ]
   in
   match List.find (fun (name, _) -> filter_attr_name name k) actions with
-  | exception Not_found -> defs
-  | _, f -> f () :: defs
+  | exception Not_found -> None
+  | _, f -> Some (f ())
+
+let rec choose f = function
+  | [] -> []
+  | x :: xs ->
+      begin match f x with
+      | None -> choose f xs
+      | Some y -> y :: choose f xs
+      end
 
 let parse_valdecl ~in_sig vd =
   let s = vd.pval_name.txt in
@@ -416,7 +424,7 @@ let parse_valdecl ~in_sig vd =
   let ty = parse_typ vd.pval_type in
   let attrs = vd.pval_attributes in
   let auto () = auto s ty in
-  let defs = List.fold_left (parse_attr (s, loc, auto)) [] attrs in
+  let defs = choose (parse_attr (s, loc, auto)) attrs in
   let r =
     match defs with
     | [x] -> x
@@ -486,7 +494,7 @@ and parse_class_field = function
   | {pctf_desc = Pctf_method (method_name, Public, Concrete, typ); pctf_loc; pctf_attributes} ->
       let ty = parse_typ typ in
       let auto () = auto_in_object method_name ty in
-      let defs = List.fold_left (parse_attr (method_name, pctf_loc, auto)) [] pctf_attributes in
+      let defs = choose (parse_attr (method_name, pctf_loc, auto)) pctf_attributes in
       let kind =
         match defs with
         | [x] -> x
