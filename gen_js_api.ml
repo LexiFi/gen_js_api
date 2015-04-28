@@ -1198,10 +1198,10 @@ and mapper =
   let module_expr self mexp =
     let mexp = super.module_expr self mexp in
     match mexp.pmod_desc with
-    | Pmod_constraint({pmod_desc=Pmod_extension ({txt="js"; loc = _}, PStr[]); _},
+    | Pmod_constraint({pmod_desc=Pmod_extension ({txt="js"; loc}, PStr[]); _},
                       ({pmty_desc=Pmty_signature sg; _} as mty)) ->
-        Mod.constraint_ (Mod.structure (str_of_sg sg))
-          mty
+        register_loc loc;
+        Mod.constraint_ (Mod.structure (str_of_sg sg)) mty
     | _ -> mexp
   in
   let structure_item self str =
@@ -1216,7 +1216,7 @@ and mapper =
         let js_decls =
           List.filter
             (fun d ->
-               List.exists (fun (k, _) -> k.txt = "js") d.ptype_attributes
+               List.exists (filter_attr "js") d.ptype_attributes
             ) decls
         in
         begin match js_decls with
