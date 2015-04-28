@@ -51,15 +51,12 @@ external equals: t -> t -> bool = "caml_js_equals"
 
 let global = variable "joo_global_object"
 
-external internal_new_obj: t -> t array -> t = "caml_js_new"
-let new_obj name args =
-  let constr = get global name in
-  internal_new_obj constr args
+external new_obj: t -> t array -> t = "caml_js_new"
 
 external call: t -> string -> t array -> t = "caml_js_meth_call"
 external apply: t -> t array -> t = "caml_js_fun_call"
 
-let array_make n = new_obj "Array" [|int_to_js n|]
+let array_make n = new_obj (get global "Array") [|int_to_js n|]
 let array_get t i = internal_get t (int_to_js i)
 let array_set t i x = internal_set t (int_to_js i) x
 
@@ -109,6 +106,6 @@ external fun_to_js_args: (t -> 'a) -> t = "caml_ojs_wrap_fun_arguments"
 
 external iterate_properties: t -> (string -> unit) -> unit = "caml_ojs_iterate_properties"
 
-let empty_obj () = new_obj "Object" [||]
+let empty_obj () = new_obj (get global "Object") [||]
 
 external caml_array_append: t array -> t array -> t array = "caml_array_append"
