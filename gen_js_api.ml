@@ -137,10 +137,10 @@ let () =
       | _ -> None
     )
 
-let js_name name =
+let js_name ?(capitalize = false) name =
   let n = String.length name in
   let buf = Buffer.create n in
-  let capitalize = ref false in
+  let capitalize = ref capitalize in
   for i = 0 to n-1 do
     let c = name.[i] in
     if c = '_' then capitalize := true
@@ -385,12 +385,12 @@ let auto_in_object s = function
   | _ -> PropGet (js_name s)
 
 let parse_attr (s, loc, auto) defs (k, v) =
-  let opt_name ?(prefix = "") () =
+  let opt_name ?(prefix = "") ?(capitalize = false) () =
     match v with
     | PStr [] ->
         begin match check_prefix ~prefix s with
         | None -> error loc (Implicit_name prefix)
-        | Some s -> js_name s
+        | Some s -> js_name ~capitalize s
         end
     | _ -> id_of_expr (expr_of_payload k.loc v)
   in
@@ -418,7 +418,7 @@ let parse_attr (s, loc, auto) defs (k, v) =
       auto () :: defs
   | "js.new" ->
       register_loc k.loc;
-      New (opt_name ~prefix:"new_" ()) :: defs
+      New (opt_name ~prefix:"new_" ~capitalize:true ()) :: defs
   | "js.builder" ->
       register_loc k.loc;
       Builder :: defs
@@ -495,7 +495,7 @@ and parse_class_decl = function
       let class_name = pci_name.txt in
       let js_class_name =
         match get_string_attribute "js.new" pci_attributes with
-        | None -> js_name (String.capitalize_ascii class_name)
+        | None -> js_name ~capitalize:true class_name
         | Some s -> s
       in
       Constructor {class_name; js_class_name; class_arrow}
