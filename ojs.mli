@@ -35,16 +35,8 @@ val list_of_js_from: (t -> 'a) -> t -> int -> 'a list
 
 val option_of_js: (t -> 'a) -> t -> 'a option
 (** Both [null] and [undefined] are mapped to [None]. *)
-
 val option_to_js: ('a -> t) -> 'a option -> t
 (** [None] is mapped to [null]. *)
-
-type 'a optdef = 'a option
-
-val optdef_of_js: (t -> 'a) -> t -> 'a option
-(** Both [null] and [undefined] are mapped to [None]. *)
-val optdef_to_js: ('a -> t) -> 'a option -> t
-(** [None] is mapped to [undefined]. *)
 
 
 (** {2 Wrap OCaml functions as JS functions} *)
@@ -69,6 +61,7 @@ external obj: (string * t) array -> t = "caml_js_object"
 
 val empty_obj: unit -> t
 
+external iterate_properties: t -> (string -> unit) -> unit = "caml_ojs_iterate_properties"
 
 (** {2 Calling JS functions} *)
 
@@ -113,7 +106,3 @@ class obj: t ->
   object
     method to_js: t
   end
-
-external iterate_properties: t -> (string -> unit) -> unit = "caml_ojs_iterate_properties"
-
-external caml_array_append: t array -> t array -> t array = "caml_array_append"

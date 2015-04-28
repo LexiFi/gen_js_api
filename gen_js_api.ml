@@ -557,22 +557,8 @@ let ojs s args =
 let ojs_null =
   Exp.ident (mknoloc (Ldot (Lident "Ojs", "null")))
 
-let list_map f x =
-  Exp.apply (Exp.ident (mknoloc (Longident.parse "List.map"))) (nolabel [f; x])
-
 let list_iter f x =
   Exp.apply (Exp.ident (mknoloc (Longident.parse "List.iter"))) (nolabel [f; x])
-
-let array_of_list x =
-  Exp.apply (Exp.ident (mknoloc (Longident.parse "Array.of_list"))) (nolabel [x])
-
-let array_append a1 a2 =
-  (* perhaps use a specialized runtime primitive which returns
-     one of the arrays if the other one is empty *)
-  match a1.pexp_desc with
-  | Pexp_array [] -> a2
-  | _ -> ojs "caml_array_append" [a1; a2]
-
 
 let fun_ (label, s) e =
   match e.pexp_desc with
@@ -756,7 +742,7 @@ and ml2js ty exp =
           let typ =
             match lab with
             | Arg | Lab _ -> typ
-            | Opt _ -> Name ("Ojs.optdef", [typ])
+            | Opt _ -> Name ("option", [typ])
           in
           s, (arg_label lab, js2ml typ (var s))
         in
@@ -852,13 +838,13 @@ and prepare_args ty_args ty_vararg =
        )
        ty_args
   then
-    let x,y = prepare_args_simple ty_args ty_vararg in
+    let x,y = prepare_args_simple ty_args in
     x, `Simple y
   else
     let x, y = prepare_args_push ty_args ty_vararg in
     x, `Push y
 
-and prepare_args_simple ty_args ty_vararg =
+and prepare_args_simple ty_args =
   let f {lab; att=_; typ} =
     let s = fresh () in
     let e =
@@ -866,7 +852,7 @@ and prepare_args_simple ty_args ty_vararg =
       | Arg | Lab _ -> ml2js typ (var s)
       | Opt {def; _} ->
           begin match def with
-          | None -> ml2js (Name ("Ojs.optdef", [typ])) (var s)
+          | None -> assert false
           | Some none ->
               ml2js typ (match_some_none ~none ~some:(fun v -> v) (var s))
           end
@@ -875,17 +861,7 @@ and prepare_args_simple ty_args ty_vararg =
   in
   let formal_args, concrete = List.split (List.map f ty_args) in
   let concrete_args =  Exp.array concrete in
-  match ty_vararg with
-  | None -> formal_args, concrete_args
-  | Some {lab; att=_; typ} ->
-      let arg = fresh () in
-      let extra_args arg = array_of_list (list_map (ml2js_fun typ) arg) in
-      let extra_args = match lab with
-        | Arg | Lab _ -> extra_args (var arg)
-        | Opt _ ->
-            match_some_none ~none:(Exp.array []) ~some:extra_args (var arg)
-      in
-      formal_args @ [arg_label lab, arg], array_append concrete_args extra_args
+  formal_args, concrete_args
 
 and prepare_args_push ty_args ty_vararg =
   let push arr elt = exp_ignore (ojs "call" [arr; str "push"; Exp.array [elt]]) in

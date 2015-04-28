@@ -89,13 +89,6 @@ let option_to_js f = function
   | Some x -> f x
   | None -> null
 
-type 'a optdef = 'a option
-
-let optdef_of_js = option_of_js
-let optdef_to_js f = function
-  | Some x -> f x
-  | None -> undefined
-
 class obj (x:t) =
   object
     method to_js = x
@@ -107,9 +100,6 @@ external fun_to_js_args: (t -> 'a) -> t = "caml_ojs_wrap_fun_arguments"
 external iterate_properties: t -> (string -> unit) -> unit = "caml_ojs_iterate_properties"
 
 let empty_obj () = new_obj (get global "Object") [||]
-
-external caml_array_append: t array -> t array -> t array = "caml_array_append"
-
 
 let apply_arr o arr = call o "apply" [| null; arr |]
 let call_arr o s arr = call (get o s) "apply" [| o; arr |]
