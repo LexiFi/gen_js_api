@@ -21,9 +21,6 @@ The following types are supported out-of-the-box:
    `null` and `undefined` are mapped back to `None`.  This encoding
    doesn't support nested options in a faithful way.
 
- - A type `'a Ojs.optdef` is defined as an alias to `'a option`, but where
-   `None` is mapped to `undefined` instead of `null`.
-
  - Arrows (see section below).
 
  - Polymorphic variants with only constant variants are supported

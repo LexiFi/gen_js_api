@@ -1072,7 +1072,7 @@ and gen_class_field x = function
           js2ml_unit ty_res (ojs "call" [var x; str s; Exp.array []])
       | _ -> error method_loc Binding_type_mismatch
     in
-    Cf.method_ (mknoloc method_name) Public (Cf.concrete Fresh body)
+    Cf.method_ (mknoloc method_name) Public (Cf.concrete Fresh (Exp.constraint_ body (gen_typ method_typ)))
   | Inherit super ->
     let e = Cl.apply (Cl.constr super []) [Nolabel, var x] in
     Cf.inherit_ Fresh e None
