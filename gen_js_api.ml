@@ -984,6 +984,9 @@ and gen_funs p =
     | Some ty, Ptype_abstract ->
         let ty = parse_typ ty in
         js2ml_fun ty, ml2js_fun ty
+    | None, Ptype_abstract ->
+        let ty = Js in
+        js2ml_fun ty, ml2js_fun ty
     | _, Ptype_variant cstrs ->
         gen_funs_enums cstrs
     | _, Ptype_record lbls ->
@@ -1009,7 +1012,13 @@ and gen_funs p =
 
 and gen_decl = function
   | Type (rec_flag, decls) ->
-      let decls = List.map (fun t -> {t with ptype_private = Public}) decls in
+      let rewrite_typ t =
+        let t = {t with ptype_private = Public} in
+        match t.ptype_manifest, t.ptype_kind with
+        | None, Ptype_abstract -> {t with ptype_manifest = Some ojs_typ}
+        | _ -> t
+      in
+      let decls = List.map rewrite_typ decls in
       let funs = List.concat (List.map gen_funs decls) in
       [ Str.type_ rec_flag decls; Str.value rec_flag funs ]
   | Module (s, decls) ->
