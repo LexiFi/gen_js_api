@@ -656,6 +656,12 @@ let ojs_new_obj_arr cl = function
 
 let assert_false = Exp.assert_ (Exp.construct (mknoloc (Longident.parse "false")) None)
 
+let rewrite_typ_decl t =
+  let t = {t with ptype_private = Public} in
+  match t.ptype_manifest, t.ptype_kind with
+  | None, Ptype_abstract -> {t with ptype_manifest = Some ojs_typ}
+  | _ -> t
+
 let rec js2ml ty exp =
   match ty with
   | Js ->
@@ -1012,13 +1018,7 @@ and gen_funs p =
 
 and gen_decl = function
   | Type (rec_flag, decls) ->
-      let rewrite_typ t =
-        let t = {t with ptype_private = Public} in
-        match t.ptype_manifest, t.ptype_kind with
-        | None, Ptype_abstract -> {t with ptype_manifest = Some ojs_typ}
-        | _ -> t
-      in
-      let decls = List.map rewrite_typ decls in
+      let decls = List.map rewrite_typ_decl decls in
       let funs = List.concat (List.map gen_funs decls) in
       [ Str.type_ rec_flag decls; Str.value rec_flag funs ]
   | Module (s, decls) ->
@@ -1205,7 +1205,7 @@ and mapper =
         | d -> incl (gen_decls [d])
         end
     | Pstr_type (rec_flag, decls) ->
-        let js_decls = List.filter (fun d -> List.exists (filter_attr "js") d.ptype_attributes) decls in
+        let js_decls = List.filter (fun d -> has_attribute "js" d.ptype_attributes) decls in
         begin match js_decls with
         | [] -> str
         | l ->
@@ -1214,7 +1214,7 @@ and mapper =
                  let funs = List.concat (List.map gen_funs l) in
                  incl
                    [
-                     str;
+                     {str with pstr_desc = Pstr_type (rec_flag, List.map (fun d -> if has_attribute "js" d.ptype_attributes then rewrite_typ_decl d else d) decls)};
                      disable_warnings;
                      Str.value ~loc:str.pstr_loc rec_flag funs
                    ]
