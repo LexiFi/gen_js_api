@@ -61,6 +61,7 @@ external obj: (string * t) array -> t = "caml_js_object"
 
 val empty_obj: unit -> t
 
+val has_property: t -> string -> bool
 external iterate_properties: t -> (string -> unit) -> unit = "caml_ojs_iterate_properties"
 
 (** {2 Calling JS functions} *)
