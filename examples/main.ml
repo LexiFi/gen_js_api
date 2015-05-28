@@ -136,7 +136,7 @@ let () =
   let charlie = Person.create "Charlie" (Person.Foo.OtherString "bla") in
   let eve = Person.create "Eve" (Person.Foo.OtherInt 2713) in
 
-  Ojs.iterate_properties (Person.cast alice) (Format.printf "%s\n%!");
+  Ojs.iter_properties (Person.cast alice) (Format.printf "%s\n%!");
 
   let alice_obj = PersonObj.create "Alice" Person.Foo.Foo in
   let bob_obj = PersonObj.of_person bob in
@@ -212,7 +212,7 @@ end = struct
 
   let t_of_js js2ml o =
     let l = ref [] in
-    Ojs.iterate_properties o
+    Ojs.iter_properties o
       (fun k -> l := (k, js2ml (Ojs.get o k)) :: !l);
     !l
 end
@@ -226,4 +226,3 @@ val myDict: string Dict.t
 let () =
   print_endline (int_dict_to_json_string ["hello", 1; "world", 2]);
   List.iter (fun (k, v) -> Printf.printf "%s -> %s\n%!" k v) myDict;
-
