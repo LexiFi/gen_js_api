@@ -61,7 +61,7 @@ end = struct
 
   let t_of_js js2ml o =
     let l = ref [] in
-    Ojs.iterate_properties o
+    Ojs.iter_properties o
       (fun k -> l := (k, js2ml (Ojs.get o k)) :: !l);
     !l
 end
