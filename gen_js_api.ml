@@ -908,8 +908,7 @@ and js2ml_unit ty_res res =
 and gen_typ = function
   | Name (s, tyl) ->
       Typ.constr (mknoloc (Longident.parse s)) (List.map gen_typ tyl)
-  | Js ->
-      Typ.constr (mknoloc (Longident.parse "Ojs.t")) []
+  | Js -> ojs_typ
   | Unit _ ->
       Typ.constr (mknoloc (Lident "unit")) []
   | Arrow {ty_args; ty_vararg; unit_arg; ty_res} ->
@@ -977,6 +976,8 @@ and gen_funs_enums constructors =
         | ("int" | "string") as ty -> `Default (c.pcd_loc, c.pcd_name.txt, ty)
         | _ -> error loc Default_case_in_enum
         end
+    | Some _, Pcstr_tuple [] ->
+        `Enum (prepare_enum c.pcd_name.txt c.pcd_name.loc c.pcd_attributes)
     | _ ->
         error c.pcd_loc Non_constant_constructor_in_enum
     end
@@ -1002,21 +1003,34 @@ and gen_funs p =
     | _ ->
         error p.ptype_loc Cannot_parse_type
   in
-  [
-    Vb.mk
-      ~loc:p.ptype_loc
-      (Pat.constraint_
-         (Pat.var (mknoloc (name ^ "_of_js")))
-         (gen_typ (Arrow {ty_args = [{lab=Arg;att=[];typ=Js}]; ty_vararg = None; unit_arg = false; ty_res = Name (name, [])})))
-      of_js;
-    Vb.mk
-      ~loc:p.ptype_loc
-      (Pat.constraint_
-         (Pat.var (mknoloc (name ^ "_to_js")))
-         (gen_typ (Arrow {ty_args = [{lab=Arg;att=[];typ=Name (name, [])}];
-                          ty_vararg = None; unit_arg = false; ty_res = Js})))
-      to_js
-  ]
+  match p.ptype_params with
+  | [{ptyp_desc = Ptyp_any; ptyp_loc = _; ptyp_attributes = _}, Invariant] ->
+      let v = fresh() in
+      [
+        Vb.mk
+          (Pat.var (mknoloc (name ^ "_to_js")))
+          ~loc:p.ptype_loc
+          (Exp.newtype v
+             (Exp.constraint_
+                to_js
+                (Typ.arrow Nolabel (Typ.constr (mknoloc (Longident.parse name)) [Typ.constr (mknoloc (Longident.parse v)) []]) ojs_typ)))
+      ]
+  | _ ->
+      [
+        Vb.mk
+          ~loc:p.ptype_loc
+          (Pat.constraint_
+             (Pat.var (mknoloc (name ^ "_of_js")))
+             (gen_typ (Arrow {ty_args = [{lab=Arg;att=[];typ=Js}]; ty_vararg = None; unit_arg = false; ty_res = Name (name, [])})))
+          of_js;
+        Vb.mk
+          ~loc:p.ptype_loc
+          (Pat.constraint_
+             (Pat.var (mknoloc (name ^ "_to_js")))
+             (gen_typ (Arrow {ty_args = [{lab=Arg;att=[];typ=Name (name, [])}];
+                              ty_vararg = None; unit_arg = false; ty_res = Js})))
+          to_js
+      ]
 
 and gen_decl = function
   | Type (rec_flag, decls) ->
