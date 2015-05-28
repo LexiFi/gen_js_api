@@ -1003,8 +1003,8 @@ and gen_funs p =
     | _ ->
         error p.ptype_loc Cannot_parse_type
   in
-  match p.ptype_params with
-  | [{ptyp_desc = Ptyp_any; ptyp_loc = _; ptyp_attributes = _}, Invariant] ->
+  match p.ptype_params, p.ptype_kind, p.ptype_manifest with
+  | [{ptyp_desc = Ptyp_any; ptyp_loc = _; ptyp_attributes = _}, Invariant], Ptype_variant _, _ ->
       let v = fresh() in
       [
         Vb.mk
@@ -1015,20 +1015,36 @@ and gen_funs p =
                 to_js
                 (Typ.arrow Nolabel (Typ.constr (mknoloc (Longident.parse name)) [Typ.constr (mknoloc (Longident.parse v)) []]) ojs_typ)))
       ]
-  | _ ->
+  | [{ptyp_desc = Ptyp_var _; ptyp_loc = _; ptyp_attributes = _}, Invariant], Ptype_abstract, None ->
+      let name_typ = Typ.constr (mknoloc (Longident.parse name)) [Typ.any ()] in
       [
         Vb.mk
           ~loc:p.ptype_loc
           (Pat.constraint_
              (Pat.var (mknoloc (name ^ "_of_js")))
-             (gen_typ (Arrow {ty_args = [{lab=Arg;att=[];typ=Js}]; ty_vararg = None; unit_arg = false; ty_res = Name (name, [])})))
+             (Typ.arrow Nolabel ojs_typ name_typ))
           of_js;
         Vb.mk
           ~loc:p.ptype_loc
           (Pat.constraint_
              (Pat.var (mknoloc (name ^ "_to_js")))
-             (gen_typ (Arrow {ty_args = [{lab=Arg;att=[];typ=Name (name, [])}];
-                              ty_vararg = None; unit_arg = false; ty_res = Js})))
+             (Typ.arrow Nolabel name_typ ojs_typ))
+          to_js
+      ]
+  | _ ->
+      let name_typ = Typ.constr (mknoloc (Longident.parse name)) [] in
+      [
+        Vb.mk
+          ~loc:p.ptype_loc
+          (Pat.constraint_
+             (Pat.var (mknoloc (name ^ "_of_js")))
+             (Typ.arrow Nolabel ojs_typ name_typ))
+          of_js;
+        Vb.mk
+          ~loc:p.ptype_loc
+          (Pat.constraint_
+             (Pat.var (mknoloc (name ^ "_to_js")))
+             (Typ.arrow Nolabel name_typ ojs_typ))
           to_js
       ]
 
