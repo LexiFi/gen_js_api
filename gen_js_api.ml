@@ -617,11 +617,24 @@ let split sep s =
   in
   aux 0 0
 
-let ojs_variable s =
-  let path = split '.' s in
-  match path with
+let ojs_global = ojs "variable" [str "joo_global_object"]
+
+let rec select_path o = function
   | [] -> assert false
-  | x :: xs -> List.fold_left (fun o x -> ojs "get" [o; str x]) (ojs "variable" [str x]) xs
+  | [x] -> o, x
+  | x :: xs -> select_path (ojs "get" [o; str x]) xs
+
+let ojs_get_global s =
+  let path = split '.' s in
+  match select_path ojs_global path with
+  | o, x -> ojs "get" [o; str x]
+
+let ojs_variable s = ojs_get_global s
+
+let ojs_set_global s v =
+  let path = split '.' s in
+  match select_path ojs_global path with
+  | o, x -> ojs "set" [o; str x; v]
 
 let def s ty body =
   Str.value Nonrecursive [ Vb.mk (Pat.constraint_ (Pat.var (mknoloc s)) ty) body ]
@@ -1124,6 +1137,11 @@ and gen_def loc decl ty =
   | PropGet s, Arrow {ty_args = [{lab=Arg; att=_; typ}]; ty_vararg = None; unit_arg = false; ty_res} ->
       mkfun (fun this -> js2ml ty_res (ojs "get" [ml2js typ this; str s]))
 
+  | PropGet s, Arrow {ty_args = []; ty_vararg = None; unit_arg = true; ty_res} ->
+      fun_unit (js2ml ty_res (ojs_get_global s))
+
+  | Global s, ty_res -> js2ml ty_res (ojs_variable s)
+
   | PropSet s,
     Arrow {ty_args = [{lab=Arg; att=_; typ=(Name _ as ty_this)};
                       {lab=Arg; att=_; typ=ty_arg}];
@@ -1138,6 +1156,9 @@ and gen_def loc decl ty =
       in
       mkfun (fun this -> mkfun (fun arg -> res this arg))
 
+  | PropSet s, Arrow {ty_args = [{lab = Arg; att = _; typ = ty_arg}]; ty_vararg = None; unit_arg = false; ty_res = Unit _} ->
+      mkfun (fun arg -> ojs_set_global s (ml2js ty_arg arg))
+
   | MethCall s,
     Arrow {ty_args = {lab=Arg; att=_; typ} :: ty_args; ty_vararg; unit_arg; ty_res} ->
       let formal_args, concrete_args = prepare_args ty_args ty_vararg in
@@ -1149,10 +1170,6 @@ and gen_def loc decl ty =
            | [], _, _
            | _ :: _, _, _ -> func formal_args unit_arg (js2ml_unit ty_res (res this))
         )
-
-  | Global s, ty_res ->
-      let res = ojs_variable s in
-      js2ml ty_res res
 
   | New name, Arrow {ty_args; ty_vararg; unit_arg; ty_res} ->
       let formal_args, concrete_args = prepare_args ty_args ty_vararg in
