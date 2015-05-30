@@ -223,6 +223,14 @@ val int_dict_to_json_string: int Dict.t -> string
 val myDict: string Dict.t
   [@@js.global "myDict"]
 
+val set_x: int -> unit
+    [@@js.set "x"]
+
+val get_x: unit -> int
+    [@@js.get "x"]
+
 let () =
   print_endline (int_dict_to_json_string ["hello", 1; "world", 2]);
   List.iter (fun (k, v) -> Printf.printf "%s -> %s\n%!" k v) myDict;
+  set_x 42;
+  print_endline (string_of_int (get_x ()))
