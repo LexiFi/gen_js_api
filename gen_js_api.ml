@@ -22,7 +22,7 @@ type error =
   | Cannot_parse_classdecl
   | Cannot_parse_classfield
   | Implicit_name of string
-  | Unit_not_supported_here
+  | Not_supported_here of string
   | Non_constant_constructor_in_enum
   | Default_case_in_enum
   | Multiple_default_case_in_enum
@@ -31,7 +31,6 @@ type error =
   | Multiple_inputs
   | Unlabelled_argument_in_builder
   | Spurious_attribute
-  | Union_not_supported_here
   | Sum_kind_args
 
 exception Error of Location.t * error
@@ -112,8 +111,8 @@ let print_error ppf = function
       Format.fprintf ppf "Cannot parse class field"
   | Implicit_name prefix ->
       Format.fprintf ppf "Implicit name must start with '%s'" prefix
-  | Unit_not_supported_here ->
-      Format.fprintf ppf "Unit not supported in this context"
+  | Not_supported_here msg ->
+      Format.fprintf ppf "%s not supported in this context" msg
   | Non_constant_constructor_in_enum ->
       Format.fprintf ppf "Constructors in enums cannot take arguments"
   | Default_case_in_enum ->
@@ -130,8 +129,6 @@ let print_error ppf = function
       Format.fprintf ppf "Arguments of builder must be named"
   | Spurious_attribute ->
       Format.fprintf ppf "Spurious js.* attribute"
-  | Union_not_supported_here ->
-      Format.fprintf ppf "js.union not supported in this context"
   | Sum_kind_args ->
       Format.fprintf ppf "Incompatible label name for 'kind' and constructor arguments."
 
@@ -172,6 +169,7 @@ type typ =
   | Name of string * typ list
   | Enum of enum_params
   | Union of Location.t * (string * typ option) list
+  | Flatten of Location.t * (string * string * typ option) list
   | Tuple of typ list
 
 and lab =
@@ -332,6 +330,25 @@ and parse_typ ty =
         | _ -> error ty.ptyp_loc Cannot_parse_type
       in
       Union (ty.ptyp_loc, List.map prepare_row rows)
+  | Ptyp_variant (rows, Closed, None) when has_attribute "js.flatten" ty.ptyp_attributes ->
+      let prepare_row = function
+        | Rtag (label, attributes, true, []) ->
+            let jsname =
+              match get_string_attribute "js" attributes with
+              | None -> js_name label
+              | Some s -> s
+            in
+            (label, jsname, None)
+        | Rtag (label, attributes, false, [typ]) ->
+            let jsname =
+              match get_string_attribute "js" attributes with
+              | None -> js_name label
+              | Some s -> s
+            in
+            (label, jsname, Some (parse_typ typ))
+        | _ -> error ty.ptyp_loc Cannot_parse_type
+      in
+      Flatten (ty.ptyp_loc, List.map prepare_row rows)
   | Ptyp_variant (rows, Closed, None) ->
       let prepare_row = function
         | Rtag (label, attributes, true, []) ->
@@ -694,9 +711,10 @@ let rec js2ml ty exp =
       let res = ojs_apply_arr exp concrete_args in
       func formal_args unit_arg (js2ml_unit ty_res res)
   | Unit loc ->
-      error loc Unit_not_supported_here
+      error loc (Not_supported_here "Unit")
   | Enum params -> js2ml_of_enum ~variant:true params exp
-  | Union (loc, _) -> error loc Union_not_supported_here
+  | Union (loc, _) -> error loc (Not_supported_here "js.union")
+  | Flatten (loc, _) -> error loc (Not_supported_here "js.flatten")
   | Tuple typs ->
       let f x =
         Exp.tuple (List.mapi (fun i typ -> js2ml typ (ojs "array_get" [x; int i])) typs)
@@ -787,7 +805,7 @@ and ml2js ty exp =
       let f = func [Nolabel, arguments] false (ml2js_unit ty_res res) in
       ojs "fun_to_js_args" [f]
   | Unit loc ->
-      error loc Unit_not_supported_here
+      error loc (Not_supported_here "Unit")
   | Enum params -> ml2js_of_enum ~variant:true params exp
   | Union (_, cases) ->
       let f (label, params) =
@@ -802,6 +820,7 @@ and ml2js ty exp =
       in
       let cases = List.map f cases in
       Exp.match_ (Exp.constraint_ exp (gen_typ ty)) cases
+  | Flatten (loc, _) -> error loc (Not_supported_here "js.flatten")
   | Tuple typs ->
       let typed_vars = List.mapi (fun i typ -> i, typ, fresh ()) typs in
       let pat = Pat.tuple (List.map (function (_, _, x) -> Pat.var (mknoloc x)) typed_vars) in
@@ -848,8 +867,9 @@ and prepare_args ty_args ty_vararg =
   if ty_vararg = None &&
      List.for_all
        (function
-           | {lab = Arg | Lab _ | Opt {def = Some _; _}; _} -> true
-           | {lab = Opt {def = None; _}; _} -> false
+         | {typ = Flatten _; _} -> false
+         | {lab = Arg | Lab _ | Opt {def = Some _; _}; _} -> true
+         | {lab = Opt {def = None; _}; _} -> false
        )
        ty_args
   then
@@ -879,20 +899,45 @@ and prepare_args_simple ty_args =
   formal_args, concrete_args
 
 and prepare_args_push ty_args ty_vararg =
-  let push arr elt = exp_ignore (ojs "call" [arr; str "push"; Exp.array [elt]]) in
+  let push arr typ x =
+    match typ with
+    | Flatten (_, cases) ->
+        let f (label, jsname, params) =
+          let gen_tuple typs =
+            let xis = List.map (fun typ -> typ, fresh ()) typs in
+            let pat =
+              match xis with
+              | [] -> Pat.variant label None
+              | [_, x] -> Pat.variant label (Some (Pat.var (mknoloc x)))
+              | _ :: _ :: _ -> Pat.variant label (Some (Pat.tuple (List.map (fun (_, xi) -> Pat.var (mknoloc xi)) xis)))
+            in
+            Exp.case pat
+              (let args = List.map (fun (typi, xi) -> ml2js typi (var xi)) xis in
+               let args = (ml2js (Name ("string", [])) (str jsname)) :: args in
+               (exp_ignore (ojs "call" [arr; str "push"; Exp.array args])))
+          in
+          match params with
+          | None -> gen_tuple []
+          | Some (Tuple typs) -> gen_tuple typs
+          | Some ty -> gen_tuple [ty]
+        in
+        let cases = List.map f cases in
+        Exp.match_ (Exp.constraint_ x (gen_typ typ)) cases
+    | typ -> exp_ignore (ojs "call" [arr; str "push"; Exp.array [ml2js typ x]])
+  in
   let f {lab; att=_; typ} =
     let s = fresh () in
     (arg_label lab, s),
     fun arr ->
       let s = var s in
       match lab with
-      | Arg | Lab _ -> push arr (ml2js typ s)
+      | Arg | Lab _ -> push arr typ s
       | Opt {def; _} ->
           begin match def with
           | None ->
-              match_some_none ~none:unit_expr ~some:(fun s -> push arr (ml2js typ s)) s
+              match_some_none ~none:unit_expr ~some:(fun s -> push arr typ s) s
           | Some none ->
-              push arr (ml2js typ (match_some_none ~none ~some:(fun v -> v) s))
+              push arr typ (match_some_none ~none ~some:(fun v -> v) s)
           end
   in
   let formal_args, concrete_args = List.split (List.map f ty_args) in
@@ -903,7 +948,7 @@ and prepare_args_push ty_args ty_vararg =
         let arg = fresh () in
         formal_args @ [arg_label lab, arg],
         concrete_args @ [fun arr ->
-          let extra_args = list_iter (mkfun (fun x -> push arr (ml2js typ x))) in
+          let extra_args = list_iter (mkfun (fun x -> push arr typ x)) in
           match lab with
           | Arg | Lab _ -> extra_args (var arg)
           | Opt _ -> match_some_none ~none:unit_expr ~some:extra_args (var arg)
@@ -949,6 +994,14 @@ and gen_typ = function
       Typ.variant rows Closed None
   | Union (_loc, cases) ->
       let f (label, params) =
+        match params with
+        | None -> Rtag (label, [], true, [])
+        | Some typ -> Rtag (label, [], false, [gen_typ typ])
+      in
+      let rows = List.map f cases in
+      Typ.variant rows Closed None
+  | Flatten (_loc, cases) ->
+      let f (label, _jsname, params) =
         match params with
         | None -> Rtag (label, [], true, [])
         | Some typ -> Rtag (label, [], false, [gen_typ typ])
