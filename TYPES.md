@@ -173,6 +173,7 @@ implementation).  Mutually recursive type declarations are supported.
 
 - Sum type declaration, mapped to enums (see Enums section).
 
+- Sum type declaration with non constant constructors, mapped to records with a discriminator field (see Arbitrary sum types section).
 
 Enums mapped to polymorphic variants or sum types
 -------------------------------------------------
@@ -206,6 +207,59 @@ type status =
 ```
 
 There cannot be two default constructors with the same argument type.
+
+Arbitrary sum types mapped to records with a discriminator field
+----------------------------------------------------------------
+
+Arbitrary sum types can be mapped to JS records with a discriminator
+field.
+
+By default, the name of the discriminator field is `kind`, but this
+can be changed by specifying a field name as attribute value of the
+`[@@js.sum]` attribute. The value of the discriminator field is set to
+the string representation of the constructor name (which is derived
+automatically from the constructor name or can be specified with a
+`[@js]` attribute).
+
+A constant constructor is simply mapped to a record containing the
+discriminator field.
+
+A unary constructor is mapped to a record containing two fields: the
+discriminator field and an argument field representing the unique
+argument of the constructor. The argument field name is by default
+`arg`, but this can be changed with a `[@js.arg]` attribute.
+
+A nary constructor is mapped to a record containing two fields: the
+discriminator field and an argument field set to an array representing
+the arguments of the constructor. Once again, the argument field name
+is by default `arg`, but this can be changed with a `[@js.arg]`
+attribute.
+
+Finally, an inline record constructor is mapped to a record containing
+all the field of the record in addition of the discriminator
+field. The name of the fields are derived from the name of the record
+fields. As usual, these names can be customized using a `[@js]`
+directive.
+
+```ocaml
+type t =
+  | A
+  | B of int
+  | C of int * string
+  | D of {age: int; name: string}
+    [@@js.sum]
+```
+
+The following declaration is equivalent to the previous one.
+
+```ocaml
+type t =
+  | A [@js "A"]
+  | B of int [@js.arg "arg"]
+  | C of int * string [@js.arg "arg"]
+  | D of {age: int [@js "age"]; name: string}
+    [@@js.sum "kind"]
+```
 
 Union types
 -----------
