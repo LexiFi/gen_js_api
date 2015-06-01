@@ -1051,7 +1051,7 @@ and gen_funs_sum kind_field cstrs =
         match args with
         | `ConstantConstructor -> case (Exp.construct mlconstr None)
         | `UnaryConstructor (arg_field, arg_typ) ->
-            case (Exp.construct mlconstr (Some (Exp.tuple [get_arg arg_field arg_typ])))
+            case (Exp.construct mlconstr (Some (get_arg arg_field arg_typ)))
         | `NaryConstructor (args_field, args_typ) ->
             let get_args key i typ = js2ml typ (ojs "array_get" [ojs "get" [exp; str key]; int i]) in
             case (Exp.construct mlconstr (Some (Exp.tuple (List.mapi (get_args args_field) args_typ))))
