@@ -64,6 +64,13 @@
         console.log(f(10, 10));
       }
 
+      function test_sum() {
+        print_sum({kind:"A"});
+        print_sum({kind:"B", arg:806});
+        print_sum({kind:"C", arg:[806, "bar"]});
+        print_sum({kind:"D", age:24, name:"Toto"});
+      }
+
       var myDict = { "gen_js_api": "OK", "js_of_ocaml": "OK" };
     </script>
     <script type="text/javascript" src="main.js">
