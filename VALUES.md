@@ -87,7 +87,7 @@ Supported forms
 
   ```ocaml
   val get_property: t -> T
-  [@@js.get "MypProp"]
+  [@@js.get "MyProp"]
   ```
 
 
@@ -110,6 +110,33 @@ Supported forms
   val modify_prop: t -> T -> unit
   [@@js.set "prop"]
   ```
+
+- Global getter
+
+  ```ocaml
+  val get_x: unit -> T
+  [@@js.get "x"]
+
+  val get_sub_x: unit -> T
+  [@@js.get "MyObject.x"]
+  ```
+
+  This creates a function which returns the current value of a
+  global variable or of a (possibly nested) inner field of a global variable.
+
+- Global setter
+
+  ```ocaml
+  val set_x: T -> unit
+  [@@js.set "x"]
+
+  val set_sub_x: T -> unit
+  [@@js.set "MyObject.x"]
+  ```
+
+  This creates a function which sets the value of a
+  global variable or of a (possibly nested) inner field of a global variable.
+
 
 - Cast
 
