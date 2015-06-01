@@ -189,8 +189,9 @@ declarations in most cases.  Here are the rules, applied in order:
   followed by `_to_js`), then the function is assumed to be a
   `[@@js.cast]`.
 
-- If the value is a function with a single argument (named type)  `t -> t2`,
-  then the declaration is assumed to be a `[@@js.get]` property getter.
+- If the value is a function with a single argument (named type) `t ->
+  t2` (and `t2` is not `unit`), then the declaration is assumed to be
+  a `[@@js.get]` property getter.
 
 - If the value is a function with two arguments `t1 -> t2 -> unit` and
   its name starts with `set_`, then the declaration is assumed to be a
