@@ -142,6 +142,15 @@ implementation).  Mutually recursive type declarations are supported.
   involved when moving between OCaml and JS (mapping functions are the
   identity).
 
+- Abstract type
+
+   ```ocaml
+   type t
+   ```
+
+  This will generate `type t = Ojs.t` in the implementation.  This
+  is very similar to the case above.
+
 - Type abbreviation:
 
     ```ocaml
