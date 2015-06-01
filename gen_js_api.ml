@@ -1028,8 +1028,8 @@ and gen_funs_sum kind_field cstrs =
               `UnaryConstructor (arg_field, parse_typ x)
           | _ :: _ :: _ ->
               let loc, args_field =
-                match get_attribute "js.args" c.pcd_attributes with
-                | None -> c.pcd_loc, "args"
+                match get_attribute "js.arg" c.pcd_attributes with
+                | None -> c.pcd_loc, "arg"
                 | Some (k, v) ->
                     let args = id_of_expr (expr_of_payload k.loc v) in
                     k.loc, args
