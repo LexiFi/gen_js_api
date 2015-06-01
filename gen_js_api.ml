@@ -32,6 +32,7 @@ type error =
   | Unlabelled_argument_in_builder
   | Spurious_attribute
   | Union_not_supported_here
+  | Sum_kind_args
 
 exception Error of Location.t * error
 
@@ -131,6 +132,8 @@ let print_error ppf = function
       Format.fprintf ppf "Spurious js.* attribute"
   | Union_not_supported_here ->
       Format.fprintf ppf "js.union not supported in this context"
+  | Sum_kind_args ->
+      Format.fprintf ppf "Incompatible label name for 'kind' and constructor arguments."
 
 let () =
   Location.register_error_of_exn
@@ -526,6 +529,7 @@ and parse_class_field = function
 let var x = Exp.ident (mknoloc (Longident.parse x))
 let str s = Exp.constant (Const_string (s, None))
 let int n = Exp.constant (Const_int n)
+let pat_str s = Pat.constant (Const_string (s, None))
 
 let attr s e = Str.attribute (mknoloc s, PStr [Str.eval e])
 
@@ -731,8 +735,8 @@ and js2ml_of_enum ~variant {enums; string_default; int_default} exp =
     | [], cases -> mk_match "string" cases
     | cases, [] -> mk_match "int" cases
     | _ ->
-        let case_int = Exp.case (Pat.constant (Const_string ("number", None))) (mk_match "int" int_cases) in
-        let case_string = Exp.case (Pat.constant (Const_string ("string", None))) (mk_match "string" string_cases) in
+        let case_int = Exp.case (pat_str "number") (mk_match "int" int_cases) in
+        let case_string = Exp.case (pat_str "string") (mk_match "string" string_cases) in
         let case_default = Exp.case (Pat.any ()) assert_false in
         Exp.match_ (ojs "type_of" [exp]) [case_int; case_string; case_default]
   in
@@ -954,27 +958,24 @@ and gen_typ = function
   | Tuple typs ->
       Typ.tuple (List.map gen_typ typs)
 
+let prepare_label ?(check_label = (fun _ _ -> ())) () l =
+  let js =
+    match get_string_attribute "js" l.pld_attributes with
+    | None -> js_name l.pld_name.txt
+    | Some s -> s
+  in
+  check_label l.pld_name.loc l.pld_name.txt;
+  mknoloc (Lident l.pld_name.txt), (* OCaml label *)
+  js, (* JS name *)
+  parse_typ l.pld_type
+
 let rec gen_decls si =
   List.concat (List.map gen_decl si)
 
 and gen_funs_record lbls =
-  let prepare_label l =
-    let js =
-      match get_string_attribute "js" l.pld_attributes with
-      | None -> js_name l.pld_name.txt
-      | Some s -> s
-    in
-    mknoloc (Lident l.pld_name.txt), (* OCaml label *)
-    str js, (* JS name *)
-    parse_typ l.pld_type
-  in
-  let lbls = List.map prepare_label lbls in
-  let of_js x (ml, js, ty) =
-    ml, js2ml ty (ojs "get" [x; js])
-  in
-  let to_js x (ml, js, ty) =
-    Exp.tuple [js; ml2js ty (Exp.field x ml)]
-  in
+  let lbls = List.map (prepare_label ()) lbls in
+  let of_js x (ml, js, ty) = ml, js2ml ty (ojs "get" [x; str js]) in
+  let to_js x (ml, js, ty) = Exp.tuple [str js; ml2js ty (Exp.field x ml)] in
 
   mkfun (fun x -> Exp.record (List.map (of_js x) lbls) None),
   mkfun (fun x -> ojs "obj" [Exp.array (List.map (to_js x) lbls)])
@@ -999,6 +1000,112 @@ and gen_funs_enums constructors =
   mkfun (js2ml_of_enum ~variant:false params),
   mkfun (ml2js_of_enum ~variant:false params)
 
+and gen_funs_sum kind_field cstrs =
+  let check_label loc label =
+    if kind_field = label then error loc Sum_kind_args
+    else ()
+  in
+  let prepare_constructor c =
+    let constr_name =
+      match get_string_attribute "js" c.pcd_attributes with
+      | None -> js_name c.pcd_name.txt
+      | Some s -> s
+    in
+    let args =
+      match c.pcd_args with
+      | Pcstr_tuple args ->
+          begin match args with
+          | [] -> `ConstantConstructor
+          | [x] ->
+              let loc, arg_field =
+                match get_attribute "js.arg" c.pcd_attributes with
+                | None -> c.pcd_loc, "arg"
+                | Some (k, v) ->
+                    let arg = id_of_expr (expr_of_payload k.loc v) in
+                    k.loc, arg
+              in
+              check_label loc arg_field;
+              `UnaryConstructor (arg_field, parse_typ x)
+          | _ :: _ :: _ ->
+              let loc, args_field =
+                match get_attribute "js.args" c.pcd_attributes with
+                | None -> c.pcd_loc, "args"
+                | Some (k, v) ->
+                    let args = id_of_expr (expr_of_payload k.loc v) in
+                    k.loc, args
+              in
+              check_label loc args_field;
+              `NaryConstructor (args_field, List.map parse_typ args)
+          end
+      | Pcstr_record args ->
+          `Record (List.map (prepare_label ~check_label ()) args)
+    in
+    mknoloc (Lident c.pcd_name.txt), constr_name, args
+  in
+  let string_typ = Name ("string", []) in
+  let js2ml_of_sum params =
+    let f exp =
+      let case (mlconstr, jsconstr, args) =
+        let case x = Exp.case (pat_str jsconstr) x in
+        let get_arg key typ = js2ml typ (ojs "get" [exp; str key]) in
+        match args with
+        | `ConstantConstructor -> case (Exp.construct mlconstr None)
+        | `UnaryConstructor (arg_field, arg_typ) ->
+            case (Exp.construct mlconstr (Some (Exp.tuple [get_arg arg_field arg_typ])))
+        | `NaryConstructor (args_field, args_typ) ->
+            let get_args key i typ = js2ml typ (ojs "array_get" [ojs "get" [exp; str key]; int i]) in
+            case (Exp.construct mlconstr (Some (Exp.tuple (List.mapi (get_args args_field) args_typ))))
+        | `Record args ->
+            case (Exp.construct mlconstr (Some (Exp.record (List.map (fun (mlname, jsname, typ) -> mlname, get_arg jsname typ) args) None)))
+      in
+      let default_case = Exp.case (Pat.any()) assert_false in
+      Exp.match_ (js2ml string_typ (ojs "get" [exp; str kind_field])) ((List.map case params) @ [default_case])
+    in
+    fun exp -> let_exp_in exp f
+  in
+  let ml2js_of_sum params =
+    let f exp =
+      let pair key typ value = Exp.tuple [str key; ml2js typ value] in
+      let case (mlconstr, jsconstr, args) =
+        let kind = pair kind_field string_typ (str jsconstr) in
+        match args with
+        | `ConstantConstructor ->
+            Exp.case
+              (Pat.construct mlconstr None)
+              (ojs "obj" [Exp.array [kind]])
+        | `UnaryConstructor (arg_field, arg_typ) ->
+            let x = fresh() in
+            Exp.case
+              (Pat.construct mlconstr (Some (Pat.var (mknoloc x))))
+              (ojs "obj" [Exp.array [kind; pair arg_field arg_typ (var x)]])
+        | `NaryConstructor (args_field, args_typ) ->
+            let xis = List.mapi (fun i typ -> i, typ, fresh()) args_typ in
+            let n_args = List.length xis in
+            Exp.case
+              (Pat.construct mlconstr (Some (Pat.tuple (List.map (fun (_, _, xi) -> Pat.var (mknoloc xi)) xis))))
+              (let args = fresh() in
+               Exp.let_ Nonrecursive
+                 [Vb.mk (Pat.var (mknoloc args)) (ojs "array_make" [int n_args])]
+                 (List.fold_left
+                    (fun e (i, typi, xi) ->
+                       Exp.sequence
+                         (ojs "array_set" [var args; int i; ml2js typi (var xi)]) e)
+                    (ojs "obj" [Exp.array [kind; pair args_field Js (var args)]])
+                    xis))
+        | `Record args ->
+            let x = fresh() in
+            Exp.case
+              (Pat.construct mlconstr (Some (Pat.var (mknoloc x))))
+              (ojs "obj" [Exp.array (kind :: List.map (fun (mlname, jsname, typ) -> pair jsname typ (Exp.field (var x) mlname)) args)])
+      in
+      Exp.match_ exp (List.map case params)
+    in
+    fun exp -> let_exp_in exp f
+  in
+  let params = List.map prepare_constructor cstrs in
+  mkfun (js2ml_of_sum params),
+  mkfun (ml2js_of_sum params)
+
 and gen_funs p =
   let name = p.ptype_name.txt in
   let of_js, to_js =
@@ -1010,7 +1117,16 @@ and gen_funs p =
         let ty = Js in
         js2ml_fun ty, ml2js_fun ty
     | _, Ptype_variant cstrs ->
-        gen_funs_enums cstrs
+        begin match get_attribute "js.sum" p.ptype_attributes with
+        | None -> gen_funs_enums cstrs
+        | Some (k, v) ->
+            let kind =
+              match v with
+              | PStr [] -> "kind"
+              | _ -> id_of_expr (expr_of_payload k.loc v)
+            in
+            gen_funs_sum kind cstrs
+        end
     | _, Ptype_record lbls ->
         gen_funs_record lbls
     | _ ->
