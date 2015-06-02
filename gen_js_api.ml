@@ -163,6 +163,16 @@ let get_jsname name attributes =
   | None -> js_name name
   | Some s -> s
 
+let get_js_constr name attributes =
+  match get_attribute "js" attributes with
+  | None -> `String (js_name name)
+  | Some (k, v) ->
+      begin match (expr_of_payload k.loc v).pexp_desc with
+      | Pexp_constant (Const_string (s, _)) -> `String s
+      | Pexp_constant (Const_int n) -> `Int n
+      | _ -> error k.loc Invalid_expression
+      end
+
 (** AST *)
 
 type enum_params =
@@ -180,7 +190,7 @@ type typ =
   | Enum of enum_params
   | Union of Location.t * (string * typ option) list
   | Flatten of Location.t * (string * string * typ option) list
-  | Sum of string * constructor list
+  | Sum of string * [`Int of int | `String of string] constructor list
   | Tuple of typ list
 
 and lab =
@@ -209,11 +219,12 @@ and constructor_arg =
   | Nary of string * typ list
   | Record of (lid * string * typ) list
 
-and constructor =
+and 'a constructor =
   {
     mlconstr: string;
-    jsconstr: string;
+    jsconstr: 'a;
     arg: constructor_arg;
+    attributes: attributes;
   }
 
 let arg_label = function
@@ -308,8 +319,16 @@ let process_sum kind_field f l =
     if kind_field = label then error loc Sum_kind_args
     else ()
   in
-  let f x = f ~check_label x in
-  List.map f l
+  List.map (f ~check_label) l
+
+let rec partition_constrs = function
+  | [] -> [], []
+  | x :: xs ->
+      let int_constrs, string_constrs = partition_constrs xs in
+      begin match x.jsconstr with
+      | `Int n -> ({x with jsconstr = n} :: int_constrs), string_constrs
+      | `String s -> int_constrs, ({x with jsconstr = s} :: string_constrs)
+      end
 
 let rec parse_arg lab ty =
   let lab =
@@ -395,19 +414,19 @@ and parse_typ ty =
           in
           let prepare_row ~check_label = function
             | Rtag (mlconstr, attributes, true, []) ->
-                let jsconstr = get_jsname mlconstr attributes in
-                { mlconstr; jsconstr; arg = Constant }
+                let jsconstr = get_js_constr mlconstr attributes in
+                { mlconstr; jsconstr; arg = Constant; attributes }
             | Rtag (mlconstr, attributes, false, [typ]) ->
-                let jsconstr = get_jsname mlconstr attributes in
+                let jsconstr = get_js_constr mlconstr attributes in
                 begin match parse_typ typ with
                 | Tuple typs ->
                     let loc, args_field = get_string_attribute_default "js.arg" (ty.ptyp_loc, "arg") attributes in
                     check_label loc args_field;
-                    { mlconstr; jsconstr; arg = Nary (args_field, typs) }
+                    { mlconstr; jsconstr; arg = Nary (args_field, typs); attributes }
                 | typ ->
                     let loc, arg_field = get_string_attribute_default "js.arg" (ty.ptyp_loc, "arg") attributes in
                     check_label loc arg_field;
-                    { mlconstr; jsconstr; arg = Unary (arg_field, typ) }
+                    { mlconstr; jsconstr; arg = Unary (arg_field, typ); attributes }
                 end
             | _ -> error ty.ptyp_loc Cannot_parse_type
           in
@@ -599,6 +618,7 @@ and parse_class_field = function
 let var x = Exp.ident (mknoloc (Longident.parse x))
 let str s = Exp.constant (Const_string (s, None))
 let int n = Exp.constant (Const_int n)
+let pat_int n = Pat.constant (Const_int n)
 let pat_str s = Pat.constant (Const_string (s, None))
 
 let attr s e = Str.attribute (mknoloc s, PStr [Str.eval e])
@@ -814,28 +834,46 @@ and js2ml_of_enum ~variant {enums; string_default; int_default} exp =
   in
   let_exp_in exp to_ml
 
-and js2ml_of_sum ~variant kind_field params exp =
+and js2ml_of_sum ~variant kind_field constrs exp =
   let string_typ = Name ("string", []) in
+  let int_typ = Name ("int", []) in
   let mkval =
     if variant then fun x arg -> Exp.variant x arg
     else fun x arg -> Exp.construct (mknoloc (Longident.Lident x)) arg
   in
   let f exp =
-    let case {mlconstr; jsconstr; arg} =
-      let case x = Exp.case (pat_str jsconstr) x in
-      let get_arg key typ = js2ml typ (ojs "get" [exp; str key]) in
-      match arg with
-      | Constant -> case (mkval mlconstr None)
-      | Unary (arg_field, arg_typ) ->
-          case (mkval mlconstr (Some (get_arg arg_field arg_typ)))
-      | Nary (args_field, args_typ) ->
-          let get_args key i typ = js2ml typ (ojs "array_get" [ojs "get" [exp; str key]; int i]) in
-          case (mkval mlconstr (Some (Exp.tuple (List.mapi (get_args args_field) args_typ))))
-      | Record args ->
-          case (mkval mlconstr (Some (Exp.record (List.map (fun (mlname, jsname, typ) -> mlname, get_arg jsname typ) args) None)))
+    let gen_cases mkpat constrs =
+      let f {jsconstr; mlconstr; arg; attributes = _} =
+        let case x = Exp.case (mkpat jsconstr) x in
+        let get_arg key typ = js2ml typ (ojs "get" [exp; str key]) in
+        match arg with
+        | Constant -> case (mkval mlconstr None)
+        | Unary (arg_field, arg_typ) ->
+            case (mkval mlconstr (Some (get_arg arg_field arg_typ)))
+        | Nary (args_field, args_typ) ->
+            let get_args key i typ = js2ml typ (ojs "array_get" [ojs "get" [exp; str key]; int i]) in
+            case (mkval mlconstr (Some (Exp.tuple (List.mapi (get_args args_field) args_typ))))
+        | Record args ->
+            case (mkval mlconstr (Some (Exp.record (List.map (fun (mlname, jsname, typ) -> mlname, get_arg jsname typ) args) None)))
+      in
+      let cases = List.rev_map f constrs in
+      let cases = Exp.case (Pat.any()) assert_false :: cases in
+      List.rev cases
     in
-    let default_case = Exp.case (Pat.any()) assert_false in
-    Exp.match_ (js2ml string_typ (ojs "get" [exp; str kind_field])) ((List.map case params) @ [default_case])
+    let f typ mkpat constrs =
+      Exp.match_ (js2ml typ (ojs "get" [exp; str kind_field])) (gen_cases mkpat constrs)
+    in
+    let int_constrs, string_constrs = partition_constrs constrs in
+    let int_cases = f int_typ pat_int int_constrs in
+    let string_cases = f string_typ pat_str string_constrs in
+    match int_constrs, string_constrs with
+    | [], _ -> string_cases
+    | _, [] -> int_cases
+    | _ :: _, _ :: _ ->
+        let case_int = Exp.case (pat_str "number") int_cases in
+        let case_string = Exp.case (pat_str "string") string_cases in
+        let case_default = Exp.case (Pat.any ()) assert_false in
+        Exp.match_ (ojs "type_of" [ojs "get" [exp; str kind_field]]) [case_int; case_string; case_default]
   in
   let_exp_in exp f
 
@@ -940,15 +978,20 @@ and ml2js_of_enum ~variant {enums; string_default; int_default} exp =
   let cases = List.map f enums @ cases in
   Exp.match_ exp cases
 
-and ml2js_of_sum ~variant kind_field params exp =
+and ml2js_of_sum ~variant kind_field constrs exp =
   let string_typ = Name ("string", []) in
+  let int_typ = Name ("int", []) in
   let mkpat =
     if variant then fun x arg -> Pat.variant x arg
     else fun x arg -> Pat.construct (mknoloc (Longident.Lident x)) arg
   in
   let pair key typ value = Exp.tuple [str key; ml2js typ value] in
-  let case {mlconstr; jsconstr; arg} =
-    let kind = pair kind_field string_typ (str jsconstr) in
+  let case {mlconstr; jsconstr; arg; attributes = _} =
+    let kind =
+      match jsconstr with
+      | `Int n -> pair kind_field int_typ (int n)
+      | `String s -> pair kind_field string_typ (str s)
+    in
     match arg with
     | Constant ->
         Exp.case
@@ -979,7 +1022,7 @@ and ml2js_of_sum ~variant kind_field params exp =
           (mkpat mlconstr (Some (Pat.var (mknoloc x))))
           (ojs "obj" [Exp.array (kind :: List.map (fun (mlname, jsname, typ) -> pair jsname typ (Exp.field (var x) mlname)) args)])
   in
-  Exp.match_ exp (List.map case params)
+  Exp.match_ exp (List.map case constrs)
 
 and js2ml_fun ty = mkfun (js2ml ty)
 and ml2js_fun ty = mkfun (ml2js ty)
@@ -1114,7 +1157,7 @@ and gen_typ = function
       let rows = List.map f enums @ rows in
       Typ.variant rows Closed None
   | Sum (_kind, params) ->
-      let f {mlconstr; jsconstr = _; arg} =
+      let f {mlconstr; jsconstr = _; arg; attributes = _} =
         match arg with
         | Constant -> Rtag (mlconstr, [], true, [])
         | Unary (_, typ) -> Rtag (mlconstr, [], false, [gen_typ typ])
@@ -1183,7 +1226,7 @@ and gen_funs_enums constructors =
 and gen_funs_sum kind_field cstrs =
   let prepare_constructor ~check_label c =
     let mlconstr = c.pcd_name.txt in
-    let jsconstr = get_jsname mlconstr c.pcd_attributes in
+    let jsconstr = get_js_constr mlconstr c.pcd_attributes in
     let arg =
       match c.pcd_args with
       | Pcstr_tuple args ->
@@ -1201,7 +1244,7 @@ and gen_funs_sum kind_field cstrs =
       | Pcstr_record args ->
           Record (List.map (process_fields ~check_label ()) args)
     in
-    { mlconstr; jsconstr; arg }
+    { mlconstr; jsconstr; arg; attributes = c.pcd_attributes }
   in
   let params = process_sum kind_field prepare_constructor cstrs in
   mkfun (js2ml_of_sum ~variant:false kind_field params),
