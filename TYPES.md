@@ -173,7 +173,7 @@ implementation).  Mutually recursive type declarations are supported.
 
 - Sum type declaration, mapped to enums (see Enums section).
 
-- Sum type declaration with non constant constructors, mapped to records with a discriminator field (see Arbitrary sum types section).
+- Sum type declaration with non constant constructors, mapped to records with a discriminator field (see Sum types section).
 
 Enums mapped to polymorphic variants or sum types
 -------------------------------------------------
@@ -208,11 +208,11 @@ type status =
 
 There cannot be two default constructors with the same argument type.
 
-Arbitrary sum types mapped to records with a discriminator field
-----------------------------------------------------------------
+Sum types mapped to records with a discriminator field
+------------------------------------------------------
 
-Arbitrary sum types can be mapped to JS records with a discriminator
-field.
+Either polymorphic variants or sum types can be mapped to JS records
+with a discriminator field.
 
 By default, the name of the discriminator field is `kind`, but this
 can be changed by specifying a field name as attribute value of the
@@ -233,13 +233,15 @@ A nary constructor is mapped to a record containing two fields: the
 discriminator field and an argument field set to an array representing
 the arguments of the constructor. Once again, the argument field name
 is by default `arg`, but this can be changed with a `[@js.arg]`
-attribute.
+attribute. In the case of polymorphic variant, if the argument is a
+tuple, then the polymorphic variant constructor is considered to be
+nary.
 
 Finally, an inline record constructor is mapped to a record containing
 all the field of the record in addition of the discriminator
 field. The name of the fields are derived from the name of the record
 fields. As usual, these names can be customized using a `[@js]`
-directive.
+directive. This last case only applies to sum types.
 
 ```ocaml
 type t =
