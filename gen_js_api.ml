@@ -24,7 +24,6 @@ type error =
   | Implicit_name of string
   | Not_supported_here of string
   | Non_constant_constructor_in_enum
-  | Default_case_in_enum
   | Multiple_default_case_in_enum
   | Invalid_variadic_type_arg
   | No_input
@@ -120,8 +119,6 @@ let print_error ppf = function
       Format.fprintf ppf "%s not supported in this context" msg
   | Non_constant_constructor_in_enum ->
       Format.fprintf ppf "Constructors in enums cannot take arguments"
-  | Default_case_in_enum ->
-      Format.fprintf ppf "Default constructor in enums unique argument must be of type int or string"
   | Multiple_default_case_in_enum ->
       Format.fprintf ppf "At most one default constructor is supported in enums for each type"
   | Invalid_variadic_type_arg ->
@@ -174,13 +171,6 @@ let get_js_constr name attributes =
       end
 
 (** AST *)
-
-type enum_params =
-  {
-    enums: (string * Parsetree.expression) list;
-    string_default: string option;
-    int_default: string option;
-  }
 
 type typ =
   | Arrow of arrow_params
@@ -267,49 +257,6 @@ type decl =
   | Implem of Parsetree.structure
 
 (** Parsing *)
-
-let typ_of_constant_exp x =
-  match x.pexp_desc with
-  | Pexp_constant (Const_string _) -> "string"
-  | Pexp_constant (Const_int _) -> "int"
-  | _ -> error x.pexp_loc Invalid_expression
-
-let val_of_constant_exp x =
-  match x.pexp_desc with
-  | Pexp_constant c -> c
-  | _ -> error x.pexp_loc Invalid_expression
-
-let opt_cons x xs =
-  match x with
-  | None -> xs
-  | Some x -> x :: xs
-
-let prepare_enum label loc attributes =
-  let js =
-    match get_expr_attribute "js" attributes with
-    | None -> {pexp_desc = Pexp_constant (Const_string (js_name label, None)); pexp_loc = loc; pexp_attributes = attributes}
-    | Some e -> e
-  in
-  label, js
-
-let get_enums f l =
-  let f (enums, string_default, int_default) x =
-    match f x with
-    | `Enum enum -> enum :: enums, string_default, int_default
-    | `Default (loc, label, "int") ->
-        begin match int_default with
-        | None -> enums, string_default, Some label
-        | Some _ -> error loc Multiple_default_case_in_enum
-        end
-    | `Default (loc, label, "string") ->
-        begin match string_default with
-        | None -> enums, Some label, int_default
-        | Some _ -> error loc Multiple_default_case_in_enum
-        end
-    | `Default _ -> assert false
-  in
-  let enums, string_default, int_default = List.fold_left f ([], None, None) l in
-  { enums; string_default; int_default }
 
 let rec parse_arg lab ty =
   let lab =
@@ -737,45 +684,6 @@ let rec js2ml ty exp =
       in
       let_exp_in exp f
 
-and js2ml_of_enum ~variant {enums; string_default; int_default} exp =
-  let mkval =
-    if variant then fun x arg -> Exp.variant x arg
-    else fun x arg -> Exp.construct (mknoloc (Longident.Lident x)) arg
-  in
-  let to_ml exp =
-    let gen_cases enums default =
-      let f otherwise (ml, js) =
-        let pat = Pat.constant (val_of_constant_exp js) in
-        let mlval = mkval ml None in
-        Exp.case pat mlval :: otherwise
-      in
-      match enums, default with
-      | [], None -> []
-      | _ ->
-          let otherwise =
-            match default with
-            | None -> Exp.case (Pat.any ()) assert_false
-            | Some label ->
-                let x = fresh () in
-                Exp.case (Pat.var (mknoloc x)) (mkval label (Some (var x)))
-          in
-          List.fold_left f [otherwise] enums
-    in
-    let mk_match typ cases = Exp.match_ (js2ml (Name (typ, [])) exp) cases in
-    let int_enums, string_enums = List.partition (function (_, js) -> typ_of_constant_exp js = "int") enums in
-    let int_cases = gen_cases int_enums int_default in
-    let string_cases = gen_cases string_enums string_default in
-    match int_cases, string_cases with
-    | [], cases -> mk_match "string" cases
-    | cases, [] -> mk_match "int" cases
-    | _ ->
-        let case_int = Exp.case (pat_str "number") (mk_match "int" int_cases) in
-        let case_string = Exp.case (pat_str "string") (mk_match "string" string_cases) in
-        let case_default = Exp.case (Pat.any ()) assert_false in
-        Exp.match_ (ojs "type_of" [exp]) [case_int; case_string; case_default]
-  in
-  let_exp_in exp to_ml
-
 and js2ml_of_variant ~variant kind constrs exp =
   let string_typ = Name ("string", []) in
   let int_typ = Name ("int", []) in
@@ -928,30 +836,6 @@ and ml2js ty exp =
           List.fold_left f (var a) (List.rev typed_vars)
         end
       end
-
-and ml2js_of_enum ~variant {enums; string_default; int_default} exp =
-  let mkpat =
-    if variant then fun x arg -> Pat.variant x arg
-    else fun x arg -> Pat.construct (mknoloc (Longident.Lident x)) arg
-  in
-  let gen_default ty default =
-    match default with
-    | None -> None
-    | Some label ->
-        let x = fresh () in
-        let pat = mkpat label (Some (Pat.var (mknoloc x))) in
-        let ty = Name (ty, []) in
-        Some (Exp.case pat (ml2js ty (var x)))
-  in
-  let f (ml, js) =
-    let pat = mkpat ml None in
-    let ty = Name (typ_of_constant_exp js, []) in
-    Exp.case pat (ml2js ty js)
-  in
-  let cases = opt_cons (gen_default "string" string_default) [] in
-  let cases = opt_cons (gen_default "int" int_default) cases in
-  let cases = List.map f enums @ cases in
-  Exp.match_ exp cases
 
 and ml2js_of_variant ~variant kind constrs exp =
   let string_typ = Name ("string", []) in
@@ -1181,46 +1065,6 @@ and gen_funs_record lbls =
   mkfun (fun x -> Exp.record (List.map (of_js x) lbls) None),
   mkfun (fun x -> ojs "obj" [Exp.array (List.map (to_js x) lbls)])
 
-and gen_funs_enums constructors =
-  let prepare_constructor c =
-    begin match c.pcd_res, c.pcd_args with
-    | None, Pcstr_tuple [] ->
-        `Enum (prepare_enum c.pcd_name.txt c.pcd_name.loc c.pcd_attributes)
-    | None, Pcstr_tuple [{ptyp_desc = Ptyp_constr ({txt = lid; loc}, []); ptyp_attributes = _; ptyp_loc = _}] when has_attribute "js.default" c.pcd_attributes ->
-        begin match String.concat "." (Longident.flatten lid) with
-        | ("int" | "string") as ty -> `Default (c.pcd_loc, c.pcd_name.txt, ty)
-        | _ -> error loc Default_case_in_enum
-        end
-    | Some _, Pcstr_tuple [] ->
-        `Enum (prepare_enum c.pcd_name.txt c.pcd_name.loc c.pcd_attributes)
-    | _ ->
-        error c.pcd_loc Non_constant_constructor_in_enum
-    end
-  in
-  let params = get_enums prepare_constructor constructors in
-  mkfun (js2ml_of_enum ~variant:false params),
-  mkfun (ml2js_of_enum ~variant:false params)
-
-and gen_funs_sum kind_field cstrs =
-  let prepare_constructor c =
-    let mlconstr = c.pcd_name.txt in
-    let arg =
-      match c.pcd_args with
-      | Pcstr_tuple args ->
-          begin match args with
-          | [] -> Constant
-          | [x] -> Unary (parse_typ x)
-          | _ :: _ :: _ -> Nary (List.map parse_typ args)
-          end
-      | Pcstr_record args ->
-          Record (List.map process_fields args)
-    in
-    { mlconstr; arg; attributes = c.pcd_attributes; location = c.pcd_loc }
-  in
-  let params = List.map prepare_constructor cstrs in
-  mkfun (js2ml_of_variant ~variant:false (Some kind_field) params),
-  mkfun (ml2js_of_variant ~variant:false (Some kind_field) params)
-
 and gen_funs p =
   let name = p.ptype_name.txt in
   let of_js, to_js =
@@ -1232,16 +1076,33 @@ and gen_funs p =
         let ty = Js in
         js2ml_fun ty, ml2js_fun ty
     | _, Ptype_variant cstrs ->
-        begin match get_attribute "js.sum" p.ptype_attributes with
-        | None -> gen_funs_enums cstrs
-        | Some (k, v) ->
-            let kind =
-              match v with
-              | PStr [] -> "kind"
-              | _ -> id_of_expr (expr_of_payload k.loc v)
-            in
-            gen_funs_sum kind cstrs
-        end
+        let kind =
+          match get_attribute "js.sum" p.ptype_attributes with
+          | None -> None
+          | Some (k, v) ->
+              begin match v with
+              | PStr [] -> Some "kind"
+              | _ -> Some (id_of_expr (expr_of_payload k.loc v))
+              end
+        in
+        let prepare_constructor c =
+          let mlconstr = c.pcd_name.txt in
+          let arg =
+            match c.pcd_args with
+            | Pcstr_tuple args ->
+                begin match args with
+                | [] -> Constant
+                | [x] -> Unary (parse_typ x)
+                | _ :: _ :: _ -> Nary (List.map parse_typ args)
+                end
+            | Pcstr_record args ->
+                Record (List.map process_fields args)
+          in
+          { mlconstr; arg; attributes = c.pcd_attributes; location = c.pcd_loc }
+        in
+        let params = List.map prepare_constructor cstrs in
+        mkfun (js2ml_of_variant ~variant:false kind params),
+        mkfun (ml2js_of_variant ~variant:false kind params)
     | _, Ptype_record lbls ->
         gen_funs_record lbls
     | _ ->
