@@ -91,6 +91,7 @@ module Person: sig
       | Bar [@js 42]
       | OtherInt of int [@js.default]
       | OtherString of string [@js.default]
+            [@@js.enum]
   end
 
   type t = private Ojs.t
@@ -159,3 +160,5 @@ module Person2: sig
   val to_json:  t -> string
   [@@js.global "JSON.stringify"]
 end
+
+val f: ([`Int of int | `String of string | `Nothing] [@js.union]) -> unit

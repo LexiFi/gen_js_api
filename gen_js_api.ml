@@ -177,7 +177,7 @@ type typ =
   | Unit of Location.t
   | Js
   | Name of string * typ list
-  | Variant of attributes * constructor list
+  | Variant of Location.t * attributes * constructor list
   | Tuple of typ list
 
 and lab =
@@ -314,7 +314,7 @@ and parse_typ ty =
             end
         | _ -> error location Cannot_parse_type
       in
-      Variant (ty.ptyp_attributes, List.map prepare_row rows)
+      Variant (location, ty.ptyp_attributes, List.map prepare_row rows)
 
   | Ptyp_tuple typs ->
       let typs = List.map parse_typ typs in
@@ -654,6 +654,20 @@ let rewrite_typ_decl t =
   | None, Ptype_abstract -> {t with ptype_manifest = Some ojs_typ}
   | _ -> t
 
+let is_simple_enum params =
+  let string_typ = Name ("string", []) in
+  let int_typ = Name ("int", []) in
+  let p {mlconstr = _; arg; attributes; location = _} =
+    match arg with
+    | Constant -> true
+    | Unary arg_typ when arg_typ = string_typ || arg_typ = int_typ ->
+        has_attribute "js.default" attributes
+    | Unary _
+    | Nary _
+    | Record _ -> false
+  in
+  List.for_all p params
+
 let rec js2ml ty exp =
   match ty with
   | Js ->
@@ -668,26 +682,28 @@ let rec js2ml ty exp =
       func formal_args unit_arg (js2ml_unit ty_res res)
   | Unit loc ->
       error loc (Not_supported_here "Unit")
-  | Variant (attributes, params) -> js2ml_of_variant ~variant:true attributes params exp
+  | Variant (loc, attributes, params) -> js2ml_of_variant ~variant:true loc attributes params exp
   | Tuple typs ->
       let f x =
         Exp.tuple (List.mapi (fun i typ -> js2ml typ (ojs "array_get" [x; int i])) typs)
       in
       let_exp_in exp f
 
-and js2ml_of_variant ~variant attrs constrs exp =
-  let kind =
-    match get_attribute "js.sum" attrs with
-    | None -> None
-    | Some (k, v) ->
-        begin match v with
-        | PStr [] -> Some "kind"
-        | _ -> Some (id_of_expr (expr_of_payload k.loc v))
-        end
+and js2ml_of_variant ~variant loc attrs constrs exp =
+  let is_enum, kind =
+    if has_attribute "js.enum" attrs then true, None
+    else begin
+      match get_attribute "js.sum" attrs with
+      | None -> error loc (Not_supported_here "Sum types")
+      | Some (k, v) ->
+          begin match v with
+          | PStr [] -> false, Some "kind"
+          | _ -> false, Some (id_of_expr (expr_of_payload k.loc v))
+          end
+    end
   in
   let string_typ = Name ("string", []) in
   let int_typ = Name ("int", []) in
-  let is_enum = match kind with None -> true | Some _ -> false in
   let check_label =
     match kind with
     | None -> (fun _ _ -> ())
@@ -821,7 +837,7 @@ and ml2js ty exp =
       ojs "fun_to_js_args" [f]
   | Unit loc ->
       error loc (Not_supported_here "Unit")
-  | Variant (attributes, params) -> ml2js_of_variant ~variant:true attributes params exp
+  | Variant (loc, attributes, params) -> ml2js_of_variant ~variant:true loc attributes params exp
   | Tuple typs ->
       let typed_vars = List.mapi (fun i typ -> i, typ, fresh ()) typs in
       let pat = Pat.tuple (List.map (function (_, _, x) -> Pat.var (mknoloc x)) typed_vars) in
@@ -837,19 +853,21 @@ and ml2js ty exp =
         end
       end
 
-and ml2js_of_variant ~variant attrs constrs exp =
-  let kind =
-    match get_attribute "js.sum" attrs with
-    | None -> None
-    | Some (k, v) ->
-        begin match v with
-        | PStr [] -> Some "kind"
-        | _ -> Some (id_of_expr (expr_of_payload k.loc v))
-        end
+and ml2js_of_variant ~variant loc attrs constrs exp =
+  let is_enum, kind =
+    if has_attribute "js.enum" attrs then true, None
+    else begin
+      match get_attribute "js.sum" attrs with
+      | None -> error loc (Not_supported_here "Sum types")
+      | Some (k, v) ->
+          begin match v with
+          | PStr [] -> false, Some "kind"
+          | _ -> false, Some (id_of_expr (expr_of_payload k.loc v))
+          end
+    end
   in
   let string_typ = Name ("string", []) in
   let int_typ = Name ("int", []) in
-  let is_enum = match kind with None -> true | Some _ -> false in
   let check_label =
     match kind with
     | None -> (fun _ _ -> ())
@@ -916,8 +934,9 @@ and prepare_args ty_args ty_vararg =
   if ty_vararg = None &&
      List.for_all
        (function
-         | {typ = Variant (attributes, _); _} when has_attribute "js.union" attributes -> false
-         | {typ = Variant (attributes, _); _} when has_attribute "js.flatten" attributes -> false
+         | {typ = Variant (_, attributes, constrs); _} when has_attribute "js.enum" attributes ->
+             is_simple_enum constrs
+         | {typ = Variant (_, attributes, _); _} when has_attribute "js.union" attributes -> false
          | {lab = Arg | Lab _ | Opt {def = Some _; _}; _} -> true
          | {lab = Opt {def = None; _}; _} -> false
        )
@@ -951,18 +970,19 @@ and prepare_args_simple ty_args =
 and prepare_args_push ty_args ty_vararg =
   let push arr typ x =
     match typ with
-    | Variant (attributes, constrs) when
-        has_attribute "js.union" attributes || has_attribute "js.flatten" attributes ->
-        let is_union = has_attribute "js.union" attributes in
+    | Variant (_, attributes, constrs) when
+        (has_attribute "js.enum" attributes && not (is_simple_enum constrs)) ||
+        has_attribute "js.union" attributes ->
+        let is_enum = has_attribute "js.enum" attributes in
         let f {mlconstr; arg; attributes; location = _} =
           let string_typ = Name ("string", []) in
           let int_typ = Name ("int", []) in
           let mkargs args =
-            if is_union then args
-            else
+            if is_enum then begin
               match get_js_constr mlconstr attributes with
               | `Int n -> (ml2js int_typ (int n)) :: args
               | `String s -> (ml2js string_typ (str s)) :: args
+            end else args
           in
           let gen_tuple typs =
             let xis = List.map (fun typ -> typ, fresh ()) typs in
@@ -1044,7 +1064,7 @@ and gen_typ = function
       in
       let tl = if unit_arg then tl @ [{lab=Arg;att=[];typ=Unit none}] else tl in
       List.fold_right (fun {lab; att=_; typ} t2 -> Typ.arrow (arg_label lab) (gen_typ typ) t2) tl (gen_typ ty_res)
-  | Variant (_attributes, params) ->
+  | Variant (_loc, _attributes, params) ->
       let f {mlconstr; arg; attributes = _; location = _} =
         match arg with
         | Constant -> Rtag (mlconstr, [], true, [])
@@ -1100,10 +1120,11 @@ and gen_funs p =
           in
           { mlconstr; arg; attributes = c.pcd_attributes; location = c.pcd_loc }
         in
+        let loc = p.ptype_loc in
         let attrs = p.ptype_attributes in
         let params = List.map prepare_constructor cstrs in
-        mkfun (js2ml_of_variant ~variant:false attrs params),
-        mkfun (ml2js_of_variant ~variant:false attrs params)
+        mkfun (js2ml_of_variant ~variant:false loc attrs params),
+        mkfun (ml2js_of_variant ~variant:false loc attrs params)
     | _, Ptype_record lbls ->
         gen_funs_record lbls
     | _ ->

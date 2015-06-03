@@ -272,7 +272,7 @@ let () =
   Console.log console ([%js.of:t] (D {age=42; name="foo"}))
 end
 
-val test_flatten: ([`A | `B of int | `C of string | `D of int * string] [@js.flatten]) -> unit
+val test_flatten: ([`A | `B of int | `C of string | `D of int * string] [@js.enum]) -> unit
     [@@js.global "test_flatten"]
 
 let () =
