@@ -141,28 +141,27 @@ let () =
       | _ -> None
     )
 
-let js_name ?(capitalize = false) name =
-  let n = String.length name in
-  let buf = Buffer.create n in
-  let capitalize = ref capitalize in
-  for i = 0 to n-1 do
-    let c = name.[i] in
-    if c = '_' then capitalize := true
-    else if !capitalize then begin
-      Buffer.add_char buf (Char.uppercase_ascii c);
-      capitalize := false
-    end else Buffer.add_char buf c
-  done;
-  Buffer.contents buf
-
-let get_jsname name attributes =
-  match get_string_attribute "js" attributes with
-  | None -> js_name name
-  | Some s -> s
+let js_name ~attributes ?(capitalize = false) name =
+  if has_attribute "js.verbatim" attributes then
+    if capitalize then String.capitalize_ascii name
+    else name
+  else
+    let n = String.length name in
+    let buf = Buffer.create n in
+    let capitalize = ref capitalize in
+    for i = 0 to n-1 do
+      let c = name.[i] in
+      if c = '_' then capitalize := true
+      else if !capitalize then begin
+        Buffer.add_char buf (Char.uppercase_ascii c);
+        capitalize := false
+      end else Buffer.add_char buf c
+    done;
+    Buffer.contents buf
 
 let get_js_constr name attributes =
   match get_attribute "js" attributes with
-  | None -> `String (js_name name)
+  | None -> `String (js_name ~attributes name)
   | Some (k, v) ->
       begin match (expr_of_payload k.loc v).pexp_desc with
       | Pexp_constant (Const_string (s, _)) -> `String s
@@ -226,7 +225,7 @@ type valdef =
   | MethCall of string
   | Global of string
   | New of string
-  | Builder
+  | Builder of attributes
 
 type methoddef =
   | Getter of string
@@ -346,29 +345,29 @@ let check_suffix ~suffix s =
   else
     None
 
-let auto s = function
+let auto ~attributes s = function
   | Arrow {ty_args = [{lab=Arg; att=_; typ=Name (t, [])}]; ty_vararg = None; unit_arg = false; ty_res = Js} when check_suffix ~suffix:"_to_js" s = Some t -> Cast
   | Arrow {ty_args = [{lab=Arg; att=_; typ=Js}]; ty_vararg = None; unit_arg = false; ty_res = Name (t, [])} when check_suffix ~suffix:"_of_js" s = Some t -> Cast
-  | Arrow {ty_args = [{lab=Arg; att=_; typ=Name _}]; ty_vararg = None; unit_arg = false; ty_res = Unit _} ->  MethCall (js_name s)
-  | Arrow {ty_args = [{lab=Arg; att=_; typ=Name _}]; ty_vararg = None; unit_arg = false; ty_res = _} ->  PropGet (js_name s)
-  | Arrow {ty_args = [{lab=Arg; att=_; typ=Name _}; _]; ty_vararg = None; unit_arg = false; ty_res = Unit _} when has_prefix ~prefix:"set_" s -> PropSet (js_name (drop_prefix ~prefix:"set_" s))
-  | Arrow {ty_args = _; ty_vararg = None; unit_arg = false; ty_res = Name _} when has_prefix ~prefix:"new_" s -> New (js_name (drop_prefix ~prefix:"new_" s))
-  | Arrow {ty_args = {lab=Arg; att=_; typ=Name _} :: _; ty_vararg = _; unit_arg = _; ty_res = _} -> MethCall (js_name s)
-  | _ -> Global (js_name s)
+  | Arrow {ty_args = [{lab=Arg; att=_; typ=Name _}]; ty_vararg = None; unit_arg = false; ty_res = Unit _} ->  MethCall (js_name ~attributes s)
+  | Arrow {ty_args = [{lab=Arg; att=_; typ=Name _}]; ty_vararg = None; unit_arg = false; ty_res = _} ->  PropGet (js_name ~attributes s)
+  | Arrow {ty_args = [{lab=Arg; att=_; typ=Name _}; _]; ty_vararg = None; unit_arg = false; ty_res = Unit _} when has_prefix ~prefix:"set_" s -> PropSet (js_name ~attributes (drop_prefix ~prefix:"set_" s))
+  | Arrow {ty_args = _; ty_vararg = None; unit_arg = false; ty_res = Name _} when has_prefix ~prefix:"new_" s -> New (js_name ~attributes (drop_prefix ~prefix:"new_" s))
+  | Arrow {ty_args = {lab=Arg; att=_; typ=Name _} :: _; ty_vararg = _; unit_arg = _; ty_res = _} -> MethCall (js_name ~attributes s)
+  | _ -> Global (js_name ~attributes s)
 
-let auto_in_object s = function
-  | Arrow {ty_args = [{lab=Arg; att=_; typ=_}]; ty_vararg = None; unit_arg = false; ty_res = Unit _} when has_prefix ~prefix:"set_" s -> PropSet (js_name (drop_prefix ~prefix:"set_" s))
-  | Arrow _ -> MethCall (js_name s)
-  | Unit _ -> MethCall (js_name s)
-  | _ -> PropGet (js_name s)
+let auto_in_object ~attributes s = function
+  | Arrow {ty_args = [{lab=Arg; att=_; typ=_}]; ty_vararg = None; unit_arg = false; ty_res = Unit _} when has_prefix ~prefix:"set_" s -> PropSet (js_name ~attributes (drop_prefix ~prefix:"set_" s))
+  | Arrow _ -> MethCall (js_name ~attributes s)
+  | Unit _ -> MethCall (js_name ~attributes s)
+  | _ -> PropGet (js_name ~attributes s)
 
-let parse_attr (s, loc, auto) (k, v) =
+let parse_attr ~attributes (s, loc, auto) (k, v) =
   let opt_name ?(prefix = "") ?(capitalize = false) () =
     match v with
     | PStr [] ->
         begin match check_prefix ~prefix s with
         | None -> error loc (Implicit_name prefix)
-        | Some s -> js_name ~capitalize s
+        | Some s -> js_name ~attributes ~capitalize s
         end
     | _ -> id_of_expr (expr_of_payload k.loc v)
   in
@@ -380,7 +379,7 @@ let parse_attr (s, loc, auto) (k, v) =
       "js.global", (fun () -> Global (opt_name ()));
       "js", (fun () -> auto ());
       "js.new", (fun () -> New (opt_name ~prefix:"new_" ~capitalize:true ()));
-      "js.builder", (fun () -> Builder);
+      "js.builder", (fun () -> Builder attributes);
     ]
   in
   match List.find (fun (name, _) -> filter_attr_name name k) actions with
@@ -396,12 +395,12 @@ let rec choose f = function
       end
 
 let parse_valdecl ~in_sig vd =
+  let attributes = vd.pval_attributes in
   let s = vd.pval_name.txt in
   let loc = vd.pval_loc in
   let ty = parse_typ vd.pval_type in
-  let attrs = vd.pval_attributes in
-  let auto () = auto s ty in
-  let defs = choose (parse_attr (s, loc, auto)) attrs in
+  let auto () = auto ~attributes s ty in
+  let defs = choose (parse_attr ~attributes (s, loc, auto)) attributes in
   let r =
     match defs with
     | [x] -> x
@@ -441,9 +440,9 @@ and parse_sig_verbatim = function
   | _ :: rest -> parse_sig_verbatim rest
 
 and parse_class_decl = function
-  | {pci_virt = Concrete; pci_params = []; pci_name; pci_expr = {pcty_desc = Pcty_arrow (Nolabel, {ptyp_desc = Ptyp_constr ({txt = Longident.Ldot (Lident "Ojs", "t"); loc = _}, []); _}, {pcty_desc = Pcty_signature {pcsig_self = {ptyp_desc = Ptyp_any; _}; pcsig_fields}; _}); _}; _} ->
+  | {pci_virt = Concrete; pci_params = []; pci_name; pci_expr = {pcty_desc = Pcty_arrow (Nolabel, {ptyp_desc = Ptyp_constr ({txt = Longident.Ldot (Lident "Ojs", "t"); loc = _}, []); _}, {pcty_desc = Pcty_signature {pcsig_self = {ptyp_desc = Ptyp_any; _}; pcsig_fields}; pcty_loc = _; pcty_attributes}); _}; pci_attributes; pci_loc = _} ->
       let class_name = pci_name.txt in
-      Declaration { class_name; class_fields = List.map parse_class_field pcsig_fields }
+      Declaration { class_name; class_fields = List.map (parse_class_field ~attributes:pci_attributes) pcsig_fields }
   | {pci_virt = Concrete; pci_params = []; pci_name; pci_expr; pci_attributes; pci_loc} ->
       let rec convert_typ = function
         | { pcty_desc = Pcty_constr (id, typs); pcty_attributes; pcty_loc } ->
@@ -461,17 +460,17 @@ and parse_class_decl = function
       let class_name = pci_name.txt in
       let js_class_name =
         match get_string_attribute "js.new" pci_attributes with
-        | None -> js_name ~capitalize:true class_name
+        | None -> js_name ~attributes:pci_attributes ~capitalize:true class_name
         | Some s -> s
       in
       Constructor {class_name; js_class_name; class_arrow}
   | {pci_loc; _} -> error pci_loc Cannot_parse_classdecl
 
-and parse_class_field = function
+and parse_class_field ~attributes = function
   | {pctf_desc = Pctf_method (method_name, Public, Concrete, typ); pctf_loc; pctf_attributes} ->
       let ty = parse_typ typ in
-      let auto () = auto_in_object method_name ty in
-      let defs = choose (parse_attr (method_name, pctf_loc, auto)) pctf_attributes in
+      let auto () = auto_in_object ~attributes method_name ty in
+      let defs = choose (parse_attr ~attributes (method_name, pctf_loc, auto)) pctf_attributes in
       let kind =
         match defs with
         | [x] -> x
@@ -1077,18 +1076,26 @@ and gen_typ = function
   | Tuple typs ->
       Typ.tuple (List.map gen_typ typs)
 
-let process_fields l =
-  let js = get_jsname l.pld_name.txt l.pld_attributes in
-  l.pld_name.loc,
-  mknoloc (Lident l.pld_name.txt), (* OCaml label *)
-  js, (* JS name *)
-  parse_typ l.pld_type
+let process_fields ~attributes l =
+  let loc = l.pld_name.loc in
+  let mlname = l.pld_name.txt in
+  let attrs = l.pld_attributes in
+  let typ = l.pld_type in
+  let jsname =
+    match get_string_attribute "js" attrs with
+    | None -> js_name ~attributes mlname
+    | Some s -> s
+  in
+  loc,
+  mknoloc (Lident mlname), (* OCaml label *)
+  jsname, (* JS name *)
+  parse_typ typ
 
 let rec gen_decls si =
   List.concat (List.map gen_decl si)
 
-and gen_funs_record lbls =
-  let lbls = List.map process_fields lbls in
+and gen_funs_record ~attributes lbls =
+  let lbls = List.map (process_fields ~attributes) lbls in
   let of_js x (_loc, ml, js, ty) = ml, js2ml ty (ojs "get" [x; str js]) in
   let to_js x (_loc, ml, js, ty) = Exp.tuple [str js; ml2js ty (Exp.field x ml)] in
   mkfun (fun x -> Exp.record (List.map (of_js x) lbls) None),
@@ -1116,7 +1123,7 @@ and gen_funs p =
                 | _ :: _ :: _ -> Nary (List.map parse_typ args)
                 end
             | Pcstr_record args ->
-                Record (List.map process_fields args)
+                Record (List.map (process_fields ~attributes:c.pcd_attributes) args)
           in
           { mlconstr; arg; attributes = c.pcd_attributes; location = c.pcd_loc }
         in
@@ -1126,7 +1133,7 @@ and gen_funs p =
         mkfun (js2ml_of_variant ~variant:false loc attrs params),
         mkfun (ml2js_of_variant ~variant:false loc attrs params)
     | _, Ptype_record lbls ->
-        gen_funs_record lbls
+        gen_funs_record ~attributes:p.ptype_attributes lbls
     | _ ->
         error p.ptype_loc Cannot_parse_type
   in
@@ -1290,7 +1297,7 @@ and gen_def loc decl ty =
       let res = ojs_new_obj_arr (ojs_variable name) concrete_args in
       func formal_args unit_arg (js2ml ty_res res)
 
-  | Builder, Arrow {ty_args; ty_vararg = None; unit_arg; ty_res} ->
+  | Builder attributes, Arrow {ty_args; ty_vararg = None; unit_arg; ty_res} ->
       let gen_arg {lab; att; typ} =
         let s = fresh () in
         (arg_label lab, s),
@@ -1299,7 +1306,7 @@ and gen_def loc decl ty =
             match get_string_attribute "js" att, lab with
             | Some s, _ -> s
             | None, Arg -> error loc Unlabelled_argument_in_builder
-            | None, (Lab {ml; _} | Opt {ml; _}) -> js_name ml
+            | None, (Lab {ml; _} | Opt {ml; _}) -> js_name ~attributes ml
           in
           let code exp = ojs "set" [x; str js; ml2js typ exp] in
           (* special logic to avoid setting optional argument to 'undefined' *)
