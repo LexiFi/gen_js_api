@@ -234,3 +234,49 @@ let () =
   List.iter (fun (k, v) -> Printf.printf "%s -> %s\n%!" k v) myDict;
   set_x 42;
   print_endline (string_of_int (get_x ()))
+
+module Sum = struct
+include ([%js]: sig
+           type t =
+             | A
+             | B of int
+             | C of int * string
+             | D of {age:int; name:string}
+                   [@@js.sum]
+
+           val t_of_js: Ojs.t -> t
+           val t_to_js: t -> Ojs.t
+         end)
+
+let print = function
+  | A -> print_endline "A"
+  | B n -> print_endline (Format.sprintf "B %d" n)
+  | C (n, s) -> print_endline (Format.sprintf "C (%d, %S)" n s)
+  | D {age; name} -> print_endline (Format.sprintf "D {age = %d; name = %S}" age name)
+
+val set_print_sum: (t -> unit) -> unit
+    [@@js.set "print_sum"]
+
+val test_sum: unit -> unit
+    [@@js.global "test_sum"]
+
+let () =
+  set_print_sum print
+
+let () = test_sum ()
+
+let () =
+  Console.log console ([%js.of:t] A);
+  Console.log console ([%js.of:t] (B 42));
+  Console.log console ([%js.of:t] (C (42, "foo")));
+  Console.log console ([%js.of:t] (D {age=42; name="foo"}))
+end
+
+val test_flatten: ([`A | `B of int | `C of string | `D of int * string] [@js.enum]) -> unit
+    [@@js.global "test_flatten"]
+
+let () =
+  test_flatten `A;
+  test_flatten (`B 42);
+  test_flatten (`C "hello");
+  test_flatten (`D (42, "foo"))

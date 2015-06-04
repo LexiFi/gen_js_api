@@ -64,7 +64,35 @@
         console.log(f(10, 10));
       }
 
+      function test_sum() {
+        print_sum({kind:"A"});
+        print_sum({kind:"B", arg:806});
+        print_sum({kind:"C", arg:[806, "bar"]});
+        print_sum({kind:"D", age:24, name:"Toto"});
+      }
+
       var myDict = { "gen_js_api": "OK", "js_of_ocaml": "OK" };
+
+      function test_flatten(kind) {
+        switch(kind) {
+        case "A": {
+          console.log("A");
+          break;
+        }
+        case "B": {
+          console.log("B "+arguments[1]);
+          break;
+        }
+        case "C": {
+          console.log("C "+arguments[1]);
+          break;
+        }
+        case "D": {
+          console.log("D ("+arguments[1]+", "+arguments[2]+")");
+          break;
+        }
+        }
+      }
     </script>
     <script type="text/javascript" src="main.js">
     </script>

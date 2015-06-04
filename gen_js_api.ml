@@ -22,16 +22,15 @@ type error =
   | Cannot_parse_classdecl
   | Cannot_parse_classfield
   | Implicit_name of string
-  | Unit_not_supported_here
+  | Not_supported_here of string
   | Non_constant_constructor_in_enum
-  | Default_case_in_enum
   | Multiple_default_case_in_enum
   | Invalid_variadic_type_arg
   | No_input
   | Multiple_inputs
   | Unlabelled_argument_in_builder
   | Spurious_attribute
-  | Union_not_supported_here
+  | Sum_kind_args
 
 exception Error of Location.t * error
 
@@ -88,6 +87,11 @@ let get_string_attribute key attrs =
   | None -> None
   | Some (k, v) -> Some (id_of_expr (expr_of_payload k.loc v))
 
+let get_string_attribute_default key default attrs =
+  match get_attribute key attrs with
+  | None -> default
+  | Some (k, v) -> k.loc, id_of_expr (expr_of_payload k.loc v)
+
 let print_error ppf = function
   | Expression_expected ->
       Format.fprintf ppf "Expression expected"
@@ -111,12 +115,10 @@ let print_error ppf = function
       Format.fprintf ppf "Cannot parse class field"
   | Implicit_name prefix ->
       Format.fprintf ppf "Implicit name must start with '%s'" prefix
-  | Unit_not_supported_here ->
-      Format.fprintf ppf "Unit not supported in this context"
+  | Not_supported_here msg ->
+      Format.fprintf ppf "%s not supported in this context" msg
   | Non_constant_constructor_in_enum ->
       Format.fprintf ppf "Constructors in enums cannot take arguments"
-  | Default_case_in_enum ->
-      Format.fprintf ppf "Default constructor in enums unique argument must be of type int or string"
   | Multiple_default_case_in_enum ->
       Format.fprintf ppf "At most one default constructor is supported in enums for each type"
   | Invalid_variadic_type_arg ->
@@ -129,8 +131,8 @@ let print_error ppf = function
       Format.fprintf ppf "Arguments of builder must be named"
   | Spurious_attribute ->
       Format.fprintf ppf "Spurious js.* attribute"
-  | Union_not_supported_here ->
-      Format.fprintf ppf "js.union not supported in this context"
+  | Sum_kind_args ->
+      Format.fprintf ppf "Incompatible label name for 'kind' and constructor arguments."
 
 let () =
   Location.register_error_of_exn
@@ -153,22 +155,29 @@ let js_name ?(capitalize = false) name =
   done;
   Buffer.contents buf
 
-(** AST *)
+let get_jsname name attributes =
+  match get_string_attribute "js" attributes with
+  | None -> js_name name
+  | Some s -> s
 
-type enum_params =
-  {
-    enums: (string * Parsetree.expression) list;
-    string_default: string option;
-    int_default: string option;
-  }
+let get_js_constr name attributes =
+  match get_attribute "js" attributes with
+  | None -> `String (js_name name)
+  | Some (k, v) ->
+      begin match (expr_of_payload k.loc v).pexp_desc with
+      | Pexp_constant (Const_string (s, _)) -> `String s
+      | Pexp_constant (Const_int n) -> `Int n
+      | _ -> error k.loc Invalid_expression
+      end
+
+(** AST *)
 
 type typ =
   | Arrow of arrow_params
   | Unit of Location.t
   | Js
   | Name of string * typ list
-  | Enum of enum_params
-  | Union of Location.t * (string * typ option) list
+  | Variant of Location.t * attributes * constructor list
   | Tuple of typ list
 
 and lab =
@@ -189,6 +198,20 @@ and arrow_params =
     ty_vararg: arg option;
     unit_arg: bool;
     ty_res: typ;
+  }
+
+and constructor_arg =
+  | Constant
+  | Unary of typ
+  | Nary of typ list
+  | Record of (Location.t * lid * string * typ) list
+
+and constructor =
+  {
+    mlconstr: string;
+    arg: constructor_arg;
+    attributes: attributes;
+    location: Location.t;
   }
 
 let arg_label = function
@@ -235,49 +258,6 @@ type decl =
 
 (** Parsing *)
 
-let typ_of_constant_exp x =
-  match x.pexp_desc with
-  | Pexp_constant (Const_string _) -> "string"
-  | Pexp_constant (Const_int _) -> "int"
-  | _ -> error x.pexp_loc Invalid_expression
-
-let val_of_constant_exp x =
-  match x.pexp_desc with
-  | Pexp_constant c -> c
-  | _ -> error x.pexp_loc Invalid_expression
-
-let opt_cons x xs =
-  match x with
-  | None -> xs
-  | Some x -> x :: xs
-
-let prepare_enum label loc attributes =
-  let js =
-    match get_expr_attribute "js" attributes with
-    | None -> {pexp_desc = Pexp_constant (Const_string (js_name label, None)); pexp_loc = loc; pexp_attributes = attributes}
-    | Some e -> e
-  in
-  label, js
-
-let get_enums f l =
-  let f (enums, string_default, int_default) x =
-    match f x with
-    | `Enum enum -> enum :: enums, string_default, int_default
-    | `Default (loc, label, "int") ->
-        begin match int_default with
-        | None -> enums, string_default, Some label
-        | Some _ -> error loc Multiple_default_case_in_enum
-        end
-    | `Default (loc, label, "string") ->
-        begin match string_default with
-        | None -> enums, Some label, int_default
-        | Some _ -> error loc Multiple_default_case_in_enum
-        end
-    | `Default _ -> assert false
-  in
-  let enums, string_default, int_default = List.fold_left f ([], None, None) l in
-  { enums; string_default; int_default }
-
 let rec parse_arg lab ty =
   let lab =
     match lab with
@@ -322,25 +302,20 @@ and parse_typ ty =
       | "Ojs.t", [] -> Js
       | s, tl -> Name (s, List.map parse_typ tl)
       end
-  | Ptyp_variant (rows, Closed, None) when has_attribute "js.union" ty.ptyp_attributes ->
-      let prepare_row = function
-        | Rtag (label, _attributes, true, []) -> (label, None)
-        | Rtag (label, _attributes, false, [typ]) -> (label, Some (parse_typ typ))
-        | _ -> error ty.ptyp_loc Cannot_parse_type
-      in
-      Union (ty.ptyp_loc, List.map prepare_row rows)
   | Ptyp_variant (rows, Closed, None) ->
+      let location = ty.ptyp_loc in
       let prepare_row = function
-        | Rtag (label, attributes, true, []) ->
-            `Enum (prepare_enum label ty.ptyp_loc attributes)
-        | Rtag (label, attributes, false, [{ptyp_desc = Ptyp_constr ({txt = lid; loc}, []); ptyp_attributes = _; ptyp_loc = _}]) when has_attribute "js.default" attributes ->
-            begin match String.concat "." (Longident.flatten lid) with
-            | ("int" | "string") as ty -> `Default (loc, label, ty)
-            | _ -> error loc Default_case_in_enum
+        | Rtag (mlconstr, attributes, true, []) ->
+            { mlconstr; arg = Constant; attributes; location }
+        | Rtag (mlconstr, attributes, false, [typ]) ->
+            begin match parse_typ typ with
+            | Tuple typs -> { mlconstr; arg = Nary typs; attributes; location }
+            | typ -> { mlconstr; arg = Unary typ; attributes; location }
             end
-        | _ -> error ty.ptyp_loc Non_constant_constructor_in_enum
+        | _ -> error location Cannot_parse_type
       in
-      Enum (get_enums prepare_row rows)
+      Variant (location, ty.ptyp_attributes, List.map prepare_row rows)
+
   | Ptyp_tuple typs ->
       let typs = List.map parse_typ typs in
       Tuple typs
@@ -526,6 +501,8 @@ and parse_class_field = function
 let var x = Exp.ident (mknoloc (Longident.parse x))
 let str s = Exp.constant (Const_string (s, None))
 let int n = Exp.constant (Const_int n)
+let pat_int n = Pat.constant (Const_int n)
+let pat_str s = Pat.constant (Const_string (s, None))
 
 let attr s e = Str.attribute (mknoloc s, PStr [Str.eval e])
 
@@ -677,6 +654,20 @@ let rewrite_typ_decl t =
   | None, Ptype_abstract -> {t with ptype_manifest = Some ojs_typ}
   | _ -> t
 
+let is_simple_enum params =
+  let string_typ = Name ("string", []) in
+  let int_typ = Name ("int", []) in
+  let p {mlconstr = _; arg; attributes; location = _} =
+    match arg with
+    | Constant -> true
+    | Unary arg_typ when arg_typ = string_typ || arg_typ = int_typ ->
+        has_attribute "js.default" attributes
+    | Unary _
+    | Nary _
+    | Record _ -> false
+  in
+  List.for_all p params
+
 let rec js2ml ty exp =
   match ty with
   | Js ->
@@ -690,53 +681,115 @@ let rec js2ml ty exp =
       let res = ojs_apply_arr exp concrete_args in
       func formal_args unit_arg (js2ml_unit ty_res res)
   | Unit loc ->
-      error loc Unit_not_supported_here
-  | Enum params -> js2ml_of_enum ~variant:true params exp
-  | Union (loc, _) -> error loc Union_not_supported_here
+      error loc (Not_supported_here "Unit")
+  | Variant (loc, attributes, params) -> js2ml_of_variant ~variant:true loc attributes params exp
   | Tuple typs ->
       let f x =
         Exp.tuple (List.mapi (fun i typ -> js2ml typ (ojs "array_get" [x; int i])) typs)
       in
       let_exp_in exp f
 
-and js2ml_of_enum ~variant {enums; string_default; int_default} exp =
+and js2ml_of_variant ~variant loc attrs constrs exp =
+  let is_enum, kind =
+    if has_attribute "js.enum" attrs then true, None
+    else begin
+      match get_attribute "js.sum" attrs with
+      | None -> error loc (Not_supported_here "Sum types")
+      | Some (k, v) ->
+          begin match v with
+          | PStr [] -> false, Some "kind"
+          | _ -> false, Some (id_of_expr (expr_of_payload k.loc v))
+          end
+    end
+  in
+  let string_typ = Name ("string", []) in
+  let int_typ = Name ("int", []) in
+  let check_label =
+    match kind with
+    | None -> (fun _ _ -> ())
+    | Some kind -> (fun loc label -> if label = kind then error loc Sum_kind_args)
+  in
   let mkval =
     if variant then fun x arg -> Exp.variant x arg
     else fun x arg -> Exp.construct (mknoloc (Longident.Lident x)) arg
   in
-  let to_ml exp =
-    let gen_cases enums default =
-      let f otherwise (ml, js) =
-        let pat = Pat.constant (val_of_constant_exp js) in
-        let mlval = mkval ml None in
-        Exp.case pat mlval :: otherwise
+  let f exp =
+    let gen_cases (int_default, int_cases, string_default, string_cases) {mlconstr; arg; attributes; location} =
+      let case x =
+        match get_js_constr mlconstr attributes with
+        | `String s -> int_default, int_cases, string_default, Exp.case (pat_str s) x :: string_cases
+        | `Int n -> int_default, Exp.case (pat_int n) x :: int_cases, string_default, string_cases
       in
-      match enums, default with
-      | [], None -> []
-      | _ ->
-          let otherwise =
-            match default with
-            | None -> Exp.case (Pat.any ()) assert_false
-            | Some label ->
-                let x = fresh () in
-                Exp.case (Pat.var (mknoloc x)) (mkval label (Some (var x)))
+      let get_arg key typ = js2ml typ (ojs "get" [exp; str key]) in
+      match arg with
+      | Constant -> case (mkval mlconstr None)
+      | Unary arg_typ ->
+          let otherwise() =
+            if is_enum then error location Non_constant_constructor_in_enum
+            else begin
+              let loc, arg_field = get_string_attribute_default "js.arg" (location, "arg") attributes in
+              check_label loc arg_field;
+              case (mkval mlconstr (Some (get_arg arg_field arg_typ)))
+            end
           in
-          List.fold_left f [otherwise] enums
+          let process_default def cont =
+            match get_attribute "js.default" attributes with
+            | None -> otherwise()
+            | Some (k, _) ->
+                begin match def with
+                | None ->
+                    let x = fresh() in
+                    cont (Exp.case (Pat.var (mknoloc x)) (mkval mlconstr (Some (var x))))
+                | Some _ -> error k.loc Multiple_default_case_in_enum
+                end
+          in
+
+          if is_enum && arg_typ = int_typ then begin
+            process_default int_default (fun int_default -> Some int_default, int_cases, string_default, string_cases)
+          end else if is_enum && arg_typ = string_typ then begin
+            process_default string_default (fun string_default -> int_default, int_cases, Some string_default, string_cases)
+          end else otherwise()
+      | Nary args_typ ->
+          if is_enum then error location Non_constant_constructor_in_enum
+          else
+            let loc, args_field = get_string_attribute_default "js.arg" (location, "arg") attributes in
+            check_label loc args_field;
+            let get_args key i typ = js2ml typ (ojs "array_get" [ojs "get" [exp; str key]; int i]) in
+            case (mkval mlconstr (Some (Exp.tuple (List.mapi (get_args args_field) args_typ))))
+      | Record args ->
+          if is_enum then error location Non_constant_constructor_in_enum
+          else
+            case (mkval mlconstr (Some (Exp.record (List.map (fun (loc, mlname, jsname, typ) -> check_label loc jsname; mlname, get_arg jsname typ) args) None)))
     in
-    let mk_match typ cases = Exp.match_ (js2ml (Name (typ, [])) exp) cases in
-    let int_enums, string_enums = List.partition (function (_, js) -> typ_of_constant_exp js = "int") enums in
-    let int_cases = gen_cases int_enums int_default in
-    let string_cases = gen_cases string_enums string_default in
-    match int_cases, string_cases with
-    | [], cases -> mk_match "string" cases
-    | cases, [] -> mk_match "int" cases
-    | _ ->
-        let case_int = Exp.case (Pat.constant (Const_string ("number", None))) (mk_match "int" int_cases) in
-        let case_string = Exp.case (Pat.constant (Const_string ("string", None))) (mk_match "string" string_cases) in
+    let (int_default, int_cases, string_default, string_cases) = List.fold_left gen_cases (None, [], None, []) constrs in
+    let gen_match e default other_cases =
+      match default, other_cases with
+      | None, [] -> None
+      | Some default, _ ->
+          let cases = List.rev (default :: other_cases) in
+          Some (Exp.match_ e cases)
+      | None, _ :: _ ->
+          let cases = List.rev ((Exp.case (Pat.any()) assert_false) :: other_cases) in
+          Some (Exp.match_ e cases)
+    in
+    let discriminator =
+      match kind with
+      | None -> exp
+      | Some kind -> ojs "get" [exp; str kind]
+    in
+    let int_match = gen_match (js2ml int_typ discriminator) int_default int_cases in
+    let string_match = gen_match (js2ml string_typ discriminator) string_default string_cases in
+    match int_match, string_match with
+    | None, None -> assert false
+    | Some int_match, None -> int_match
+    | None, Some string_match -> string_match
+    | Some int_match, Some string_match ->
+        let case_int = Exp.case (pat_str "number") int_match in
+        let case_string = Exp.case (pat_str "string") string_match in
         let case_default = Exp.case (Pat.any ()) assert_false in
-        Exp.match_ (ojs "type_of" [exp]) [case_int; case_string; case_default]
+        Exp.match_ (ojs "type_of" [discriminator]) [case_int; case_string; case_default]
   in
-  let_exp_in exp to_ml
+  let_exp_in exp f
 
 and ml2js ty exp =
   match ty with
@@ -783,21 +836,8 @@ and ml2js ty exp =
       let f = func [Nolabel, arguments] false (ml2js_unit ty_res res) in
       ojs "fun_to_js_args" [f]
   | Unit loc ->
-      error loc Unit_not_supported_here
-  | Enum params -> ml2js_of_enum ~variant:true params exp
-  | Union (_, cases) ->
-      let f (label, params) =
-        match params with
-        | None ->
-            let pat = Pat.variant label None in
-            Exp.case pat ojs_null
-        | Some ty ->
-            let x = fresh () in
-            let pat = Pat.variant label (Some (Pat.var (mknoloc x))) in
-            Exp.case pat (ml2js ty (var x))
-      in
-      let cases = List.map f cases in
-      Exp.match_ (Exp.constraint_ exp (gen_typ ty)) cases
+      error loc (Not_supported_here "Unit")
+  | Variant (loc, attributes, params) -> ml2js_of_variant ~variant:true loc attributes params exp
   | Tuple typs ->
       let typed_vars = List.mapi (fun i typ -> i, typ, fresh ()) typs in
       let pat = Pat.tuple (List.map (function (_, _, x) -> Pat.var (mknoloc x)) typed_vars) in
@@ -813,29 +853,79 @@ and ml2js ty exp =
         end
       end
 
-and ml2js_of_enum ~variant {enums; string_default; int_default} exp =
+and ml2js_of_variant ~variant loc attrs constrs exp =
+  let is_enum, kind =
+    if has_attribute "js.enum" attrs then true, None
+    else begin
+      match get_attribute "js.sum" attrs with
+      | None -> error loc (Not_supported_here "Sum types")
+      | Some (k, v) ->
+          begin match v with
+          | PStr [] -> false, Some "kind"
+          | _ -> false, Some (id_of_expr (expr_of_payload k.loc v))
+          end
+    end
+  in
+  let string_typ = Name ("string", []) in
+  let int_typ = Name ("int", []) in
+  let check_label =
+    match kind with
+    | None -> (fun _ _ -> ())
+    | Some kind -> (fun loc label -> if label = kind then error loc Sum_kind_args)
+  in
   let mkpat =
     if variant then fun x arg -> Pat.variant x arg
     else fun x arg -> Pat.construct (mknoloc (Longident.Lident x)) arg
   in
-  let gen_default ty default =
-    match default with
-    | None -> None
-    | Some label ->
-        let x = fresh () in
-        let pat = mkpat label (Some (Pat.var (mknoloc x))) in
-        let ty = Name (ty, []) in
-        Some (Exp.case pat (ml2js ty (var x)))
+  let pair key typ value = Exp.tuple [str key; ml2js typ value] in
+  let case {mlconstr; arg; attributes; location} =
+    let mkobj args =
+      let discriminator =
+        match get_js_constr mlconstr attributes with
+        | `Int n -> ml2js int_typ (int n)
+        | `String s -> ml2js string_typ (str s)
+      in
+      match kind, args with
+      | None, [] -> discriminator
+      | None, _ :: _ -> error location Non_constant_constructor_in_enum
+      | Some kind, _ -> ojs "obj" [Exp.array ((Exp.tuple [str kind; discriminator]) :: args)]
+    in
+    match arg with
+    | Constant -> Exp.case (mkpat mlconstr None) (mkobj [])
+    | Unary arg_typ ->
+        let x = fresh() in
+        let value =
+          if is_enum && (arg_typ = int_typ || arg_typ = string_typ) && has_attribute "js.default" attributes then begin
+            ml2js arg_typ (var x)
+          end else
+            let loc, arg_field = get_string_attribute_default "js.arg" (location, "arg") attributes in
+            check_label loc arg_field;
+            mkobj [pair arg_field arg_typ (var x)]
+        in
+        Exp.case (mkpat mlconstr (Some (Pat.var (mknoloc x)))) value
+    | Nary args_typ ->
+        let loc, args_field = get_string_attribute_default "js.arg" (location, "arg") attributes in
+        check_label loc args_field;
+        let xis = List.mapi (fun i typ -> i, typ, fresh()) args_typ in
+        let n_args = List.length xis in
+        Exp.case
+          (mkpat mlconstr (Some (Pat.tuple (List.map (fun (_, _, xi) -> Pat.var (mknoloc xi)) xis))))
+          (let args = fresh() in
+           Exp.let_ Nonrecursive
+             [Vb.mk (Pat.var (mknoloc args)) (ojs "array_make" [int n_args])]
+             (List.fold_left
+                (fun e (i, typi, xi) ->
+                   Exp.sequence
+                     (ojs "array_set" [var args; int i; ml2js typi (var xi)]) e)
+                (mkobj [pair args_field Js (var args)])
+                xis))
+    | Record args ->
+        let x = fresh() in
+        Exp.case
+          (mkpat mlconstr (Some (Pat.var (mknoloc x))))
+          (mkobj (List.map (fun (loc, mlname, jsname, typ) -> check_label loc jsname; pair jsname typ (Exp.field (var x) mlname)) args))
   in
-  let f (ml, js) =
-    let pat = mkpat ml None in
-    let ty = Name (typ_of_constant_exp js, []) in
-    Exp.case pat (ml2js ty js)
-  in
-  let cases = opt_cons (gen_default "string" string_default) [] in
-  let cases = opt_cons (gen_default "int" int_default) cases in
-  let cases = List.map f enums @ cases in
-  Exp.match_ exp cases
+  Exp.match_ exp (List.map case constrs)
 
 and js2ml_fun ty = mkfun (js2ml ty)
 and ml2js_fun ty = mkfun (ml2js ty)
@@ -844,8 +934,11 @@ and prepare_args ty_args ty_vararg =
   if ty_vararg = None &&
      List.for_all
        (function
-           | {lab = Arg | Lab _ | Opt {def = Some _; _}; _} -> true
-           | {lab = Opt {def = None; _}; _} -> false
+         | {typ = Variant (_, attributes, constrs); _} when has_attribute "js.enum" attributes ->
+             is_simple_enum constrs
+         | {typ = Variant (_, attributes, _); _} when has_attribute "js.union" attributes -> false
+         | {lab = Arg | Lab _ | Opt {def = Some _; _}; _} -> true
+         | {lab = Opt {def = None; _}; _} -> false
        )
        ty_args
   then
@@ -875,20 +968,62 @@ and prepare_args_simple ty_args =
   formal_args, concrete_args
 
 and prepare_args_push ty_args ty_vararg =
-  let push arr elt = exp_ignore (ojs "call" [arr; str "push"; Exp.array [elt]]) in
+  let push arr typ x =
+    match typ with
+    | Variant (_, attributes, constrs) when
+        (has_attribute "js.enum" attributes && not (is_simple_enum constrs)) ||
+        has_attribute "js.union" attributes ->
+        let is_enum = has_attribute "js.enum" attributes in
+        let f {mlconstr; arg; attributes; location = _} =
+          let string_typ = Name ("string", []) in
+          let int_typ = Name ("int", []) in
+          let mkargs args =
+            if is_enum then begin
+              match get_js_constr mlconstr attributes with
+              | `Int n -> (ml2js int_typ (int n)) :: args
+              | `String s -> (ml2js string_typ (str s)) :: args
+            end else
+              match args with
+              | [] -> [ojs "null" []]
+              | _ :: _ -> args
+          in
+          let gen_tuple typs =
+            let xis = List.map (fun typ -> typ, fresh ()) typs in
+            let pat =
+              match xis with
+              | [] -> Pat.variant mlconstr None
+              | [_, x] -> Pat.variant mlconstr (Some (Pat.var (mknoloc x)))
+              | _ :: _ :: _ -> Pat.variant mlconstr (Some (Pat.tuple (List.map (fun (_, xi) -> Pat.var (mknoloc xi)) xis)))
+            in
+            Exp.case pat
+              (let args = mkargs (List.map (fun (typi, xi) -> ml2js typi (var xi)) xis) in
+               match args with
+               | [] -> unit_expr
+               | _ :: _ -> exp_ignore (ojs "call" [arr; str "push"; Exp.array args]))
+          in
+          match arg with
+          | Constant -> gen_tuple []
+          | Unary typ -> gen_tuple [typ]
+          | Nary typs -> gen_tuple typs
+          | Record _ -> assert false
+        in
+        let cases = List.map f constrs in
+        Exp.match_ (Exp.constraint_ x (gen_typ typ)) cases
+    | typ -> exp_ignore (ojs "call" [arr; str "push"; Exp.array [ml2js typ x]])
+  in
   let f {lab; att=_; typ} =
     let s = fresh () in
     (arg_label lab, s),
     fun arr ->
       let s = var s in
       match lab with
-      | Arg | Lab _ -> push arr (ml2js typ s)
+      | Arg | Lab _ -> push arr typ s
       | Opt {def; _} ->
           begin match def with
           | None ->
-              match_some_none ~none:unit_expr ~some:(fun s -> push arr (ml2js typ s)) s
+              match_some_none ~none:unit_expr ~some:(fun s -> push arr typ s) s
           | Some none ->
-              push arr (ml2js typ (match_some_none ~none ~some:(fun v -> v) s))
+              push arr typ (match_some_none ~none ~some:(fun v -> v) s)
           end
   in
   let formal_args, concrete_args = List.split (List.map f ty_args) in
@@ -899,7 +1034,7 @@ and prepare_args_push ty_args ty_vararg =
         let arg = fresh () in
         formal_args @ [arg_label lab, arg],
         concrete_args @ [fun arr ->
-          let extra_args = list_iter (mkfun (fun x -> push arr (ml2js typ x))) in
+          let extra_args = list_iter (mkfun (fun x -> push arr typ x)) in
           match lab with
           | Arg | Lab _ -> extra_args (var arg)
           | Opt _ -> match_some_none ~none:unit_expr ~some:extra_args (var arg)
@@ -932,72 +1067,35 @@ and gen_typ = function
       in
       let tl = if unit_arg then tl @ [{lab=Arg;att=[];typ=Unit none}] else tl in
       List.fold_right (fun {lab; att=_; typ} t2 -> Typ.arrow (arg_label lab) (gen_typ typ) t2) tl (gen_typ ty_res)
-  | Enum {enums; string_default; int_default} ->
-      let gen_default ty default =
-        match default with
-        | None -> None
-        | Some label -> Some (Rtag (label, [], false, [Typ.constr (mknoloc (Longident.Lident ty)) []]))
+  | Variant (_loc, _attributes, params) ->
+      let f {mlconstr; arg; attributes = _; location = _} =
+        match arg with
+        | Constant -> Rtag (mlconstr, [], true, [])
+        | Unary typ -> Rtag (mlconstr, [], false, [gen_typ typ])
+        | Nary typs -> Rtag (mlconstr, [], false, [gen_typ (Tuple typs)])
+        | Record _ -> assert false
       in
-      let f (label, _) = Rtag (label, [], true, []) in
-      let rows = opt_cons (gen_default "string" string_default) [] in
-      let rows = opt_cons (gen_default "int" int_default) rows in
-      let rows = List.map f enums @ rows in
-      Typ.variant rows Closed None
-  | Union (_loc, cases) ->
-      let f (label, params) =
-        match params with
-        | None -> Rtag (label, [], true, [])
-        | Some typ -> Rtag (label, [], false, [gen_typ typ])
-      in
-      let rows = List.map f cases in
+      let rows = List.map f params in
       Typ.variant rows Closed None
   | Tuple typs ->
       Typ.tuple (List.map gen_typ typs)
+
+let process_fields l =
+  let js = get_jsname l.pld_name.txt l.pld_attributes in
+  l.pld_name.loc,
+  mknoloc (Lident l.pld_name.txt), (* OCaml label *)
+  js, (* JS name *)
+  parse_typ l.pld_type
 
 let rec gen_decls si =
   List.concat (List.map gen_decl si)
 
 and gen_funs_record lbls =
-  let prepare_label l =
-    let js =
-      match get_string_attribute "js" l.pld_attributes with
-      | None -> js_name l.pld_name.txt
-      | Some s -> s
-    in
-    mknoloc (Lident l.pld_name.txt), (* OCaml label *)
-    str js, (* JS name *)
-    parse_typ l.pld_type
-  in
-  let lbls = List.map prepare_label lbls in
-  let of_js x (ml, js, ty) =
-    ml, js2ml ty (ojs "get" [x; js])
-  in
-  let to_js x (ml, js, ty) =
-    Exp.tuple [js; ml2js ty (Exp.field x ml)]
-  in
-
+  let lbls = List.map process_fields lbls in
+  let of_js x (_loc, ml, js, ty) = ml, js2ml ty (ojs "get" [x; str js]) in
+  let to_js x (_loc, ml, js, ty) = Exp.tuple [str js; ml2js ty (Exp.field x ml)] in
   mkfun (fun x -> Exp.record (List.map (of_js x) lbls) None),
   mkfun (fun x -> ojs "obj" [Exp.array (List.map (to_js x) lbls)])
-
-and gen_funs_enums constructors =
-  let prepare_constructor c =
-    begin match c.pcd_res, c.pcd_args with
-    | None, Pcstr_tuple [] ->
-        `Enum (prepare_enum c.pcd_name.txt c.pcd_name.loc c.pcd_attributes)
-    | None, Pcstr_tuple [{ptyp_desc = Ptyp_constr ({txt = lid; loc}, []); ptyp_attributes = _; ptyp_loc = _}] when has_attribute "js.default" c.pcd_attributes ->
-        begin match String.concat "." (Longident.flatten lid) with
-        | ("int" | "string") as ty -> `Default (c.pcd_loc, c.pcd_name.txt, ty)
-        | _ -> error loc Default_case_in_enum
-        end
-    | Some _, Pcstr_tuple [] ->
-        `Enum (prepare_enum c.pcd_name.txt c.pcd_name.loc c.pcd_attributes)
-    | _ ->
-        error c.pcd_loc Non_constant_constructor_in_enum
-    end
-  in
-  let params = get_enums prepare_constructor constructors in
-  mkfun (js2ml_of_enum ~variant:false params),
-  mkfun (ml2js_of_enum ~variant:false params)
 
 and gen_funs p =
   let name = p.ptype_name.txt in
@@ -1010,7 +1108,26 @@ and gen_funs p =
         let ty = Js in
         js2ml_fun ty, ml2js_fun ty
     | _, Ptype_variant cstrs ->
-        gen_funs_enums cstrs
+        let prepare_constructor c =
+          let mlconstr = c.pcd_name.txt in
+          let arg =
+            match c.pcd_args with
+            | Pcstr_tuple args ->
+                begin match args with
+                | [] -> Constant
+                | [x] -> Unary (parse_typ x)
+                | _ :: _ :: _ -> Nary (List.map parse_typ args)
+                end
+            | Pcstr_record args ->
+                Record (List.map process_fields args)
+          in
+          { mlconstr; arg; attributes = c.pcd_attributes; location = c.pcd_loc }
+        in
+        let loc = p.ptype_loc in
+        let attrs = p.ptype_attributes in
+        let params = List.map prepare_constructor cstrs in
+        mkfun (js2ml_of_variant ~variant:false loc attrs params),
+        mkfun (ml2js_of_variant ~variant:false loc attrs params)
     | _, Ptype_record lbls ->
         gen_funs_record lbls
     | _ ->

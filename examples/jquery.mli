@@ -82,7 +82,7 @@ module Ajax : sig
   val settings:
     ?complete:(t -> string -> unit) ->
     ?data:Ojs.t -> ?data_type:string ->
-    ?meth:([`GET | `POST | `PUT] [@js "method"]) ->
+    ?meth:([`GET | `POST | `PUT] [@js "method"] [@js.enum]) ->
     ?url:string ->
     unit -> settings
     [@@js.builder]
@@ -93,4 +93,3 @@ module Ajax : sig
   val response_text: t -> string
     [@@js.get]
 end
-
