@@ -190,3 +190,8 @@ module Verb2: sig
       method y_coord: int
     end [@@js.verbatim_names]
 end
+
+module Console2: sig
+  val log: string -> unit
+    [@@js.global]
+end [@js.scope "console"]

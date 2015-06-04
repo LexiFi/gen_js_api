@@ -355,15 +355,30 @@ let check_suffix ~suffix s =
   else
     None
 
+let rec choose f = function
+  | [] -> []
+  | x :: xs ->
+      begin match f x with
+      | None -> choose f xs
+      | Some y -> y :: choose f xs
+      end
+
+let in_global_scope ~global_attrs js =
+  match choose (fun x -> get_string_attribute "js.scope" [x]) global_attrs with
+  | [] -> js
+  | (_ :: _) as revpath -> String.concat "." (List.rev (js :: revpath))
+
 let auto ~global_attrs s = function
   | Arrow {ty_args = [{lab=Arg; att=_; typ=Name (t, [])}]; ty_vararg = None; unit_arg = false; ty_res = Js} when check_suffix ~suffix:"_to_js" s = Some t -> Cast
   | Arrow {ty_args = [{lab=Arg; att=_; typ=Js}]; ty_vararg = None; unit_arg = false; ty_res = Name (t, [])} when check_suffix ~suffix:"_of_js" s = Some t -> Cast
   | Arrow {ty_args = [{lab=Arg; att=_; typ=Name _}]; ty_vararg = None; unit_arg = false; ty_res = Unit _} ->  MethCall (js_name ~global_attrs s)
   | Arrow {ty_args = [{lab=Arg; att=_; typ=Name _}]; ty_vararg = None; unit_arg = false; ty_res = _} ->  PropGet (js_name ~global_attrs s)
+  | Arrow {ty_args = []; ty_vararg = None; unit_arg = true; ty_res = _} -> PropGet (in_global_scope ~global_attrs (js_name ~global_attrs s))
   | Arrow {ty_args = [{lab=Arg; att=_; typ=Name _}; _]; ty_vararg = None; unit_arg = false; ty_res = Unit _} when has_prefix ~prefix:"set_" s -> PropSet (js_name ~global_attrs (drop_prefix ~prefix:"set_" s))
+  | Arrow {ty_args = [_]; ty_vararg = None; unit_arg = false; ty_res = Unit _} when has_prefix ~prefix:"set_" s -> PropSet (in_global_scope ~global_attrs (js_name ~global_attrs (drop_prefix ~prefix:"set_" s)))
   | Arrow {ty_args = _; ty_vararg = None; unit_arg = false; ty_res = Name _} when has_prefix ~prefix:"new_" s -> New (js_name ~global_attrs (drop_prefix ~prefix:"new_" s))
   | Arrow {ty_args = {lab=Arg; att=_; typ=Name _} :: _; ty_vararg = _; unit_arg = _; ty_res = _} -> MethCall (js_name ~global_attrs s)
-  | _ -> Global (js_name ~global_attrs s)
+  | _ -> Global (in_global_scope ~global_attrs (js_name ~global_attrs s))
 
 let auto_in_object ~global_attrs s = function
   | Arrow {ty_args = [{lab=Arg; att=_; typ=_}]; ty_vararg = None; unit_arg = false; ty_res = Unit _} when has_prefix ~prefix:"set_" s -> PropSet (js_name ~global_attrs (drop_prefix ~prefix:"set_" s))
@@ -372,12 +387,15 @@ let auto_in_object ~global_attrs s = function
   | _ -> PropGet (js_name ~global_attrs s)
 
 let parse_attr ~global_attrs (s, loc, auto) (k, v) =
-  let opt_name ?(prefix = "") ?(capitalize = false) () =
+  let opt_name ?(prefix = "") ?(capitalize = false) ?(global = false) () =
     match v with
     | PStr [] ->
         begin match check_prefix ~prefix s with
         | None -> error loc (Implicit_name prefix)
-        | Some s -> js_name ~global_attrs ~capitalize s
+        | Some s ->
+            let js = js_name ~global_attrs ~capitalize s in
+            if global then in_global_scope ~global_attrs js
+            else js
         end
     | _ -> id_of_expr (expr_of_payload k.loc v)
   in
@@ -386,7 +404,7 @@ let parse_attr ~global_attrs (s, loc, auto) (k, v) =
       "js.get", (fun () -> PropGet (opt_name ()));
       "js.set", (fun () -> PropSet (opt_name ~prefix:"set_" ()));
       "js.call", (fun () -> MethCall (opt_name ()));
-      "js.global", (fun () -> Global (opt_name ()));
+      "js.global", (fun () -> Global (opt_name ~global:true ()));
       "js", (fun () -> auto ());
       "js.new", (fun () -> New (opt_name ~prefix:"new_" ~capitalize:true ()));
       "js.builder", (fun () -> Builder global_attrs);
@@ -395,14 +413,6 @@ let parse_attr ~global_attrs (s, loc, auto) (k, v) =
   match List.find (fun (name, _) -> filter_attr_name name k) actions with
   | exception Not_found -> None
   | _, f -> Some (f ())
-
-let rec choose f = function
-  | [] -> []
-  | x :: xs ->
-      begin match f x with
-      | None -> choose f xs
-      | Some y -> y :: choose f xs
-      end
 
 let parse_valdecl ~global_attrs ~in_sig vd =
   let attributes = vd.pval_attributes in
