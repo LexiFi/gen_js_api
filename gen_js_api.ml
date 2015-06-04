@@ -141,8 +141,15 @@ let () =
       | _ -> None
     )
 
-let js_name ~attributes ?(capitalize = false) name =
-  if has_attribute "js.verbatim" attributes then
+(*
+let show_attrs attrs =
+  prerr_endline "===========";
+  prerr_endline "attributes:";
+  List.iter (fun ({txt; loc = _}, _) -> prerr_endline txt) attrs
+*)
+
+let js_name ~global_attrs ?(capitalize = false) name =
+  if has_attribute "js.verbatim" global_attrs then
     if capitalize then String.capitalize_ascii name
     else name
   else
@@ -159,9 +166,9 @@ let js_name ~attributes ?(capitalize = false) name =
     done;
     Buffer.contents buf
 
-let get_js_constr name attributes =
+let get_js_constr ~global_attrs name attributes =
   match get_attribute "js" attributes with
-  | None -> `String (js_name ~attributes name)
+  | None -> `String (js_name ~global_attrs name)
   | Some (k, v) ->
       begin match (expr_of_payload k.loc v).pexp_desc with
       | Pexp_constant (Const_string (s, _)) -> `String s
@@ -176,7 +183,10 @@ type typ =
   | Unit of Location.t
   | Js
   | Name of string * typ list
-  | Variant of Location.t * attributes * constructor list
+  | Variant of { location: Location.t;
+                 global_attrs:attributes;
+                 attributes:attributes;
+                 constrs:constructor list }
   | Tuple of typ list
 
 and lab =
@@ -249,7 +259,7 @@ type classdecl =
   | Constructor of { class_name: string; js_class_name: string; class_arrow: arrow_params }
 
 type decl =
-  | Module of string * decl list
+  | Module of string * attributes * decl list
   | Type of rec_flag * Parsetree.type_declaration list
   | Val of string * typ * valdef * Location.t
   | Class of classdecl list
@@ -257,7 +267,7 @@ type decl =
 
 (** Parsing *)
 
-let rec parse_arg lab ty =
+let rec parse_arg lab ~global_attrs ty =
   let lab =
     match lab with
     | Nolabel -> Arg
@@ -268,16 +278,16 @@ let rec parse_arg lab ty =
   {
     lab;
     att=ty.ptyp_attributes;
-    typ = parse_typ ty;
+    typ = parse_typ ~global_attrs ty;
   }
 
-and parse_typ ty =
+and parse_typ ~global_attrs ty =
   match ty.ptyp_desc with
   | Ptyp_arrow (lab, t1, t2) when has_attribute "js.variadic" t1.ptyp_attributes ->
-      begin match parse_arg lab t1 with
+      begin match parse_arg lab ~global_attrs t1 with
       | {lab; att; typ=Name ("list", [typ])} ->
           let ty_vararg = Some {lab; att; typ} in
-          begin match parse_typ t2 with
+          begin match parse_typ ~global_attrs t2 with
           | Arrow ({ty_args = []; ty_vararg = None; unit_arg = _; ty_res = _} as params) when t2.ptyp_attributes = [] ->
               Arrow {params with ty_vararg}
           | Arrow _ when t2.ptyp_attributes = [] -> error ty.ptyp_loc Cannot_parse_type
@@ -286,8 +296,8 @@ and parse_typ ty =
       | _ -> error t1.ptyp_loc Invalid_variadic_type_arg
       end
   | Ptyp_arrow (lab, t1, t2) ->
-      let t1 = parse_arg lab t1 in
-      begin match parse_typ t2 with
+      let t1 = parse_arg lab ~global_attrs t1 in
+      begin match parse_typ ~global_attrs t2 with
       | Arrow ({ty_args; ty_vararg = _; unit_arg = _; ty_res = _} as params) when t2.ptyp_attributes = [] -> Arrow {params with ty_args = t1 :: ty_args}
       | tres ->
           begin match t1 with
@@ -299,7 +309,7 @@ and parse_typ ty =
       begin match String.concat "." (Longident.flatten lid), tl with
       | "unit", [] -> Unit ty.ptyp_loc
       | "Ojs.t", [] -> Js
-      | s, tl -> Name (s, List.map parse_typ tl)
+      | s, tl -> Name (s, List.map (parse_typ ~global_attrs) tl)
       end
   | Ptyp_variant (rows, Closed, None) ->
       let location = ty.ptyp_loc in
@@ -307,16 +317,16 @@ and parse_typ ty =
         | Rtag (mlconstr, attributes, true, []) ->
             { mlconstr; arg = Constant; attributes; location }
         | Rtag (mlconstr, attributes, false, [typ]) ->
-            begin match parse_typ typ with
+            begin match parse_typ ~global_attrs typ with
             | Tuple typs -> { mlconstr; arg = Nary typs; attributes; location }
             | typ -> { mlconstr; arg = Unary typ; attributes; location }
             end
         | _ -> error location Cannot_parse_type
       in
-      Variant (location, ty.ptyp_attributes, List.map prepare_row rows)
+      Variant {location; global_attrs; attributes = ty.ptyp_attributes; constrs = List.map prepare_row rows}
 
   | Ptyp_tuple typs ->
-      let typs = List.map parse_typ typs in
+      let typs = List.map (parse_typ ~global_attrs) typs in
       Tuple typs
   | _ ->
       error ty.ptyp_loc Cannot_parse_type
@@ -345,29 +355,29 @@ let check_suffix ~suffix s =
   else
     None
 
-let auto ~attributes s = function
+let auto ~global_attrs s = function
   | Arrow {ty_args = [{lab=Arg; att=_; typ=Name (t, [])}]; ty_vararg = None; unit_arg = false; ty_res = Js} when check_suffix ~suffix:"_to_js" s = Some t -> Cast
   | Arrow {ty_args = [{lab=Arg; att=_; typ=Js}]; ty_vararg = None; unit_arg = false; ty_res = Name (t, [])} when check_suffix ~suffix:"_of_js" s = Some t -> Cast
-  | Arrow {ty_args = [{lab=Arg; att=_; typ=Name _}]; ty_vararg = None; unit_arg = false; ty_res = Unit _} ->  MethCall (js_name ~attributes s)
-  | Arrow {ty_args = [{lab=Arg; att=_; typ=Name _}]; ty_vararg = None; unit_arg = false; ty_res = _} ->  PropGet (js_name ~attributes s)
-  | Arrow {ty_args = [{lab=Arg; att=_; typ=Name _}; _]; ty_vararg = None; unit_arg = false; ty_res = Unit _} when has_prefix ~prefix:"set_" s -> PropSet (js_name ~attributes (drop_prefix ~prefix:"set_" s))
-  | Arrow {ty_args = _; ty_vararg = None; unit_arg = false; ty_res = Name _} when has_prefix ~prefix:"new_" s -> New (js_name ~attributes (drop_prefix ~prefix:"new_" s))
-  | Arrow {ty_args = {lab=Arg; att=_; typ=Name _} :: _; ty_vararg = _; unit_arg = _; ty_res = _} -> MethCall (js_name ~attributes s)
-  | _ -> Global (js_name ~attributes s)
+  | Arrow {ty_args = [{lab=Arg; att=_; typ=Name _}]; ty_vararg = None; unit_arg = false; ty_res = Unit _} ->  MethCall (js_name ~global_attrs s)
+  | Arrow {ty_args = [{lab=Arg; att=_; typ=Name _}]; ty_vararg = None; unit_arg = false; ty_res = _} ->  PropGet (js_name ~global_attrs s)
+  | Arrow {ty_args = [{lab=Arg; att=_; typ=Name _}; _]; ty_vararg = None; unit_arg = false; ty_res = Unit _} when has_prefix ~prefix:"set_" s -> PropSet (js_name ~global_attrs (drop_prefix ~prefix:"set_" s))
+  | Arrow {ty_args = _; ty_vararg = None; unit_arg = false; ty_res = Name _} when has_prefix ~prefix:"new_" s -> New (js_name ~global_attrs (drop_prefix ~prefix:"new_" s))
+  | Arrow {ty_args = {lab=Arg; att=_; typ=Name _} :: _; ty_vararg = _; unit_arg = _; ty_res = _} -> MethCall (js_name ~global_attrs s)
+  | _ -> Global (js_name ~global_attrs s)
 
-let auto_in_object ~attributes s = function
-  | Arrow {ty_args = [{lab=Arg; att=_; typ=_}]; ty_vararg = None; unit_arg = false; ty_res = Unit _} when has_prefix ~prefix:"set_" s -> PropSet (js_name ~attributes (drop_prefix ~prefix:"set_" s))
-  | Arrow _ -> MethCall (js_name ~attributes s)
-  | Unit _ -> MethCall (js_name ~attributes s)
-  | _ -> PropGet (js_name ~attributes s)
+let auto_in_object ~global_attrs s = function
+  | Arrow {ty_args = [{lab=Arg; att=_; typ=_}]; ty_vararg = None; unit_arg = false; ty_res = Unit _} when has_prefix ~prefix:"set_" s -> PropSet (js_name ~global_attrs (drop_prefix ~prefix:"set_" s))
+  | Arrow _ -> MethCall (js_name ~global_attrs s)
+  | Unit _ -> MethCall (js_name ~global_attrs s)
+  | _ -> PropGet (js_name ~global_attrs s)
 
-let parse_attr ~attributes (s, loc, auto) (k, v) =
+let parse_attr ~global_attrs (s, loc, auto) (k, v) =
   let opt_name ?(prefix = "") ?(capitalize = false) () =
     match v with
     | PStr [] ->
         begin match check_prefix ~prefix s with
         | None -> error loc (Implicit_name prefix)
-        | Some s -> js_name ~attributes ~capitalize s
+        | Some s -> js_name ~global_attrs ~capitalize s
         end
     | _ -> id_of_expr (expr_of_payload k.loc v)
   in
@@ -379,7 +389,7 @@ let parse_attr ~attributes (s, loc, auto) (k, v) =
       "js.global", (fun () -> Global (opt_name ()));
       "js", (fun () -> auto ());
       "js.new", (fun () -> New (opt_name ~prefix:"new_" ~capitalize:true ()));
-      "js.builder", (fun () -> Builder attributes);
+      "js.builder", (fun () -> Builder global_attrs);
     ]
   in
   match List.find (fun (name, _) -> filter_attr_name name k) actions with
@@ -394,13 +404,14 @@ let rec choose f = function
       | Some y -> y :: choose f xs
       end
 
-let parse_valdecl ~in_sig vd =
+let parse_valdecl ~global_attrs ~in_sig vd =
   let attributes = vd.pval_attributes in
+  let global_attrs = attributes @ global_attrs in
   let s = vd.pval_name.txt in
   let loc = vd.pval_loc in
-  let ty = parse_typ vd.pval_type in
-  let auto () = auto ~attributes s ty in
-  let defs = choose (parse_attr ~attributes (s, loc, auto)) attributes in
+  let ty = parse_typ ~global_attrs vd.pval_type in
+  let auto () = auto ~global_attrs s ty in
+  let defs = choose (parse_attr ~global_attrs (s, loc, auto)) attributes in
   let r =
     match defs with
     | [x] -> x
@@ -410,40 +421,43 @@ let parse_valdecl ~in_sig vd =
   in
   Val (s, ty, r, loc)
 
-let rec parse_sig_item s =
+let rec parse_sig_item ~global_attrs s =
   match s.psig_desc with
   | Psig_value vd when vd.pval_prim = [] ->
-      parse_valdecl ~in_sig:true vd
+      parse_valdecl ~global_attrs ~in_sig:true vd
   | Psig_type (rec_flag, decls) ->
       Type (rec_flag, decls)
-  | Psig_module {pmd_name; pmd_type = {pmty_desc = Pmty_signature si; _}; _} ->
-      Module (pmd_name.txt, parse_sig si)
-  | Psig_class cs -> Class (List.map parse_class_decl cs)
+  | Psig_module {pmd_name; pmd_type = {pmty_desc = Pmty_signature si; pmty_attributes; pmty_loc = _}; pmd_loc = _; pmd_attributes = _} ->
+      let global_attrs = pmty_attributes @ global_attrs in
+      Module (pmd_name.txt, pmty_attributes, parse_sig ~global_attrs si)
+  | Psig_class cs -> Class (List.map (parse_class_decl ~global_attrs) cs)
   | Psig_attribute (attr, PStr str) when filter_attr_name "js.implem" attr -> Implem str
   | _ ->
       error s.psig_loc Cannot_parse_sigitem
 
-and parse_sig = function
+and parse_sig ~global_attrs = function
   | [] -> []
   | {psig_desc = Psig_attribute (attr, _); _} :: rest when filter_attr_name "js.stop" attr ->
-      parse_sig_verbatim rest
+      parse_sig_verbatim ~global_attrs rest
   | {psig_desc = Psig_value vd; _} :: rest when
       has_attribute "js.custom" vd.pval_attributes ->
       let (k, v) = unoption (get_attribute "js.custom" vd.pval_attributes) in
       let str = str_of_payload k.loc v in
-      Implem str :: parse_sig rest
-  | s :: rest -> parse_sig_item s :: parse_sig rest
+      Implem str :: parse_sig ~global_attrs rest
+  | s :: rest -> parse_sig_item ~global_attrs s :: parse_sig ~global_attrs rest
 
-and parse_sig_verbatim = function
+and parse_sig_verbatim ~global_attrs = function
   | [] -> []
-  | {psig_desc = Psig_attribute (attr, _); _} :: rest when filter_attr_name "js.start" attr -> parse_sig rest
-  | _ :: rest -> parse_sig_verbatim rest
+  | {psig_desc = Psig_attribute (attr, _); _} :: rest when filter_attr_name "js.start" attr -> parse_sig ~global_attrs rest
+  | _ :: rest -> parse_sig_verbatim ~global_attrs rest
 
-and parse_class_decl = function
+and parse_class_decl ~global_attrs = function
   | {pci_virt = Concrete; pci_params = []; pci_name; pci_expr = {pcty_desc = Pcty_arrow (Nolabel, {ptyp_desc = Ptyp_constr ({txt = Longident.Ldot (Lident "Ojs", "t"); loc = _}, []); ptyp_loc = _; ptyp_attributes = _}, {pcty_desc = Pcty_signature {pcsig_self = {ptyp_desc = Ptyp_any; _}; pcsig_fields}; pcty_loc = _; pcty_attributes = _}); _}; pci_attributes; pci_loc = _} ->
+      let global_attrs = pci_attributes @ global_attrs in
       let class_name = pci_name.txt in
-      Declaration { class_name; class_fields = List.map (parse_class_field ~attributes:pci_attributes) pcsig_fields }
+      Declaration { class_name; class_fields = List.map (parse_class_field ~global_attrs) pcsig_fields }
   | {pci_virt = Concrete; pci_params = []; pci_name; pci_expr; pci_attributes; pci_loc} ->
+      let global_attrs = pci_attributes @ global_attrs in
       let rec convert_typ = function
         | { pcty_desc = Pcty_constr (id, typs); pcty_attributes; pcty_loc } ->
             Typ.constr ~loc:pcty_loc ~attrs:pcty_attributes id typs
@@ -452,7 +466,7 @@ and parse_class_decl = function
         | _ -> error pci_loc Cannot_parse_classdecl
       in
       let class_arrow =
-        match parse_typ (convert_typ pci_expr) with
+        match parse_typ ~global_attrs (convert_typ pci_expr) with
         | Arrow ({ty_args = _; ty_vararg = _; unit_arg = _; ty_res = Name (_, [])} as params) -> params
         | (Name (_, []) as ty_res) -> {ty_args = []; ty_vararg = None; unit_arg = false; ty_res}
         | _ -> error pci_loc Cannot_parse_classdecl
@@ -460,17 +474,17 @@ and parse_class_decl = function
       let class_name = pci_name.txt in
       let js_class_name =
         match get_string_attribute "js.new" pci_attributes with
-        | None -> js_name ~attributes:pci_attributes ~capitalize:true class_name
+        | None -> js_name ~global_attrs ~capitalize:true class_name
         | Some s -> s
       in
       Constructor {class_name; js_class_name; class_arrow}
   | {pci_loc; _} -> error pci_loc Cannot_parse_classdecl
 
-and parse_class_field ~attributes = function
+and parse_class_field ~global_attrs = function
   | {pctf_desc = Pctf_method (method_name, Public, Concrete, typ); pctf_loc; pctf_attributes} ->
-      let ty = parse_typ typ in
-      let auto () = auto_in_object ~attributes method_name ty in
-      let defs = choose (parse_attr ~attributes (method_name, pctf_loc, auto)) pctf_attributes in
+      let ty = parse_typ ~global_attrs typ in
+      let auto () = auto_in_object ~global_attrs method_name ty in
+      let defs = choose (parse_attr ~global_attrs (method_name, pctf_loc, auto)) pctf_attributes in
       let kind =
         match defs with
         | [x] -> x
@@ -681,14 +695,15 @@ let rec js2ml ty exp =
       func formal_args unit_arg (js2ml_unit ty_res res)
   | Unit loc ->
       error loc (Not_supported_here "Unit")
-  | Variant (loc, attributes, params) -> js2ml_of_variant ~variant:true loc attributes params exp
+  | Variant {location; global_attrs; attributes; constrs} ->
+      js2ml_of_variant ~variant:true location ~global_attrs attributes constrs exp
   | Tuple typs ->
       let f x =
         Exp.tuple (List.mapi (fun i typ -> js2ml typ (ojs "array_get" [x; int i])) typs)
       in
       let_exp_in exp f
 
-and js2ml_of_variant ~variant loc attrs constrs exp =
+and js2ml_of_variant ~variant loc ~global_attrs attrs constrs exp =
   let is_enum, kind =
     if has_attribute "js.enum" attrs then true, None
     else begin
@@ -715,7 +730,7 @@ and js2ml_of_variant ~variant loc attrs constrs exp =
   let f exp =
     let gen_cases (int_default, int_cases, string_default, string_cases) {mlconstr; arg; attributes; location} =
       let case x =
-        match get_js_constr mlconstr attributes with
+        match get_js_constr ~global_attrs mlconstr attributes with
         | `String s -> int_default, int_cases, string_default, Exp.case (pat_str s) x :: string_cases
         | `Int n -> int_default, Exp.case (pat_int n) x :: int_cases, string_default, string_cases
       in
@@ -836,7 +851,8 @@ and ml2js ty exp =
       ojs "fun_to_js_args" [f]
   | Unit loc ->
       error loc (Not_supported_here "Unit")
-  | Variant (loc, attributes, params) -> ml2js_of_variant ~variant:true loc attributes params exp
+  | Variant {location; global_attrs; attributes; constrs} ->
+      ml2js_of_variant ~variant:true location ~global_attrs attributes constrs exp
   | Tuple typs ->
       let typed_vars = List.mapi (fun i typ -> i, typ, fresh ()) typs in
       let pat = Pat.tuple (List.map (function (_, _, x) -> Pat.var (mknoloc x)) typed_vars) in
@@ -852,7 +868,7 @@ and ml2js ty exp =
         end
       end
 
-and ml2js_of_variant ~variant loc attrs constrs exp =
+and ml2js_of_variant ~variant loc ~global_attrs attrs constrs exp =
   let is_enum, kind =
     if has_attribute "js.enum" attrs then true, None
     else begin
@@ -880,7 +896,7 @@ and ml2js_of_variant ~variant loc attrs constrs exp =
   let case {mlconstr; arg; attributes; location} =
     let mkobj args =
       let discriminator =
-        match get_js_constr mlconstr attributes with
+        match get_js_constr ~global_attrs mlconstr attributes with
         | `Int n -> ml2js int_typ (int n)
         | `String s -> ml2js string_typ (str s)
       in
@@ -933,9 +949,9 @@ and prepare_args ty_args ty_vararg =
   if ty_vararg = None &&
      List.for_all
        (function
-         | {typ = Variant (_, attributes, constrs); _} when has_attribute "js.enum" attributes ->
+         | {typ = Variant {location = _; global_attrs = _; attributes; constrs}; _} when has_attribute "js.enum" attributes ->
              is_simple_enum constrs
-         | {typ = Variant (_, attributes, _); _} when has_attribute "js.union" attributes -> false
+         | {typ = Variant {location = _; global_attrs = _; attributes; constrs = _}; _} when has_attribute "js.union" attributes -> false
          | {lab = Arg | Lab _ | Opt {def = Some _; _}; _} -> true
          | {lab = Opt {def = None; _}; _} -> false
        )
@@ -969,7 +985,7 @@ and prepare_args_simple ty_args =
 and prepare_args_push ty_args ty_vararg =
   let push arr typ x =
     match typ with
-    | Variant (_, attributes, constrs) when
+    | Variant {location = _; global_attrs; attributes; constrs} when
         (has_attribute "js.enum" attributes && not (is_simple_enum constrs)) ||
         has_attribute "js.union" attributes ->
         let is_enum = has_attribute "js.enum" attributes in
@@ -978,7 +994,7 @@ and prepare_args_push ty_args ty_vararg =
           let int_typ = Name ("int", []) in
           let mkargs args =
             if is_enum then begin
-              match get_js_constr mlconstr attributes with
+              match get_js_constr ~global_attrs mlconstr attributes with
               | `Int n -> (ml2js int_typ (int n)) :: args
               | `String s -> (ml2js string_typ (str s)) :: args
             end else args
@@ -1063,7 +1079,7 @@ and gen_typ = function
       in
       let tl = if unit_arg then tl @ [{lab=Arg;att=[];typ=Unit none}] else tl in
       List.fold_right (fun {lab; att=_; typ} t2 -> Typ.arrow (arg_label lab) (gen_typ typ) t2) tl (gen_typ ty_res)
-  | Variant (_loc, _attributes, params) ->
+  | Variant {location = _; global_attrs = _; attributes = _; constrs} ->
       let f {mlconstr; arg; attributes = _; location = _} =
         match arg with
         | Constant -> Rtag (mlconstr, [], true, [])
@@ -1071,42 +1087,42 @@ and gen_typ = function
         | Nary typs -> Rtag (mlconstr, [], false, [gen_typ (Tuple typs)])
         | Record _ -> assert false
       in
-      let rows = List.map f params in
+      let rows = List.map f constrs in
       Typ.variant rows Closed None
   | Tuple typs ->
       Typ.tuple (List.map gen_typ typs)
 
-let process_fields ~attributes l =
+let process_fields ~global_attrs l =
   let loc = l.pld_name.loc in
   let mlname = l.pld_name.txt in
   let attrs = l.pld_attributes in
   let typ = l.pld_type in
   let jsname =
     match get_string_attribute "js" attrs with
-    | None -> js_name ~attributes mlname
+    | None -> js_name ~global_attrs mlname
     | Some s -> s
   in
   loc,
   mknoloc (Lident mlname), (* OCaml label *)
   jsname, (* JS name *)
-  parse_typ typ
+  parse_typ ~global_attrs typ
 
-let rec gen_decls si =
-  List.concat (List.map gen_decl si)
+let rec gen_decls ~global_attrs si =
+  List.concat (List.map (gen_decl ~global_attrs) si)
 
-and gen_funs_record ~attributes lbls =
-  let lbls = List.map (process_fields ~attributes) lbls in
+and gen_funs_record ~global_attrs lbls =
+  let lbls = List.map (process_fields ~global_attrs) lbls in
   let of_js x (_loc, ml, js, ty) = ml, js2ml ty (ojs "get" [x; str js]) in
   let to_js x (_loc, ml, js, ty) = Exp.tuple [str js; ml2js ty (Exp.field x ml)] in
   mkfun (fun x -> Exp.record (List.map (of_js x) lbls) None),
   mkfun (fun x -> ojs "obj" [Exp.array (List.map (to_js x) lbls)])
 
-and gen_funs p =
+and gen_funs ~global_attrs p =
   let name = p.ptype_name.txt in
   let of_js, to_js =
     match p.ptype_manifest, p.ptype_kind with
     | Some ty, Ptype_abstract ->
-        let ty = parse_typ ty in
+        let ty = parse_typ ~global_attrs ty in
         js2ml_fun ty, ml2js_fun ty
     | None, Ptype_abstract ->
         let ty = Js in
@@ -1119,21 +1135,22 @@ and gen_funs p =
             | Pcstr_tuple args ->
                 begin match args with
                 | [] -> Constant
-                | [x] -> Unary (parse_typ x)
-                | _ :: _ :: _ -> Nary (List.map parse_typ args)
+                | [x] -> Unary (parse_typ ~global_attrs x)
+                | _ :: _ :: _ -> Nary (List.map (parse_typ ~global_attrs) args)
                 end
             | Pcstr_record args ->
-                Record (List.map (process_fields ~attributes:c.pcd_attributes) args)
+                Record (List.map (process_fields ~global_attrs:c.pcd_attributes) args)
           in
           { mlconstr; arg; attributes = c.pcd_attributes; location = c.pcd_loc }
         in
         let loc = p.ptype_loc in
         let attrs = p.ptype_attributes in
         let params = List.map prepare_constructor cstrs in
-        mkfun (js2ml_of_variant ~variant:false loc attrs params),
-        mkfun (ml2js_of_variant ~variant:false loc attrs params)
+        mkfun (js2ml_of_variant ~variant:false loc ~global_attrs attrs params),
+        mkfun (ml2js_of_variant ~variant:false loc ~global_attrs attrs params)
     | _, Ptype_record lbls ->
-        gen_funs_record ~attributes:p.ptype_attributes lbls
+        let global_attrs = p.ptype_attributes @ global_attrs in
+        gen_funs_record ~global_attrs lbls
     | _ ->
         error p.ptype_loc Cannot_parse_type
   in
@@ -1166,13 +1183,14 @@ and gen_funs p =
           to_js
       ]
 
-and gen_decl = function
+and gen_decl ~global_attrs = function
   | Type (rec_flag, decls) ->
       let decls = List.map rewrite_typ_decl decls in
-      let funs = List.concat (List.map gen_funs decls) in
+      let funs = List.concat (List.map (gen_funs ~global_attrs) decls) in
       [ Str.type_ rec_flag decls; Str.value rec_flag funs ]
-  | Module (s, decls) ->
-      [ Str.module_ (Mb.mk (mknoloc s) (Mod.structure (gen_decls decls))) ]
+  | Module (s, attrs, decls) ->
+      let global_attrs = attrs @ global_attrs in
+      [ Str.module_ (Mb.mk (mknoloc s) (Mod.structure (gen_decls ~global_attrs decls))) ]
 
   | Val (s, ty, decl, loc) ->
       let d = gen_def loc decl ty in
@@ -1297,7 +1315,7 @@ and gen_def loc decl ty =
       let res = ojs_new_obj_arr (ojs_variable name) concrete_args in
       func formal_args unit_arg (js2ml ty_res res)
 
-  | Builder attributes, Arrow {ty_args; ty_vararg = None; unit_arg; ty_res} ->
+  | Builder global_attrs, Arrow {ty_args; ty_vararg = None; unit_arg; ty_res} ->
       let gen_arg {lab; att; typ} =
         let s = fresh () in
         (arg_label lab, s),
@@ -1306,7 +1324,7 @@ and gen_def loc decl ty =
             match get_string_attribute "js" att, lab with
             | Some s, _ -> s
             | None, Arg -> error loc Unlabelled_argument_in_builder
-            | None, (Lab {ml; _} | Opt {ml; _}) -> js_name ~attributes ml
+            | None, (Lab {ml; _} | Opt {ml; _}) -> js_name ~global_attrs ml
           in
           let code exp = ojs "set" [x; str js; ml2js typ exp] in
           (* special logic to avoid setting optional argument to 'undefined' *)
@@ -1335,11 +1353,11 @@ and gen_def loc decl ty =
 
 (** ppx mapper *)
 
-and str_of_sg sg =
-  let decls = parse_sig sg in
+and str_of_sg ~global_attrs sg =
+  let decls = parse_sig ~global_attrs sg in
   attr "comment" (str "!! This code has been generated by gen_js_api !!") ::
   disable_warnings ::
-  gen_decls decls
+  gen_decls ~global_attrs decls
 
 and mapper =
   let open Ast_mapper in
@@ -1347,16 +1365,17 @@ and mapper =
   let module_expr self mexp =
     let mexp = super.module_expr self mexp in
     match mexp.pmod_desc with
-    | Pmod_constraint({pmod_desc=Pmod_extension (attr, PStr[]); _}, ({pmty_desc=Pmty_signature sg; _} as mty)) when filter_attr_name "js" attr -> Mod.constraint_ (Mod.structure (str_of_sg sg)) mty
+    | Pmod_constraint({pmod_desc=Pmod_extension (attr, PStr[]); _}, ({pmty_desc=Pmty_signature sg; pmty_attributes; pmty_loc = _} as mty)) when filter_attr_name "js" attr -> Mod.constraint_ (Mod.structure (str_of_sg ~global_attrs:pmty_attributes sg)) mty
     | _ -> mexp
   in
   let structure_item self str =
     let str = super.structure_item self str in
+    let global_attrs = [] in
     match str.pstr_desc with
     | Pstr_primitive vd when vd.pval_prim = [] ->
-        begin match parse_valdecl ~in_sig:false vd with
+        begin match parse_valdecl ~global_attrs ~in_sig:false vd with
         | exception Exit -> str
-        | d -> incl (gen_decls [d])
+        | d -> incl (gen_decls ~global_attrs [d])
         end
     | Pstr_type (rec_flag, decls) ->
         let js_decls = List.filter (fun d -> has_attribute "js" d.ptype_attributes) decls in
@@ -1365,7 +1384,7 @@ and mapper =
         | l ->
             with_default_loc str.pstr_loc
               (fun () ->
-                 let funs = List.concat (List.map gen_funs l) in
+                 let funs = List.concat (List.map (gen_funs ~global_attrs) l) in
                  incl
                    [
                      {str with pstr_desc = Pstr_type (rec_flag, List.map (fun d -> if has_attribute "js" d.ptype_attributes then rewrite_typ_decl d else d) decls)};
@@ -1380,9 +1399,10 @@ and mapper =
   in
   let expr self e =
     let e = super.expr self e in
+    let global_attrs = [] in
     match e.pexp_desc with
-    | Pexp_extension (attr, PTyp ty) when filter_attr_name "js.to" attr -> js2ml_fun (parse_typ ty)
-    | Pexp_extension (attr, PTyp ty) when filter_attr_name "js.of" attr -> ml2js_fun (parse_typ ty)
+    | Pexp_extension (attr, PTyp ty) when filter_attr_name "js.to" attr -> js2ml_fun (parse_typ ~global_attrs ty)
+    | Pexp_extension (attr, PTyp ty) when filter_attr_name "js.of" attr -> ml2js_fun (parse_typ ~global_attrs ty)
     | _ ->
         e
   in
@@ -1426,7 +1446,7 @@ let standalone () =
       ~tool_name:"gen_js_iface"
       src
   in
-  let res = str_of_sg sg in
+  let res = str_of_sg ~global_attrs:[] sg in
   ignore (check_loc_mapper.Ast_mapper.signature check_loc_mapper sg);
   Format.fprintf (Format.formatter_of_out_channel oc) "%a@."
     Pprintast.structure res;
