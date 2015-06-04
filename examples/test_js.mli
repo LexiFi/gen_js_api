@@ -163,12 +163,11 @@ end
 
 val f: ([`Int of int | `String of string | `Nothing] [@js.union]) -> unit
 
-module Verb: sig
+module Verb1: sig
   type t1 =
     { x_coord: int;
       y_coord: int;
     }
-      [@@js.verbatim_names]
 
   class t2: Ojs.t ->
     object
@@ -176,5 +175,18 @@ module Verb: sig
       method x_coord: int
       method y_coord: int
     end
-      [@@js.verbatim_names]
+end [@js.verbatim_names]
+
+module Verb2: sig
+  type t1 =
+    { x_coord: int;
+      y_coord: int;
+    } [@@js.verbatim_names]
+
+  class t2: Ojs.t ->
+    object
+      inherit Ojs.obj
+      method x_coord: int
+      method y_coord: int
+    end [@@js.verbatim_names]
 end
