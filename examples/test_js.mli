@@ -168,7 +168,7 @@ module Verb: sig
     { x_coord: int;
       y_coord: int;
     }
-      [@@js.verbatim]
+      [@@js.verbatim_names]
 
   class t2: Ojs.t ->
     object
@@ -176,5 +176,5 @@ module Verb: sig
       method x_coord: int
       method y_coord: int
     end
-      [@@js.verbatim]
+      [@@js.verbatim_names]
 end

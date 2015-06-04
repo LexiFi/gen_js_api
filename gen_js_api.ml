@@ -149,7 +149,7 @@ let show_attrs attrs =
 *)
 
 let js_name ~global_attrs ?(capitalize = false) name =
-  if has_attribute "js.verbatim" global_attrs then
+  if has_attribute "js.verbatim_names" global_attrs then
     if capitalize then String.capitalize_ascii name
     else name
   else

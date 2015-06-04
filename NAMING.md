@@ -26,7 +26,7 @@ type myType = { x_coord : int; y_coord : int [@js "Y"]}
 is mapped to a JS record with two fields named "xCoord" and "Y" whereas
 
 ```ocaml
-type myType = { x_coord : int; y_coord : int [@js "Y"]} [@@js.verbatim]
+type myType = { x_coord : int; y_coord : int [@js "Y"]} [@@js.verbatim_names]
 ```
 
 is mapped to a JS record with two fields named "x_coord" and "Y".
