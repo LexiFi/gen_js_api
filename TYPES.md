@@ -29,6 +29,9 @@ The following types are supported out-of-the-box:
  - Polymorphic variants can also be used to encode non-discriminated
    unions on the JS side (see the section on union types below).
 
+ - Polymorphic variants can also be used to encode discriminated
+   unions on the JS side (see the section on discriminated union types
+   below).
 
 An arbitrary non-parametrized type with path `M.t` is JS-able if the
 following two values are available in module `M`:
@@ -190,8 +193,9 @@ type t =
   | Foo [@js "foo"]
   | Bar [@js 42]
   | Baz
+    [@@js.enum]
 
-type t = [`foo | `bar [@js 42] | `Baz]
+type t = [`foo | `bar [@js 42] | `Baz] [@@js.enum]
 ```
 
 
@@ -204,6 +208,7 @@ type status =
   | KO [@js 2]
   | OtherS of string [@js.default]
   | OtherI of int [@js.default]
+    [@@js.enum]
 ```
 
 There cannot be two default constructors with the same argument type.
@@ -217,9 +222,10 @@ with a discriminator field.
 By default, the name of the discriminator field is `kind`, but this
 can be changed by specifying a field name as attribute value of the
 `[@@js.sum]` attribute. The value of the discriminator field is set to
-the string representation of the constructor name (which is derived
-automatically from the constructor name or can be specified with a
-`[@js]` attribute).
+the representation of the constructor name: it is derived
+automatically from the constructor name but can also be specified with
+a `[@js]` attribute. In this latter case, it can be either a string or
+an integer.
 
 A constant constructor is simply mapped to a record containing the
 discriminator field.
@@ -235,7 +241,7 @@ the arguments of the constructor. Once again, the argument field name
 is by default `arg`, but this can be changed with a `[@js.arg]`
 attribute. In the case of polymorphic variant, if the argument is a
 tuple, then the polymorphic variant constructor is considered to be
-nary.
+n-ary.
 
 Finally, an inline record constructor is mapped to a record containing
 all the field of the record in addition of the discriminator
@@ -276,6 +282,28 @@ val f: t -> ([`Str of string | `Obj of t | `Nothing] [@js.union]) -> ...
 
 The `[@js.union]` attribute can only be used on polymorphic variant
 used in contravariant context (i.e. to describe mapping from OCaml to
-Javascript, not the other way around).  Constructors with one argument
-are mapped to the same value as their argument and constant constructors
-are mapped to `null`.  The name of the constructor is always ignored.
+Javascript, not the other way around).  Constant constructors are
+passed as a single `null` argument while n-ary constructors (i.e. a
+tuple of length n >= 1) are passed as n arguments, where each argument
+is mapped to the same value as the corresponding projection of the
+tuple. The name of the constructor is always ignored.
+
+Discriminated union types
+-------------------------
+
+It is common for JS functions to allow arguments of several different
+types (for instance, a string or an object), whose type depends on a
+preceding argument.  To represent this calling convention, one can use
+polymorphic variants:
+
+```
+val f: t -> ([`Str of string | `Obj of t | `Nothing] [@js.enum]) -> ...
+```
+
+This generalisation of the `[@js.enum]` attribute can only be used on
+polymorphic variant used in contravariant context (i.e. to describe
+mapping from OCaml to Javascript, not the other way around).  With
+this calling convention, first the representation of the constructor
+(which can be either an integer or a string, which is derived
+automatically if not specified with a `[@js]` attribute) is passed,
+followed by the n arguments of the constructor.

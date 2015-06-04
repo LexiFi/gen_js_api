@@ -997,7 +997,10 @@ and prepare_args_push ty_args ty_vararg =
               match get_js_constr ~global_attrs mlconstr attributes with
               | `Int n -> (ml2js int_typ (int n)) :: args
               | `String s -> (ml2js string_typ (str s)) :: args
-            end else args
+            end else
+              match args with
+              | [] -> [ojs "null" []]
+              | _ :: _ -> args
           in
           let gen_tuple typs =
             let xis = List.map (fun typ -> typ, fresh ()) typs in
