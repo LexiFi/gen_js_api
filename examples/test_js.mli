@@ -162,3 +162,36 @@ module Person2: sig
 end
 
 val f: ([`Int of int | `String of string | `Nothing] [@js.union]) -> unit
+
+module Verb1: sig
+  type t1 =
+    { x_coord: int;
+      y_coord: int;
+    }
+
+  class t2: Ojs.t ->
+    object
+      inherit Ojs.obj
+      method x_coord: int
+      method y_coord: int
+    end
+end [@js.verbatim_names]
+
+module Verb2: sig
+  type t1 =
+    { x_coord: int;
+      y_coord: int;
+    } [@@js.verbatim_names]
+
+  class t2: Ojs.t ->
+    object
+      inherit Ojs.obj
+      method x_coord: int
+      method y_coord: int
+    end [@@js.verbatim_names]
+end
+
+module Console2: sig
+  val log: string -> unit
+    [@@js.global]
+end [@js.scope "console"]
