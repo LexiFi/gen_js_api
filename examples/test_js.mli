@@ -205,3 +205,9 @@ module Location2: sig
   val hash: unit -> string [@@js.get]
   val set_hash: string -> unit [@@js.set]
 end [@js.scope "location"]
+
+module Location3: sig
+  val assign: string -> unit
+  val reload: ?force:bool -> unit -> unit
+  val replace: string -> unit
+end [@js.scope "location"]
