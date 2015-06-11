@@ -74,6 +74,28 @@ Supported forms
   [@@js.global]
   ```
 
+  By default, a global value or function is taken in the global
+  scope. However, it is possible to specify an access path by using
+  `[@js.scope]` attribute on englobing modules. The access path is
+  then composed by concatenation of all the names indicated by
+  `[@js.scope]` attribute, separated by a '.'.
+
+  For instance,
+
+  ```ocaml
+  module Console: sig
+    val log: string -> unit [@@js.global]
+  end [@@js.scope "console"]
+  ```
+
+  is equivalent to
+
+  ```ocaml
+  module Console: sig
+    val log: string -> unit [@@js.global "console.log"]
+  end
+  ```
+
 - Property getter
 
   ```ocaml
@@ -124,6 +146,9 @@ Supported forms
   This creates a function which returns the current value of a
   global variable or of a (possibly nested) inner field of a global variable.
 
+  As for global values, it is possible to indicate the access path by
+  using `[@js.scope]` attributes on englobing modules.
+
 - Global setter
 
   ```ocaml
@@ -137,6 +162,8 @@ Supported forms
   This creates a function which sets the value of a
   global variable or of a (possibly nested) inner field of a global variable.
 
+  As for global values, it is possible to indicate the access path by
+  using `[@js.scope]` attributes on englobing modules.
 
 - Cast
 
@@ -235,5 +262,3 @@ declarations in most cases.  Here are the rules, applied in order:
 
 - Otherwise, the declaration is assumed to be a `[@@js.global]` value.
   This applies in particular for any non-functional type.
-
-
