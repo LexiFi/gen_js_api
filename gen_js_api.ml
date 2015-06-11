@@ -389,7 +389,7 @@ let auto_in_object ~global_attrs s = function
   | Unit _ -> MethCall (js_name ~global_attrs s)
   | _ -> PropGet (js_name ~global_attrs s)
 
-let parse_attr ~global_attrs (s, loc, auto) (k, v) =
+let parse_attr ~global_attrs ?ty (s, loc, auto) (k, v) =
   let opt_name ?(prefix = "") ?(capitalize = false) ?(global = false) () =
     match v with
     | PStr [] ->
@@ -404,8 +404,22 @@ let parse_attr ~global_attrs (s, loc, auto) (k, v) =
   in
   let actions =
     [ "js.cast", (fun () -> Cast);
-      "js.get", (fun () -> PropGet (opt_name ()));
-      "js.set", (fun () -> PropSet (opt_name ~prefix:"set_" ()));
+      "js.get",
+      (fun () ->
+         let global =
+           match ty with
+           | Some (Arrow {ty_args = []; ty_vararg = None; unit_arg = true; ty_res = _}) -> true
+           | _ -> false
+         in
+         PropGet (opt_name ~global ()));
+      "js.set",
+      (fun () ->
+         let global =
+           match ty with
+           | Some (Arrow {ty_args = [_]; ty_vararg = None; unit_arg = false; ty_res = Unit _}) -> true
+           | _ -> false
+         in
+         PropSet (opt_name ~global ~prefix:"set_" ()));
       "js.call", (fun () -> MethCall (opt_name ()));
       "js.global", (fun () -> Global (opt_name ~global:true ()));
       "js", (fun () -> auto ());
@@ -424,7 +438,7 @@ let parse_valdecl ~global_attrs ~in_sig vd =
   let loc = vd.pval_loc in
   let ty = parse_typ ~global_attrs vd.pval_type in
   let auto () = auto ~global_attrs s ty in
-  let defs = choose (parse_attr ~global_attrs (s, loc, auto)) attributes in
+  let defs = choose (parse_attr ~global_attrs ~ty (s, loc, auto)) attributes in
   let r =
     match defs with
     | [x] -> x

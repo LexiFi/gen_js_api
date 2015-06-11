@@ -200,3 +200,8 @@ module Location: sig
   val hash: unit -> string
   val set_hash: string -> unit
 end [@js.scope "location"]
+
+module Location2: sig
+  val hash: unit -> string [@@js.get]
+  val set_hash: string -> unit [@@js.set]
+end [@js.scope "location"]
