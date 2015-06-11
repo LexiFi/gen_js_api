@@ -195,3 +195,8 @@ module Console2: sig
   val log: string -> unit
     [@@js.global]
 end [@js.scope "console"]
+
+module Location: sig
+  val hash: unit -> string
+  val set_hash: string -> unit
+end [@js.scope "location"]

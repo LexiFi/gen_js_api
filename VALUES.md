@@ -85,7 +85,7 @@ Supported forms
   ```ocaml
   module Console: sig
     val log: string -> unit [@@js.global]
-  end [@@js.scope "console"]
+  end [@js.scope "console"]
   ```
 
   is equivalent to

@@ -371,11 +371,14 @@ let in_global_scope ~global_attrs js =
 let auto ~global_attrs s = function
   | Arrow {ty_args = [{lab=Arg; att=_; typ=Name (t, [])}]; ty_vararg = None; unit_arg = false; ty_res = Js} when check_suffix ~suffix:"_to_js" s = Some t -> Cast
   | Arrow {ty_args = [{lab=Arg; att=_; typ=Js}]; ty_vararg = None; unit_arg = false; ty_res = Name (t, [])} when check_suffix ~suffix:"_of_js" s = Some t -> Cast
-  | Arrow {ty_args = [{lab=Arg; att=_; typ=Name _}]; ty_vararg = None; unit_arg = false; ty_res = Unit _} ->  MethCall (js_name ~global_attrs s)
-  | Arrow {ty_args = [{lab=Arg; att=_; typ=Name _}]; ty_vararg = None; unit_arg = false; ty_res = _} ->  PropGet (js_name ~global_attrs s)
+  | Arrow {ty_args = [_]; ty_vararg = None; unit_arg = false; ty_res = Unit _} when has_prefix ~prefix:"set_" s -> PropSet (in_global_scope ~global_attrs (js_name ~global_attrs (drop_prefix ~prefix:"set_" s)))
+  | Arrow {ty_args = [{lab=Arg; att=_; typ=Name _}]; ty_vararg = None; unit_arg = false; ty_res} ->
+      begin match ty_res with
+      | Unit _ -> MethCall (js_name ~global_attrs s)
+      | _ -> PropGet (js_name ~global_attrs s)
+      end
   | Arrow {ty_args = []; ty_vararg = None; unit_arg = true; ty_res = _} -> PropGet (in_global_scope ~global_attrs (js_name ~global_attrs s))
   | Arrow {ty_args = [{lab=Arg; att=_; typ=Name _}; _]; ty_vararg = None; unit_arg = false; ty_res = Unit _} when has_prefix ~prefix:"set_" s -> PropSet (js_name ~global_attrs (drop_prefix ~prefix:"set_" s))
-  | Arrow {ty_args = [_]; ty_vararg = None; unit_arg = false; ty_res = Unit _} when has_prefix ~prefix:"set_" s -> PropSet (in_global_scope ~global_attrs (js_name ~global_attrs (drop_prefix ~prefix:"set_" s)))
   | Arrow {ty_args = _; ty_vararg = None; unit_arg = false; ty_res = Name _} when has_prefix ~prefix:"new_" s -> New (js_name ~global_attrs (drop_prefix ~prefix:"new_" s))
   | Arrow {ty_args = {lab=Arg; att=_; typ=Name _} :: _; ty_vararg = _; unit_arg = _; ty_res = _} -> MethCall (js_name ~global_attrs s)
   | _ -> Global (in_global_scope ~global_attrs (js_name ~global_attrs s))
