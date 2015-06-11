@@ -379,7 +379,7 @@ let auto ~global_attrs s = function
       end
   | Arrow {ty_args = []; ty_vararg = None; unit_arg = true; ty_res = _} -> PropGet (in_global_scope ~global_attrs (js_name ~global_attrs s))
   | Arrow {ty_args = [{lab=Arg; att=_; typ=Name _}; _]; ty_vararg = None; unit_arg = false; ty_res = Unit _} when has_prefix ~prefix:"set_" s -> PropSet (js_name ~global_attrs (drop_prefix ~prefix:"set_" s))
-  | Arrow {ty_args = _; ty_vararg = None; unit_arg = false; ty_res = Name _} when has_prefix ~prefix:"new_" s -> New (js_name ~global_attrs (drop_prefix ~prefix:"new_" s))
+  | Arrow {ty_args = _; ty_vararg = None; unit_arg = false; ty_res = Name _} when has_prefix ~prefix:"new_" s -> New (in_global_scope ~global_attrs (js_name ~global_attrs (drop_prefix ~prefix:"new_" s)))
   | Arrow {ty_args = {lab=Arg; att=_; typ=Name _} :: _; ty_vararg = _; unit_arg = _; ty_res = _} -> MethCall (js_name ~global_attrs s)
   | _ -> Global (in_global_scope ~global_attrs (js_name ~global_attrs s))
 
@@ -423,7 +423,7 @@ let parse_attr ~global_attrs ?ty (s, loc, auto) (k, v) =
       "js.call", (fun () -> MethCall (opt_name ()));
       "js.global", (fun () -> Global (opt_name ~global:true ()));
       "js", (fun () -> auto ());
-      "js.new", (fun () -> New (opt_name ~prefix:"new_" ~capitalize:true ()));
+      "js.new", (fun () -> New (opt_name ~prefix:"new_" ~global:true ~capitalize:true ()));
       "js.builder", (fun () -> Builder global_attrs);
     ]
   in

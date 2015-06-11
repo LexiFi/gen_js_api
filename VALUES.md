@@ -50,6 +50,8 @@ Supported forms
   val f: T1 -> ... -> Tn -> t
   [@@js.new "JavascriptClassName"]
   ```
+  As for global values, it is possible to indicate the access path by
+  using `[@js.scope]` attributes on englobing modules (see below).
 
 - Global value or function:
 
