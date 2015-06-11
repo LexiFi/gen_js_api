@@ -74,8 +74,8 @@ Supported forms
   [@@js.global]
   ```
 
-  By default, a global value or function is taken in the global
-  scope. However, it is possible to specify an access path by using
+  By default, a global value or function is taken from the global
+  object. However, it is possible to specify an access path by using
   `[@js.scope]` attribute on englobing modules. The access path is
   then composed by concatenation of all the names indicated by
   `[@js.scope]` attribute, separated by a '.'.
