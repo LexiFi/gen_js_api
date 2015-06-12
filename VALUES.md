@@ -50,6 +50,8 @@ Supported forms
   val f: T1 -> ... -> Tn -> t
   [@@js.new "JavascriptClassName"]
   ```
+  As for global values, it is possible to indicate the access path by
+  using `[@js.scope]` attributes on englobing modules (see below).
 
 - Global value or function:
 
@@ -85,7 +87,7 @@ Supported forms
   ```ocaml
   module Console: sig
     val log: string -> unit [@@js.global]
-  end [@@js.scope "console"]
+  end [@js.scope "console"]
   ```
 
   is equivalent to
@@ -243,9 +245,23 @@ declarations in most cases.  Here are the rules, applied in order:
   followed by `_to_js`), then the function is assumed to be a
   `[@@js.cast]`.
 
+- If the value is a function with a single argument `t1 -> unit` and
+  its name starts with `set_`, then the declaration is assumed to be a
+  `[@@js.set]` global setter (whose name is obtained by dropping the
+  `set_` prefix).
+
+- If the value is a function with a single argument (named type) `t ->
+  unit`, then the declaration is assumed to be a `[@@js.call]` method
+  call, unless a `[@js.scope]` attribute has been defined in an
+  englobing module. In this latter case, the value is assumed to be a
+  `[@@js.global]` value.
+
 - If the value is a function with a single argument (named type) `t ->
   t2` (and `t2` is not `unit`), then the declaration is assumed to be
   a `[@@js.get]` property getter.
+
+- If the value is a function with a single argument `unit -> t2`, then
+  the declaration is assumed to be a `[@@js.get]` global getter.
 
 - If the value is a function with two arguments `t1 -> t2 -> unit` and
   its name starts with `set_`, then the declaration is assumed to be a
@@ -257,8 +273,11 @@ declarations in most cases.  Here are the rules, applied in order:
   be a `[@@js.new]` object creation (on the class whose name is
   obtained by dropping the `new_`prefix).
 
-- If the value is a function whose first argument is a named type `t -> ...`,
-  then the definition is assumed to be a `[@@js.call]` method call.
+- If the value is a function whose first argument is a named type `t
+  -> ...`, then the definition is assumed to be a `[@@js.call]` method
+  call, unless a `[@js.scope]` attribute has been defined in an
+  englobing module. In this latter case, the value is assumed to be a
+  `[@@js.global]` value.
 
 - Otherwise, the declaration is assumed to be a `[@@js.global]` value.
   This applies in particular for any non-functional type.
