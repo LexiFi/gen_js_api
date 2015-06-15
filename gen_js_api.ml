@@ -25,6 +25,7 @@ type error =
   | Not_supported_here of string
   | Non_constant_constructor_in_enum
   | Multiple_default_case_in_enum
+  | Multiple_default_case_in_sum
   | Invalid_variadic_type_arg
   | No_input
   | Multiple_inputs
@@ -121,6 +122,8 @@ let print_error ppf = function
       Format.fprintf ppf "Constructors in enums cannot take arguments"
   | Multiple_default_case_in_enum ->
       Format.fprintf ppf "At most one default constructor is supported in enums for each type"
+  | Multiple_default_case_in_sum ->
+      Format.fprintf ppf "At most one default constructor is supported in sums for each type"
   | Invalid_variadic_type_arg ->
       Format.fprintf ppf "A variadic function argument must be of type list"
   | No_input ->
@@ -758,11 +761,11 @@ and js2ml_of_variant ~variant loc ~global_attrs attrs constrs exp =
     else fun x arg -> Exp.construct (mknoloc (Longident.Lident x)) arg
   in
   let f exp =
-    let gen_cases (int_default, int_cases, string_default, string_cases) {mlconstr; arg; attributes; location} =
+    let gen_cases (int_default, int_cases, string_default, string_cases, sum_default) {mlconstr; arg; attributes; location} =
       let case x =
         match get_js_constr ~global_attrs mlconstr attributes with
-        | `String s -> int_default, int_cases, string_default, Exp.case (pat_str s) x :: string_cases
-        | `Int n -> int_default, Exp.case (pat_int n) x :: int_cases, string_default, string_cases
+        | `String s -> int_default, int_cases, string_default, Exp.case (pat_str s) x :: string_cases, sum_default
+        | `Int n -> int_default, Exp.case (pat_int n) x :: int_cases, string_default, string_cases, sum_default
       in
       let get_arg key typ = js2ml typ (ojs "get" [exp; str key]) in
       match arg with
@@ -771,9 +774,21 @@ and js2ml_of_variant ~variant loc ~global_attrs attrs constrs exp =
           let otherwise() =
             if is_enum then error location Non_constant_constructor_in_enum
             else begin
-              let loc, arg_field = get_string_attribute_default "js.arg" (location, "arg") attributes in
-              check_label loc arg_field;
-              case (mkval mlconstr (Some (get_arg arg_field arg_typ)))
+              if arg_typ = Js && has_attribute "js.default" attributes then begin
+                match get_attribute "js.default" attributes with
+                | None -> assert false
+                | Some (k, _) ->
+                    begin match sum_default with
+                    | None ->
+                        let sum_default = Some (Exp.case (Pat.any()) (mkval mlconstr (Some exp))) in
+                        int_default, int_cases, string_default, string_cases, sum_default
+                    | Some _ -> error k.loc Multiple_default_case_in_sum
+                    end
+              end else begin
+                let loc, arg_field = get_string_attribute_default "js.arg" (location, "arg") attributes in
+                check_label loc arg_field;
+                case (mkval mlconstr (Some (get_arg arg_field arg_typ)))
+              end
             end
           in
           let process_default def cont =
@@ -787,11 +802,10 @@ and js2ml_of_variant ~variant loc ~global_attrs attrs constrs exp =
                 | Some _ -> error k.loc Multiple_default_case_in_enum
                 end
           in
-
           if is_enum && arg_typ = int_typ then begin
-            process_default int_default (fun int_default -> Some int_default, int_cases, string_default, string_cases)
+            process_default int_default (fun int_default -> Some int_default, int_cases, string_default, string_cases, sum_default)
           end else if is_enum && arg_typ = string_typ then begin
-            process_default string_default (fun string_default -> int_default, int_cases, Some string_default, string_cases)
+            process_default string_default (fun string_default -> int_default, int_cases, Some string_default, string_cases, sum_default)
           end else otherwise()
       | Nary args_typ ->
           if is_enum then error location Non_constant_constructor_in_enum
@@ -805,7 +819,7 @@ and js2ml_of_variant ~variant loc ~global_attrs attrs constrs exp =
           else
             case (mkval mlconstr (Some (Exp.record (List.map (fun (loc, mlname, jsname, typ) -> check_label loc jsname; mlname, get_arg jsname typ) args) None)))
     in
-    let (int_default, int_cases, string_default, string_cases) = List.fold_left gen_cases (None, [], None, []) constrs in
+    let (int_default, int_cases, string_default, string_cases, sum_default) = List.fold_left gen_cases (None, [], None, [], None) constrs in
     let gen_match e default other_cases =
       match default, other_cases with
       | None, [] -> None
@@ -821,17 +835,38 @@ and js2ml_of_variant ~variant loc ~global_attrs attrs constrs exp =
       | None -> exp
       | Some kind -> ojs "get" [exp; str kind]
     in
-    let int_match = gen_match (js2ml int_typ discriminator) int_default int_cases in
-    let string_match = gen_match (js2ml string_typ discriminator) string_default string_cases in
+    let int_match, string_match =
+      if is_enum then
+        let int_match = gen_match (js2ml int_typ discriminator) int_default int_cases in
+        let string_match = gen_match (js2ml string_typ discriminator) string_default string_cases in
+        int_match, string_match
+      else
+        let int_match = gen_match (js2ml int_typ discriminator) sum_default int_cases in
+        let string_match = gen_match (js2ml string_typ discriminator) sum_default string_cases in
+        match int_cases, string_cases with
+        | [], _ -> None, string_match
+        | _, [] -> int_match, None
+        | _ :: _, _ :: _ -> int_match, string_match
+    in
+    let case_int int_match = Exp.case (pat_str "number") int_match in
+    let case_string string_match = Exp.case (pat_str "string") string_match in
+    let case_default =
+      if is_enum || sum_default = None then Exp.case (Pat.any ()) assert_false
+      else
+        match sum_default with
+        | None -> assert false
+        | Some def -> def
+    in
     match int_match, string_match with
     | None, None -> assert false
-    | Some int_match, None -> int_match
-    | None, Some string_match -> string_match
+    | Some int_match, None ->
+        if is_enum || sum_default = None then int_match
+        else Exp.match_ (ojs "type_of" [discriminator]) [case_int int_match; case_default]
+    | None, Some string_match ->
+        if is_enum || sum_default = None then string_match
+        else Exp.match_ (ojs "type_of" [discriminator]) [case_string string_match; case_default]
     | Some int_match, Some string_match ->
-        let case_int = Exp.case (pat_str "number") int_match in
-        let case_string = Exp.case (pat_str "string") string_match in
-        let case_default = Exp.case (Pat.any ()) assert_false in
-        Exp.match_ (ojs "type_of" [discriminator]) [case_int; case_string; case_default]
+        Exp.match_ (ojs "type_of" [discriminator]) [case_int int_match; case_string string_match; case_default]
   in
   let_exp_in exp f
 
@@ -942,6 +977,8 @@ and ml2js_of_variant ~variant loc ~global_attrs attrs constrs exp =
         let value =
           if is_enum && (arg_typ = int_typ || arg_typ = string_typ) && has_attribute "js.default" attributes then begin
             ml2js arg_typ (var x)
+          end else if not is_enum && arg_typ = Js && has_attribute "js.default" attributes then begin
+            var x
           end else
             let loc, arg_field = get_string_attribute_default "js.arg" (location, "arg") attributes in
             check_label loc arg_field;

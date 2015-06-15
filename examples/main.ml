@@ -242,6 +242,7 @@ include ([%js]: sig
              | B of int
              | C of int * string
              | D of {age:int; name:string}
+             | Unknown of Ojs.t [@js.default]
                    [@@js.sum]
 
            val t_of_js: Ojs.t -> t
@@ -253,6 +254,7 @@ let print = function
   | B n -> print_endline (Format.sprintf "B %d" n)
   | C (n, s) -> print_endline (Format.sprintf "C (%d, %S)" n s)
   | D {age; name} -> print_endline (Format.sprintf "D {age = %d; name = %S}" age name)
+  | Unknown _ -> print_endline "unknown"
 
 val set_print_sum: (t -> unit) -> unit
     [@@js.set "print_sum"]
@@ -269,7 +271,8 @@ let () =
   Console.log console ([%js.of:t] A);
   Console.log console ([%js.of:t] (B 42));
   Console.log console ([%js.of:t] (C (42, "foo")));
-  Console.log console ([%js.of:t] (D {age=42; name="foo"}))
+  Console.log console ([%js.of:t] (D {age=42; name="foo"}));
+  Console.log console ([%js.of:t] (Unknown (Ojs.string_to_js "unexpected")));
 end
 
 val test_flatten: ([`A | `B of int | `C of string | `D of int * string] [@js.enum]) -> unit
