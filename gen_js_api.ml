@@ -783,12 +783,10 @@ and js2ml_of_variant ~variant loc ~global_attrs attrs constrs exp =
             | None -> otherwise()
             | Some (k, _) ->
                 if List.for_all ((=) None) defs then
-                  let x = fresh() in
-                  let case =
-                    if is_enum then Exp.case (Pat.var (mknoloc x)) (mkval mlconstr (Some (var x)))
-                    else Exp.case (Pat.any()) (mkval mlconstr (Some exp))
-                  in
-                  cont case
+                  if is_enum then
+                    let x = fresh() in
+                    cont (Exp.case (Pat.var (mknoloc x)) (mkval mlconstr (Some (var x))))
+                  else cont (Exp.case (Pat.any()) (mkval mlconstr (Some exp)))
                 else error k.loc (if is_enum then Multiple_default_case_in_enums else Multiple_default_case_in_sum)
           in
           if is_enum && arg_typ = int_typ then begin
