@@ -1152,6 +1152,7 @@ and gen_funs_record ~global_attrs lbls =
 
 and gen_funs ~global_attrs p =
   let name = p.ptype_name.txt in
+  let global_attrs = p.ptype_attributes @ global_attrs in
   let of_js, to_js =
     match p.ptype_manifest, p.ptype_kind with
     | Some ty, Ptype_abstract ->
