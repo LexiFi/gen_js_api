@@ -1173,7 +1173,8 @@ and gen_funs ~global_attrs p =
                 | _ :: _ :: _ -> Nary (List.map (parse_typ ~global_attrs) args)
                 end
             | Pcstr_record args ->
-                Record (List.map (process_fields ~global_attrs:c.pcd_attributes) args)
+                let global_attrs = c.pcd_attributes @ global_attrs in
+                Record (List.map (process_fields ~global_attrs) args)
           in
           { mlconstr; arg; attributes = c.pcd_attributes; location = c.pcd_loc }
         in
