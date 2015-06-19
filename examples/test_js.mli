@@ -161,7 +161,25 @@ module Person2: sig
   [@@js.global "JSON.stringify"]
 end
 
+type int_or_string_or_null =
+  | Int of int
+  | String of string
+  | Nothing
+    [@@js.union]
+
+module Union: sig
+  type foo
+  type bar
+
+  type foo_bar =
+    | Foo of foo [@js 0]
+    | Bar of bar [@js 1]
+          [@@js.union on_field "kind"]
+end
+
 val f: ([`Int of int | `String of string | `Nothing] [@js.union]) -> unit
+
+val g: int_or_string_or_null -> unit [@@js.global]
 
 module Verb1: sig
   type t1 =
