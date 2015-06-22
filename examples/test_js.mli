@@ -167,16 +167,6 @@ type int_or_string_or_null =
   | Nothing
     [@@js.union]
 
-module Union: sig
-  type foo
-  type bar
-
-  type foo_bar =
-    | Foo of foo [@js 0]
-    | Bar of bar [@js 1]
-          [@@js.union on_field "kind"]
-end
-
 val f: ([`Int of int | `String of string | `Nothing] [@js.union]) -> unit
 
 val g: int_or_string_or_null -> unit [@@js.global]
@@ -229,3 +219,15 @@ module Location3: sig
   val reload: ?force:bool -> unit -> unit
   val replace: string -> unit
 end [@js.scope "location"]
+
+module Union: sig
+  type close_path
+
+  type moveto_abs
+
+  type svg_path_seg =
+    | Unknown of Ojs.t         [@js 0]
+    | Close_path of close_path [@js 1]
+    | Moveto_abs of moveto_abs [@js 2]
+          [@@js.union on_field "pathSegType"]
+end

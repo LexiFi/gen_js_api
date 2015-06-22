@@ -289,13 +289,36 @@ convention, one can use polymorphic variants:
 val f: t -> ([`Str of string | `Obj of t | `Nothing] [@js.union]) -> ...
 ```
 
-The `[@js.union]` attribute can only be used on polymorphic variant
-used in contravariant context (i.e. to describe mapping from OCaml to
-Javascript, not the other way around).  Constant constructors are
-passed as a single `null` argument while n-ary constructors (i.e. a
-tuple of length n >= 1) are passed as n arguments, where each argument
-is mapped to the same value as the corresponding projection of the
-tuple. The name of the constructor is always ignored.
+A limited form of (polymorphic) variants is supported: only constant
+constructors or unary constructors are supported.
+
+When the `[@js.union]` attribute is used without any other option,
+only the ML to JS function is generated. The ML to JS conversion
+function simply maps constant constructors to the `null` value and
+unary constructors to the value of the constructor argument.
+
+For generating the converse function, one needs to have a way to
+distinguish JS values in the union type. At the moment, union types
+with a discriminator field argument are supported. To indicate the
+name of the field, one can add extra option `on_field "kind"` (where
+"kind" is the name of the field) to the `[@js.union]` attribute. In
+this case, the JS to ML conversion function will inspect the value of
+the field named "kind" and will map the JS value to the corresponding
+unary constructor. As for sum types, the value of the discriminator
+field is deduced from the name of the constructors but it can always
+be overriden by using a `[@js]`attribute.
+
+```
+type close_path
+
+type moveto_abs
+
+type svg_path_seg =
+  | Unknown of Ojs.t         [@js 0]
+  | Close_path of close_path [@js 1]
+  | Moveto_abs of moveto_abs [@js 2]
+  [@@js.union on_field "pathSegType"]
+```
 
 Discriminated union types
 -------------------------
