@@ -226,7 +226,7 @@ module Union: sig
   type moveto_abs
 
   type svg_path_seg =
-    | Unknown of Ojs.t         [@js 0]
+    | Unknown of Ojs.t         [@js.default]
     | Close_path of close_path [@js 1]
     | Moveto_abs of moveto_abs [@js 2]
           [@@js.union on_field "pathSegType"]

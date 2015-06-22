@@ -26,7 +26,7 @@ type error =
   | Constructor_in_union
   | Unknown_union_method
   | Non_constant_constructor_in_enum
-  | Multiple_default_case_in_enum
+  | Multiple_default_case
   | Invalid_variadic_type_arg
   | No_input
   | Multiple_inputs
@@ -121,8 +121,8 @@ let print_error ppf = function
       Format.fprintf ppf "%s not supported in this context" msg
   | Non_constant_constructor_in_enum ->
       Format.fprintf ppf "Constructors in enums cannot take arguments"
-  | Multiple_default_case_in_enum ->
-      Format.fprintf ppf "At most one default constructor is supported in enums for each type"
+  | Multiple_default_case ->
+      Format.fprintf ppf "At most one default constructor is supported in variants"
   | Invalid_variadic_type_arg ->
       Format.fprintf ppf "A variadic function argument must be of type list"
   | No_input ->
@@ -800,22 +800,26 @@ and js2ml_of_variant ~variant loc ~global_attrs attrs constrs exp =
                 case (mkval mlconstr (Some (get_arg arg_field arg_typ)))
             | `Union _ -> case (mkval mlconstr (Some (js2ml arg_typ exp)))
           in
-          let process_default def cont =
+          let process_default defs cont =
             match get_attribute "js.default" attributes with
             | None -> otherwise()
             | Some (k, _) ->
-                begin match def with
-                | None ->
-                    let x = fresh() in
-                    cont (Exp.case (Pat.var (mknoloc x)) (mkval mlconstr (Some (var x))))
-                | Some _ -> error k.loc Multiple_default_case_in_enum
-                end
+                if List.for_all ((=) None) defs then begin
+                  match variant_kind with
+                  | `Enum ->
+                      let x = fresh() in
+                      cont (Exp.case (Pat.var (mknoloc x)) (mkval mlconstr (Some (var x))))
+                  | `Sum _ | `Union _ ->
+                      cont (Exp.case (Pat.any ()) (mkval mlconstr (Some (js2ml arg_typ exp))))
+                end else error k.loc Multiple_default_case
           in
           begin match variant_kind with
           | `Enum when arg_typ = int_typ ->
-              process_default int_default (fun int_default -> Some int_default, int_cases, string_default, string_cases)
+              process_default [int_default] (fun int_default -> Some int_default, int_cases, string_default, string_cases)
           | `Enum when arg_typ = string_typ ->
-              process_default string_default (fun string_default -> int_default, int_cases, Some string_default, string_cases)
+              process_default [string_default] (fun string_default -> int_default, int_cases, Some string_default, string_cases)
+          | `Sum _ | `Union _ when arg_typ = Js ->
+              process_default [int_default; string_default] (fun default -> Some default, int_cases, Some default, string_cases)
           | _ -> otherwise()
           end
       | Nary args_typ ->
@@ -863,7 +867,16 @@ and js2ml_of_variant ~variant loc ~global_attrs attrs constrs exp =
     | Some int_match, Some string_match ->
         let case_int = Exp.case (pat_str "number") int_match in
         let case_string = Exp.case (pat_str "string") string_match in
-        let case_default = Exp.case (Pat.any ()) assert_false in
+        let case_default =
+          match variant_kind, int_default, string_default with
+          | `Enum, _, _
+          | _, None, None -> Exp.case (Pat.any ()) assert_false
+          | (`Sum _ | `Union _), Some def1, Some def2 ->
+              assert (def1 = def2);
+              def1
+          | (`Sum _ | `Union _), Some _, None
+          | (`Sum _ | `Union _), None, Some _ -> assert false
+        in
         Exp.match_ (ojs "type_of" [discriminator]) [case_int; case_string; case_default]
   in
   let_exp_in exp f

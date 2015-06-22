@@ -244,6 +244,14 @@ discriminator field and an argument field representing the unique
 argument of the constructor. The argument field name is by default
 `arg`, but this can be changed with a `[@js.arg]` attribute.
 
+At most one unary constructor may have the attribute `[@js.default]`
+and the argument of this constructor must be of type `Ojs.t`. In this
+case, this constructor is used to handle the default case when either
+the discriminator field is equal to an unexpected value or even worse
+when the discriminator field is absent (from JS to ML). In the other
+direction (from ML to JS), the unique argument is used as JavaScript
+representation.
+
 A nary constructor is mapped to a record containing two fields: the
 discriminator field and an argument field set to an array representing
 the arguments of the constructor. Once again, the argument field name
@@ -264,6 +272,7 @@ type t =
   | B of int
   | C of int * string
   | D of {age: int; name: string}
+  | Unknown of Ojs.t [@js.default]
     [@@js.sum]
 ```
 
@@ -275,6 +284,7 @@ type t =
   | B of int [@js.arg "arg"]
   | C of int * string [@js.arg "arg"]
   | D of {age: int [@js "age"]; name: string}
+  | Unknown of Ojs.t [@js.default]
     [@@js.sum "kind"]
 ```
 
@@ -314,11 +324,18 @@ type close_path
 type moveto_abs
 
 type svg_path_seg =
-  | Unknown of Ojs.t         [@js 0]
+  | Unknown of Ojs.t         [@js.default]
   | Close_path of close_path [@js 1]
   | Moveto_abs of moveto_abs [@js 2]
   [@@js.union on_field "pathSegType"]
 ```
+
+As for sum types, at most one unary constructor may have the
+`[@js.default]` attribute and the argument of this constructor must be
+of type `Ojs.t`. In this case, this constructor is used to handle the
+default case when either the discriminator field is equal to an
+unexpected value or even worse when the discriminator field is absent
+(from JS to ML).
 
 Discriminated union types
 -------------------------
