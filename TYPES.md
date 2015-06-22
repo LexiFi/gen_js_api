@@ -244,6 +244,14 @@ discriminator field and an argument field representing the unique
 argument of the constructor. The argument field name is by default
 `arg`, but this can be changed with a `[@js.arg]` attribute.
 
+At most one unary constructor may have the attribute `[@js.default]`
+and the argument of this constructor must be of type `Ojs.t`. In this
+case, this constructor is used to handle the default case when either
+the discriminator field is equal to an unexpected value or even worse
+when the discriminator field is absent (from JS to ML). In the other
+direction (from ML to JS), the unique argument is used as JavaScript
+representation.
+
 A nary constructor is mapped to a record containing two fields: the
 discriminator field and an argument field set to an array representing
 the arguments of the constructor. Once again, the argument field name
@@ -264,6 +272,7 @@ type t =
   | B of int
   | C of int * string
   | D of {age: int; name: string}
+  | Unknown of Ojs.t [@js.default]
     [@@js.sum]
 ```
 
@@ -275,6 +284,7 @@ type t =
   | B of int [@js.arg "arg"]
   | C of int * string [@js.arg "arg"]
   | D of {age: int [@js "age"]; name: string}
+  | Unknown of Ojs.t [@js.default]
     [@@js.sum "kind"]
 ```
 
@@ -289,13 +299,43 @@ convention, one can use polymorphic variants:
 val f: t -> ([`Str of string | `Obj of t | `Nothing] [@js.union]) -> ...
 ```
 
-The `[@js.union]` attribute can only be used on polymorphic variant
-used in contravariant context (i.e. to describe mapping from OCaml to
-Javascript, not the other way around).  Constant constructors are
-passed as a single `null` argument while n-ary constructors (i.e. a
-tuple of length n >= 1) are passed as n arguments, where each argument
-is mapped to the same value as the corresponding projection of the
-tuple. The name of the constructor is always ignored.
+A limited form of (polymorphic) variants is supported: only constant
+constructors or unary constructors are supported.
+
+When the `[@js.union]` attribute is used without any other option,
+only the ML to JS function is generated. The ML to JS conversion
+function simply maps constant constructors to the `null` value and
+unary constructors to the value of the constructor argument.
+
+For generating the converse function, one needs to have a way to
+distinguish JS values in the union type. At the moment, union types
+with a discriminator field argument are supported. To indicate the
+name of the field, one can add extra option `on_field "kind"` (where
+"kind" is the name of the field) to the `[@js.union]` attribute. In
+this case, the JS to ML conversion function will inspect the value of
+the field named "kind" and will map the JS value to the corresponding
+unary constructor. As for sum types, the value of the discriminator
+field is deduced from the name of the constructors but it can always
+be overriden by using a `[@js]`attribute.
+
+```
+type close_path
+
+type moveto_abs
+
+type svg_path_seg =
+  | Unknown of Ojs.t         [@js.default]
+  | Close_path of close_path [@js 1]
+  | Moveto_abs of moveto_abs [@js 2]
+  [@@js.union on_field "pathSegType"]
+```
+
+As for sum types, at most one unary constructor may have the
+`[@js.default]` attribute and the argument of this constructor must be
+of type `Ojs.t`. In this case, this constructor is used to handle the
+default case when either the discriminator field is equal to an
+unexpected value or even worse when the discriminator field is absent
+(from JS to ML).
 
 Discriminated union types
 -------------------------

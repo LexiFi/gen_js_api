@@ -161,7 +161,15 @@ module Person2: sig
   [@@js.global "JSON.stringify"]
 end
 
+type int_or_string_or_null =
+  | Int of int
+  | String of string
+  | Nothing
+    [@@js.union]
+
 val f: ([`Int of int | `String of string | `Nothing] [@js.union]) -> unit
+
+val g: int_or_string_or_null -> unit [@@js.global]
 
 module Verb1: sig
   type t1 =
@@ -211,3 +219,15 @@ module Location3: sig
   val reload: ?force:bool -> unit -> unit
   val replace: string -> unit
 end [@js.scope "location"]
+
+module Union: sig
+  type close_path
+
+  type moveto_abs
+
+  type svg_path_seg =
+    | Unknown of Ojs.t         [@js.default]
+    | Close_path of close_path [@js 1]
+    | Moveto_abs of moveto_abs [@js 2]
+          [@@js.union on_field "pathSegType"]
+end
