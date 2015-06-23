@@ -105,19 +105,3 @@ let empty_obj () = new_obj (get global "Object") [||]
 let apply_arr o arr = call o "apply" [| null; arr |]
 let call_arr o s arr = call (get o s) "apply" [| o; arr |]
 external new_obj_arr: t -> t -> t = "caml_ojs_new_arr"
-
-module Exn = struct
-  type nonrec t = t
-
-  let name x = string_of_js (get x "name")
-
-  let message x = string_of_js (get x "message")
-
-  let stack x = option_of_js string_of_js (get x "stack")
-
-  let to_string x = string_of_js (call x "toString" [| |])
-end
-
-exception Error of Exn.t
-
-let () = Callback.register_exception "jsError" (Error (obj [||]))

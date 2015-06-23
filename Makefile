@@ -17,7 +17,8 @@ JSOO = js_of_ocaml --pretty
 
 all:
 	$(OCAMLC) -c ojs.mli ojs.ml
-	$(OCAMLC) -a -o gen_js_api.cma ojs.cmo
+	$(OCAMLC) -c ojs_exn.mli ojs_exn.ml
+	$(OCAMLC) -a -o gen_js_api.cma ojs.cmo ojs_exn.cmo
 	$(OCAMLC) -I +compiler-libs -o gen_js_api$(EXE) ocamlcommon.cma gen_js_api.mli gen_js_api.ml
 
 tests: all test test_jquery test_js_string_regexp test_js_str test_js_date

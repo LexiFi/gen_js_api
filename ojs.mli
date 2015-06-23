@@ -107,14 +107,3 @@ class obj: t ->
   object
     method to_js: t
   end
-
-module Exn: sig
-  type t
-
-  val name: t -> string
-  val message: t -> string
-  val stack: t -> string option
-  val to_string: t -> string
-end
-
-exception Error of Exn.t
