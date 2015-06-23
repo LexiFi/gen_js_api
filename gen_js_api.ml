@@ -33,6 +33,7 @@ type error =
   | Unlabelled_argument_in_builder
   | Spurious_attribute
   | Sum_kind_args
+  | Union_without_discriminator
 
 exception Error of Location.t * error
 
@@ -139,6 +140,8 @@ let print_error ppf = function
       Format.fprintf ppf "Constructors in unions must be constant or unary."
   | Unknown_union_method ->
       Format.fprintf ppf "Unknown method to discriminate unions."
+  | Union_without_discriminator ->
+      Format.fprintf ppf "js.union without way to discriminate values."
 
 let () =
   Location.register_error_of_exn
@@ -855,7 +858,7 @@ and js2ml_of_variant ~variant loc ~global_attrs attrs constrs exp =
       match variant_kind with
       | `Enum -> exp
       | `Sum kind -> ojs "get" [exp; str kind]
-      | `Union No_discriminator -> error loc (Not_supported_here "js.union without discriminator")
+      | `Union No_discriminator -> error loc Union_without_discriminator
       | `Union (On_field kind) -> ojs "get" [exp; str kind]
     in
     let int_match = gen_match (js2ml int_typ discriminator) int_default int_cases in
@@ -1217,7 +1220,7 @@ and gen_funs ~global_attrs p =
     | _ ->
         error p.ptype_loc Cannot_parse_type
   in
-  let force_opt x = try (Some (Lazy.force x)) with Error (_, Not_supported_here _) -> None in
+  let force_opt x = try (Some (Lazy.force x)) with Error (_, Union_without_discriminator) -> None in
   let of_js, to_js = force_opt of_js, force_opt to_js in
   match p.ptype_params with
   | [{ptyp_desc = Ptyp_any; ptyp_loc = _; ptyp_attributes = _}, Invariant] ->
