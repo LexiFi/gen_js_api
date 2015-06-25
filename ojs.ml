@@ -105,3 +105,5 @@ let empty_obj () = new_obj (get global "Object") [||]
 let apply_arr o arr = call o "apply" [| null; arr |]
 let call_arr o s arr = call (get o s) "apply" [| o; arr |]
 external new_obj_arr: t -> t -> t = "caml_ojs_new_arr"
+
+external delete: t -> string -> unit = "caml_js_delete"
