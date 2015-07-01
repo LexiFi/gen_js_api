@@ -654,10 +654,13 @@ let rec select_path o = function
   | [x] -> o, x
   | x :: xs -> select_path (ojs "get" [o; str x]) xs
 
-let ojs_get_global s =
+let qualified_path s =
   let path = split '.' s in
-  match select_path ojs_global path with
-  | o, x -> ojs "get" [o; str x]
+  select_path ojs_global path
+
+let ojs_get_global s =
+  let o, x = qualified_path s in
+  ojs "get" [o; str x]
 
 let ojs_variable s = ojs_get_global s
 
@@ -1348,9 +1351,16 @@ and gen_def loc decl ty =
       mkfun (fun this -> js2ml ty_res (ojs "get" [ml2js typ this; str s]))
 
   | PropGet s, Arrow {ty_args = []; ty_vararg = None; unit_arg = true; ty_res} ->
-      fun_unit (js2ml ty_res (ojs_get_global s))
+      fun_unit (gen_def loc (Global s) ty_res)
 
-  | Global s, ty_res -> js2ml ty_res (ojs_variable s)
+  | Global s, ty_res ->
+      begin match ty_res with
+      | Arrow ({ty_args; ty_vararg = _; unit_arg = _; ty_res = _} as arrow) ->
+          let o, x = qualified_path s in
+          let f = gen_def loc (MethCall x) (Arrow {arrow with ty_args = {lab=Arg; att = []; typ = Js} :: ty_args}) in
+          Exp.apply f [Nolabel, o]
+      | _ -> js2ml ty_res (ojs_get_global s)
+      end
 
   | PropSet s,
     Arrow {ty_args = [{lab=Arg; att=_; typ=(Name _ as ty_this)};
