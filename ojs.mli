@@ -107,3 +107,5 @@ class obj: t ->
   object
     method to_js: t
   end
+
+external delete: t -> string -> unit = "caml_js_delete"
