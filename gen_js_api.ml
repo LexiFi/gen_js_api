@@ -572,11 +572,12 @@ let incl = function
 let nolabel args = List.map (function x -> Nolabel, x) args
 
 let ojs_typ = Typ.constr (mknoloc (Longident.parse "Ojs.t")) []
-let ojs s args =
-  Exp.apply (Exp.ident (mknoloc (Ldot (Lident "Ojs", s)))) (nolabel args)
 
-let ojs_null =
-  Exp.ident (mknoloc (Ldot (Lident "Ojs", "null")))
+let ojs_var s = Exp.ident (mknoloc (Ldot (Lident "Ojs", s)))
+
+let ojs s args = Exp.apply (ojs_var s) (nolabel args)
+
+let ojs_null = ojs_var "null"
 
 let list_iter f x =
   Exp.apply (Exp.ident (mknoloc (Longident.parse "List.iter"))) (nolabel [f; x])
@@ -646,7 +647,7 @@ let split sep s =
   in
   aux 0 0
 
-let ojs_global = ojs "variable" [str "joo_global_object"]
+let ojs_global = ojs_var "global"
 
 let rec select_path o = function
   | [] -> assert false
@@ -972,7 +973,7 @@ and ml2js_of_variant ~variant loc ~global_attrs attrs constrs exp =
       | `Enum, [] -> discriminator
       | `Enum, _ :: _ -> error location Non_constant_constructor_in_enum
       | `Sum kind, _ -> ojs "obj" [Exp.array ((Exp.tuple [str kind; discriminator]) :: args)]
-      | `Union _, [] -> ojs "null" []
+      | `Union _, [] -> ojs_null
       | `Union _, _ :: _ -> error location Constructor_in_union
     in
     match arg with

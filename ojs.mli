@@ -97,6 +97,7 @@ val array_set: t -> int -> t -> unit
 
 (** {2 Misc} *)
 
+val global: t
 val null: t
 
 external variable: string -> t = "caml_js_var"
