@@ -35,6 +35,7 @@ val list_of_js_from: (t -> 'a) -> t -> int -> 'a list
 
 val option_of_js: (t -> 'a) -> t -> 'a option
 (** Both [null] and [undefined] are mapped to [None]. *)
+
 val option_to_js: ('a -> t) -> 'a option -> t
 (** [None] is mapped to [null]. *)
 
