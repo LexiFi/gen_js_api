@@ -460,17 +460,18 @@ let parse_valdecl ~global_attrs ~in_sig vd =
   in
   Val (s, ty, r, loc)
 
-let rec parse_sig_item ~global_attrs s =
+let rec parse_sig_item ~global_attrs rest s =
   match s.psig_desc with
   | Psig_value vd when vd.pval_prim = [] ->
-      parse_valdecl ~global_attrs ~in_sig:true vd
+      parse_valdecl ~global_attrs ~in_sig:true vd :: rest
   | Psig_type (rec_flag, decls) ->
-      Type (rec_flag, decls)
+      Type (rec_flag, decls) :: rest
   | Psig_module {pmd_name; pmd_type = {pmty_desc = Pmty_signature si; pmty_attributes; pmty_loc = _}; pmd_loc = _; pmd_attributes = _} ->
       let global_attrs = pmty_attributes @ global_attrs in
-      Module (pmd_name.txt, pmty_attributes, parse_sig ~global_attrs si)
-  | Psig_class cs -> Class (List.map (parse_class_decl ~global_attrs) cs)
-  | Psig_attribute (attr, PStr str) when filter_attr_name "js.implem" attr -> Implem str
+      Module (pmd_name.txt, pmty_attributes, parse_sig ~global_attrs si) :: rest
+  | Psig_class cs -> Class (List.map (parse_class_decl ~global_attrs) cs) :: rest
+  | Psig_attribute (attr, PStr str) when filter_attr_name "js.implem" attr -> Implem str :: rest
+  | Psig_attribute _ -> rest
   | _ ->
       error s.psig_loc Cannot_parse_sigitem
 
@@ -483,7 +484,8 @@ and parse_sig ~global_attrs = function
       let (k, v) = unoption (get_attribute "js.custom" vd.pval_attributes) in
       let str = str_of_payload k.loc v in
       Implem str :: parse_sig ~global_attrs rest
-  | s :: rest -> parse_sig_item ~global_attrs s :: parse_sig ~global_attrs rest
+  | s :: rest ->
+      parse_sig_item ~global_attrs (parse_sig ~global_attrs rest) s
 
 and parse_sig_verbatim ~global_attrs = function
   | [] -> []
