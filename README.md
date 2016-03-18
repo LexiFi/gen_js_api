@@ -5,9 +5,14 @@ Overview
 --------
 
 gen_js_api aims at simplifying the creation of OCaml bindings for
-Javascript libraries, to be used with the [js_of_ocaml
-compiler](https://github.com/ocsigen/js_of_ocaml).  It is based on the
-following ideas:
+Javascript libraries.  It must currently be used with the [js_of_ocaml
+compiler](https://github.com/ocsigen/js_of_ocaml), although other ways
+to run OCaml code "against" Javascript might be supported later with
+the same binding definitions (for instance, [Bucklescript]
+(https://github.com/bloomberg/bucklescript), or direct embedding of a
+JS engine in a native OCaml application).
+
+gen_js_api is based on the following ideas:
 
  - Authors of bindings write OCaml signatures for Javascript libraries
    and the tool generates the actual binding code with a combination
@@ -29,6 +34,7 @@ gen_js_api can be used in two complementary ways:
 
   - As a [ppx preprocessor on implementations](PPX.md) to define local
     bindings.
+
 
 
 Examples
@@ -77,11 +83,19 @@ Related projects
     [DefinitelyTyped](https://github.com/borisyankov/DefinitelyTyped)
     interfaces and produce OCaml interfaces.
 
+  - [Bucklescript](https://github.com/bloomberg/bucklescript):
+    Another compiler from OCaml to Javascript.
+
 
 About
 -----
 
-This package is licensed by LexiFi under the terms of the MIT license.
+gen_js_api has been created by LexiFi for porting a web application
+from Javascript to OCaml.  The tool has been used in production since
+2015.
+
+This gen_js_api package is licensed by LexiFi under the terms of the
+MIT license.
 
 Contact: alain.frisch@lexifi.com
 
