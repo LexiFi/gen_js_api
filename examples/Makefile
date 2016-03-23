@@ -14,6 +14,7 @@ TARGETS+=main.js
 TARGETS+=test_jquery.js
 TARGETS+=test_js_str.js
 TARGETS+=test_js_date.js
+TARGETS+=calculator.js
 
 SUBDIRS=bindings
 
@@ -37,6 +38,9 @@ test_js_str.exe: test_js_str.cmo subdirs
 
 test_js_date.exe: test_js_date.cmo subdirs
 	$(OCAMLC) -no-check-prims -o $@ -I $(OJSDIR) gen_js_api.cma bindings/js_date.cmo $<
+
+calculator.exe: calculator.cmo
+	$(OCAMLC) -no-check-prims -o $@ -I $(OJSDIR) gen_js_api.cma $<
 
 %.cmo: %.ml subdirs
 	$(OCAMLC) -c -I $(OJSDIR) -I bindings -ppx "$(GENJSAPI) -ppx" $<
