@@ -1,46 +1,37 @@
-module Element = struct
-  include ([%js]:
-          sig
-            type t
+module Element : sig
+  type t
 
-            val t_of_js: Ojs.t -> t
+  val t_of_js: Ojs.t -> t
 
-            val append_child: t -> t -> unit [@@js.call]
+  val append_child: t -> t -> unit [@@js.call]
 
-            val set_attribute: t -> string -> string -> unit
+  val set_attribute: t -> string -> string -> unit
 
-            val set_onclick: t -> (unit -> unit) -> unit
+  val set_onclick: t -> (unit -> unit) -> unit
 
-            val node_value: t -> string
-            val set_node_value: t -> string -> unit
-          end)
-end
+  val node_value: t -> string
+  val set_node_value: t -> string -> unit
+end = [%js]
 
-module Window = struct
-  include ([%js]:
-           sig
-             type t
+module Window : sig
+  type t
 
-             val instance: t [@@js.global "window"]
+  val instance: t [@@js.global "window"]
 
-             val set_onload: t -> (unit -> unit) -> unit
-           end)
-end
+  val set_onload: t -> (unit -> unit) -> unit
+end = [%js]
 
-module Document = struct
-  include ([%js]:
-          sig
-            type t
+module Document : sig
+  type t
 
-            val instance: t [@@js.global "document"]
+  val instance: t [@@js.global "document"]
 
-            val create_element: t -> string -> Element.t
+  val create_element: t -> string -> Element.t
 
-            val create_text_node: t -> string -> Element.t
+  val create_text_node: t -> string -> Element.t
 
-            val body: t -> Element.t
-          end)
-end
+  val body: t -> Element.t
+end = [%js]
 
 let element tag children =
   let elt = Document.create_element Document.instance tag in
@@ -112,11 +103,12 @@ let widget () =
     in
     button (string_of_int digit) f
   in
+  let c l = td l in
   table [tr [td ~colspan:4 res];
-         tr (List.map td [figure 9; figure 8; figure 7; button "+" (binop ( +. ))]);
-         tr (List.map td [figure 6; figure 5; figure 4; button "-" (binop ( -. ))]);
-         tr (List.map td [figure 3; figure 2; figure 1; button "*" (binop ( *. ))]);
-         tr (List.map td [figure 0; button "C" reset; button "=" equal; button "/" (binop ( /. ))])]
+         tr (List.map c [figure 9; figure 8; figure 7; button "+" (binop ( +. ))]);
+         tr (List.map c [figure 6; figure 5; figure 4; button "-" (binop ( -. ))]);
+         tr (List.map c [figure 3; figure 2; figure 1; button "*" (binop ( *. ))]);
+         tr (List.map c [figure 0; button "C" reset; button "=" equal; button "/" (binop ( /. ))])]
 
 let go () =
   Element.append_child (Document.body Document.instance) (center (widget()))
