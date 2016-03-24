@@ -51,3 +51,11 @@ calculator.exe: calculator.cmo
 clean:
 	rm -f *.exe *.cmi *.cmo *.js *~
 	for dir in $(SUBDIRS); do $(MAKE) clean -C $$dir; done
+
+
+# Example of build instructions using a installed gen_js_api
+
+calc.js: calculator.ml
+	ocamlfind ocamlc -package gen_js_api.ppx -c calculator.ml
+	ocamlfind ocamlc -package gen_js_api -o calc.exe -linkpkg -no-check-prims calc.cmo
+	js_of_ocaml +gen_js_api/ojs_runtime.js calc.exe
