@@ -43,15 +43,17 @@ Examples
 The repository contains some examples of OCaml bindings to Javascript
 libraries created with gen_js_api:
 
- - Very partial [ bindings to jQuery](examples/jquery.mli), with
-   some [example client code](examples/test_jquery.ml).
+ - Very partial [bindings to jQuery](examples/misc/jquery.mli), with
+   some [example client code](examples/misc/test_jquery.ml).
 
- - Partial [bindings to Javascript strings and
-   regexps](examples/js_str.mli), with some [example client
-   code](examples/test_js_str.ml).
+ - Partial bindings to Javascript [strings and
+   regexps](examples/misc/js_str.mli) and Javascript
+   [dates (examples/js_date.mli).
 
- - Partial [bindings to Javascript dates](examples/js_date.mli), with
-   some [example client code](examples/test_js_date.ml).
+ - Some [ad hoc test](examples/test) to exercise various features.
+
+ - An example of a self-contained program, a [simple
+   calculator](calc/calc.ml), implementing local .bindings
 
 Documentation
 -------------

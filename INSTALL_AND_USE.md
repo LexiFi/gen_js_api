@@ -2,24 +2,36 @@ gen_js_api: installation and usage instructions
 ===============================================
 
 
+Dependencies
+------------
 
-Currenlty, this package works only on OCaml trunk, not on any released
-version.  The package is itself not released.
+gen_js_api does not have any external build-time dependency except
+the OCaml compiler (version 4.03).  Of course, it will be used
+in conjuncion with the js_of_ocaml compiler and runtime support.
 
 
 Installation (with OPAM)
 ------------------------
 
-gen_js_api currently relies on the trunk version of OCaml and the development
-version of js_of_ocaml (and since this development version doesn't install,
-I suggest to use a fork as below):
+````
+opam install gen_js_api
+````
 
-   ```
-   opam switch 4.03.0+trunk
-   opam pin add js_of_ocaml git@github.com:alainfrisch/js_of_ocaml.git
-   opam pin add gen_js_api git@github.com:alainfrisch/gen_js_api.git
-   ```
+Or, to track the development version:
 
+````
+opam pin add gen_js_api https://github.com/LexiFi/gen_js_api.git
+````
+
+Manual installation
+-------------------
+
+````
+git clone https://github.com/LexiFi/gen_js_api.git
+cd gen_js_api
+make all
+make install  # assuming ocamlfind is installed
+````
 
 
 Usage (with ocamlfind)
@@ -56,4 +68,3 @@ Usage (with ocamlfind)
    ```
    js_of_ocaml -o my_prog.js +gen_js_api/ojs_runtime.js my_prog
    ```
-

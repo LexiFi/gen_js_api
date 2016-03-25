@@ -2,9 +2,6 @@
 # See the attached LICENSE file.
 # Copyright 2015 by LexiFi.
 
-VERSION=0.1
-# Don't forget to change META file as well
-
 .PHONY: all examples clean install uninstall
 
 all:

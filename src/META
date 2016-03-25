@@ -1,9 +1,9 @@
-version = "0.1"
+version = "1.0"
 description = "Runtime support for gen_js_api"
 archive(byte) = "gen_js_api.cma"
 
 package "ppx" (
-  version = "0.1"
+  version = "1.0"
   description = "Syntactic support for gen_js_api"
   ppx = "./gen_js_api -ppx"
 )
