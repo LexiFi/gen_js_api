@@ -8,9 +8,6 @@ module Element : sig
   val set_attribute: t -> string -> string -> unit
 
   val set_onclick: t -> (unit -> unit) -> unit
-
-  val node_value: t -> string
-  val set_node_value: t -> string -> unit
 end = [%js]
 
 module Window : sig
@@ -58,28 +55,14 @@ let button x f =
   Element.set_onclick elt f;
   elt
 
-let textarea ?rows ?cols ?readonly x =
-  let elt = element "textarea" [x] in
-  begin match rows with
-  | None -> ()
-  | Some n -> Element.set_attribute elt "rows" (string_of_int n)
-  end;
-  begin match cols with
-  | None -> ()
-  | Some n -> Element.set_attribute elt "cols" (string_of_int n)
-  end;
-  begin match readonly with
-  | None -> ()
-  | Some () -> Element.set_attribute elt "readonly" ""
-  end;
-  elt
-
 let widget () =
   let accu = ref 0. in
   let res, set_value =
-    let value = textnode "" in
-    let set_value v = Element.set_node_value value (string_of_float v) in
-    textarea ~rows:1 ~cols:30 ~readonly:() value, set_value
+    let elt = element "input" [] in
+    Element.set_attribute elt "type" "text";
+    Element.set_attribute elt "readonly" "";
+    let set_value v = Element.set_attribute elt "value" (string_of_float v) in
+    elt, set_value
   in
   set_value !accu;
   let compute = ref (fun x -> x) in
