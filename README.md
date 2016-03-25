@@ -53,7 +53,7 @@ libraries created with gen_js_api:
  - Some [ad hoc test](examples/test) to exercise various features.
 
  - An example of a self-contained program, a [simple
-   calculator](calc/calc.ml), implementing local .bindings
+   calculator](examples/calc/calc.ml), implementing local .bindings
 
 Documentation
 -------------
