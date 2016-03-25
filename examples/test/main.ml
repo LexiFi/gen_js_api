@@ -5,7 +5,7 @@
 (** Some ad hoc code to illustrate and test various aspects
     of gen_js_api *)
 
-open Test_js
+open Test_bindings
 
 include
   ([%js] :
