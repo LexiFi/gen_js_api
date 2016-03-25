@@ -48,7 +48,7 @@ libraries created with gen_js_api:
 
  - Partial bindings to Javascript [strings and
    regexps](examples/misc/js_str.mli) and Javascript
-   [dates (examples/js_date.mli).
+   [dates](examples/js_date.mli).
 
  - Some [ad hoc test](examples/test) to exercise various features.
 
