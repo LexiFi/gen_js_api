@@ -5,7 +5,7 @@
 ROOT=..
 include $(ROOT)/Makefile.common
 
-.PHONY: all clean install uninstall
+.PHONY: all clean install uninstall doc
 
 all:
 	$(OCAMLC) -c ojs.mli ojs.ml
@@ -15,6 +15,11 @@ all:
 
 clean:
 	rm -f *~ gen_js_api$(EXE) *.cm* .*~
+
+doc:
+	rm -rf doc
+	mkdir doc
+	ocamldoc -d doc -html ojs.mli ojs_exn.mli
 
 # ocamlfind installation
 

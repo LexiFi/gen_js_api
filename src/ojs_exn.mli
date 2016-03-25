@@ -2,6 +2,8 @@
 (* See the attached LICENSE file.                                         *)
 (* Copyright 2015 by LexiFi.                                              *)
 
+(** OCaml view on JS exceptions *)
+
 type t
 
 val name: t -> string
