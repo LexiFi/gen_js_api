@@ -8,7 +8,7 @@ BINDINGS=jquery.mli js_date.mli js_str.mli
 all: $(BINDINGS:.mli=.cmi) $(BINDINGS:.mli=.cmo) test_jquery.js
 
 test_jquery.exe: jquery.cmo test_jquery.cmo
-	$(OCAMLC) -no-check-prims -o $@ $(OJSDIR)/gen_js_api.cma $<
+	$(OCAMLC) -no-check-prims -o $@ $(OJSDIR)/gen_js_api.cma $^
 
 test_jquery.js: test_jquery.exe
 	$(JSOO) $(OJSDIR)/ojs_runtime.js $<
