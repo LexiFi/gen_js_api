@@ -5,32 +5,20 @@
 VERSION=0.1
 # Don't forget to change META file as well
 
-include Makefile.common
-
-.PHONY: all examples clean
+.PHONY: all examples clean install uninstall
 
 all:
-	$(OCAMLC) -c ojs.mli ojs.ml
-	$(OCAMLC) -c ojs_exn.mli ojs_exn.ml
-	$(OCAMLC) -a -o gen_js_api.cma ojs.cmo ojs_exn.cmo
-	$(OCAMLC) -I +compiler-libs -o gen_js_api$(EXE) ocamlcommon.cma gen_js_api.mli gen_js_api.ml
+	$(MAKE) -C src all
 
 examples:
 	$(MAKE) -C examples all
 
 clean:
-	rm -f *~ gen_js_api$(EXE) *.cm* .*~
+	$(MAKE) -C src clean
 	$(MAKE) -C examples clean
 
-INSTALL = \
-  META \
-  gen_js_api$(EXE) \
-  gen_js_api.cma \
-  ojs.cmi ojs_exn.cmi \
-  ojs_runtime.js
-
 install:
-	ocamlfind install gen_js_api $(INSTALL)
+	$(MAKE) -C src install
 
 uninstall:
-	ocamlfind remove gen_js_api
+	$(MAKE) -C src uninstall

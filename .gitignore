@@ -8,3 +8,6 @@
 *.cmxs
 *.cmxa
 *.exe
+examples/*/*.js
+examples/test/test_bindings.ml
+src/gen_js_api

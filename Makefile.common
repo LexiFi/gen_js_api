@@ -1,7 +1,12 @@
+# The package gen_js_api is released under the terms of an MIT-like license.
+# See the attached LICENSE file.
+# Copyright 2015, 2016 by LexiFi.
+
 include $(shell ocamlc -where)/Makefile.config
 
 OCAMLFLAGS = -w +A-4-41-45 -warn-error +8
 OCAMLC = ocamlc $(OCAMLFLAGS)
-OJSDIR = $(ROOT)
-GENJSAPI= $(ROOT)/gen_js_api$(EXE)
+
+OJSDIR = $(ROOT)/src
+GENJSAPI= $(ROOT)/src/gen_js_api$(EXE)
 JSOO = js_of_ocaml --pretty --disable genprim
