@@ -88,9 +88,9 @@ let widget () =
   in
   let c l = td l in
   table [tr [td ~colspan:4 res];
-         tr (List.map c [figure 9; figure 8; figure 7; button "+" (binop ( +. ))]);
-         tr (List.map c [figure 6; figure 5; figure 4; button "-" (binop ( -. ))]);
-         tr (List.map c [figure 3; figure 2; figure 1; button "*" (binop ( *. ))]);
+         tr (List.map c [figure 7; figure 8; figure 9; button "+" (binop ( +. ))]);
+         tr (List.map c [figure 4; figure 5; figure 6; button "-" (binop ( -. ))]);
+         tr (List.map c [figure 1; figure 2; figure 3; button "*" (binop ( *. ))]);
          tr (List.map c [figure 0; button "C" reset; button "=" equal; button "/" (binop ( /. ))])]
 
 let go () =
