@@ -8,7 +8,7 @@ include $(ROOT)/Makefile.common
 .PHONY: all clean
 
 all:
-	$(OJSDIR)/gen_js_api test_bindings.mli
+	$(GENJSAPI) test_bindings.mli
 	$(OCAMLC) -c -I $(OJSDIR) test_bindings.mli test_bindings.ml
 	$(OCAMLC) -c -I $(OJSDIR) -ppx "$(GENJSAPI) -ppx" main.ml
 	$(OCAMLC) -no-check-prims -o main.exe $(OJSDIR)/gen_js_api.cma test_bindings.cmo main.cmo
