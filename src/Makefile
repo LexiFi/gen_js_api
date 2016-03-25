@@ -15,6 +15,7 @@ all:
 
 clean:
 	rm -f *~ gen_js_api$(EXE) *.cm* .*~
+	rm -rf doc
 
 doc:
 	rm -rf doc
