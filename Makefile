@@ -31,7 +31,12 @@ clean:
 	rm -f *~ gen_js_api$(EXE) *.cm* .*~
 	for dir in $(SUBDIRS); do $(MAKE) clean -C $$dir; done
 
-INSTALL=META gen_js_api$(EXE) gen_js_api.cma ojs.cmi ojs_runtime.js
+INSTALL = \
+  META \
+  gen_js_api$(EXE) \
+  gen_js_api.cma \
+  ojs.cmi ojs_exn.cmi \
+  ojs_runtime.js
 
 install:
 	ocamlfind install gen_js_api $(INSTALL)
