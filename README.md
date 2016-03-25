@@ -1,5 +1,5 @@
-gen_js_api: generate OCaml bindings for Javascript libraries
-============================================================
+gen_js_api: easy OCaml bindings for Javascript libraries
+========================================================
 
 Overview
 --------
