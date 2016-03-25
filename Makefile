@@ -5,16 +5,9 @@
 VERSION=0.1
 # Don't forget to change META file as well
 
-include $(shell ocamlc -where)/Makefile.config
+include Makefile.common
 
-OCAMLFLAGS = -w +A-4-41-45 -warn-error +8
-OCAMLC = ocamlc $(OCAMLFLAGS)
-
-JSOO = js_of_ocaml --pretty
-
-SUBDIRS=examples
-
-.PHONY: subdirs $(SUBDIRS) all clean
+.PHONY: all examples clean
 
 all:
 	$(OCAMLC) -c ojs.mli ojs.ml
@@ -22,14 +15,12 @@ all:
 	$(OCAMLC) -a -o gen_js_api.cma ojs.cmo ojs_exn.cmo
 	$(OCAMLC) -I +compiler-libs -o gen_js_api$(EXE) ocamlcommon.cma gen_js_api.mli gen_js_api.ml
 
-subdirs: $(SUBDIRS)
-
-$(SUBDIRS):
-	$(MAKE) -C $@
+examples:
+	$(MAKE) -C examples all
 
 clean:
 	rm -f *~ gen_js_api$(EXE) *.cm* .*~
-	for dir in $(SUBDIRS); do $(MAKE) clean -C $$dir; done
+	$(MAKE) -C examples clean
 
 INSTALL = \
   META \
