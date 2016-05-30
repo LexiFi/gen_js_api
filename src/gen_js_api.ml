@@ -1357,10 +1357,15 @@ and gen_def loc decl ty =
 
   | Global s, ty_res ->
       begin match ty_res with
-      | Arrow ({ty_args; ty_vararg = _; unit_arg = _; ty_res = _} as arrow) ->
-          let o, x = qualified_path s in
-          let f = gen_def loc (MethCall x) (Arrow {arrow with ty_args = {lab=Arg; att = []; typ = Js} :: ty_args}) in
-          Exp.apply f [Nolabel, o]
+      | Arrow {ty_args; ty_vararg; unit_arg; ty_res} ->
+          let this, s = qualified_path s in
+          let formal_args, concrete_args = prepare_args ty_args ty_vararg in
+          let res this = ojs_call_arr (ml2js Js this) (str s) concrete_args in
+          begin match ty_args, ty_vararg, unit_arg with
+          | [], None, false -> js2ml_unit ty_res (res this)
+          | [], _, _
+          | _ :: _, _, _ -> func formal_args unit_arg (js2ml_unit ty_res (res this))
+          end
       | _ -> js2ml ty_res (ojs_get_global s)
       end
 
