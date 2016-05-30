@@ -75,7 +75,7 @@ let str_of_payload loc = function
   | _ -> error loc Structure_expected
 
 let id_of_expr = function
-  | {pexp_desc=Pexp_constant (Pconst_string (s, _)); _}
+  | {pexp_desc=Pexp_constant (PConst_string (s, _)); _}
   | {pexp_desc=Pexp_ident {txt=Lident s;_}; _}
   | {pexp_desc=Pexp_construct ({txt=Lident s;_}, None); _} -> s
   | e -> error e.pexp_loc Identifier_expected
@@ -180,8 +180,8 @@ let get_js_constr ~global_attrs name attributes =
   | None -> `String (js_name ~global_attrs name)
   | Some (k, v) ->
       begin match (expr_of_payload k.loc v).pexp_desc with
-      | Pexp_constant (Pconst_string (s, _)) -> `String s
-      | Pexp_constant (Pconst_integer (n, _)) -> `Int (int_of_string n)
+      | Pexp_constant (PConst_string (s, _)) -> `String s
+      | Pexp_constant (PConst_int (n, _)) -> `Int (int_of_string n)
       | _ -> error k.loc Invalid_expression
       end
 
@@ -553,10 +553,10 @@ and parse_class_field ~global_attrs = function
 (** Code generation *)
 
 let var x = Exp.ident (mknoloc (Longident.parse x))
-let str s = Exp.constant (Pconst_string (s, None))
-let int n = Exp.constant (Pconst_integer (string_of_int n, None))
-let pat_int n = Pat.constant (Pconst_integer (string_of_int n, None))
-let pat_str s = Pat.constant (Pconst_string (s, None))
+let str s = Exp.constant (PConst_string (s, None))
+let int n = Exp.constant (PConst_int (string_of_int n, None))
+let pat_int n = Pat.constant (PConst_int (string_of_int n, None))
+let pat_str s = Pat.constant (PConst_string (s, None))
 
 let attr s e = Str.attribute (mknoloc s, PStr [Str.eval e])
 
@@ -740,7 +740,7 @@ let get_variant_kind loc attrs =
         | PStr [] -> `Union No_discriminator
         | _ ->
             begin match expr_of_payload k.loc v with
-            | {pexp_desc = Pexp_apply ({pexp_desc = Pexp_ident {txt = Lident "on_field";_}; _}, [Nolabel, {pexp_desc = Pexp_constant (Pconst_string (s, _)); _}]); _} -> `Union (On_field s)
+            | {pexp_desc = Pexp_apply ({pexp_desc = Pexp_ident {txt = Lident "on_field";_}; _}, [Nolabel, {pexp_desc = Pexp_constant (PConst_string (s, _)); _}]); _} -> `Union (On_field s)
             | _ -> error k.loc Unknown_union_method
             end
         end
