@@ -69,7 +69,7 @@ Method binding
 
   ````
     method f: t -> unit
-      [@@js.meth "f"]
+      [@@js.call "f"]
   ````
 
 
@@ -84,7 +84,7 @@ all the examples above).  The following rules are applied in order:
   by dropping the `set_` prefix).
 
 - If the method is a function, then the definition is assumed to be a
-  `[@@js.meth]` method call.
+  `[@@js.call]` method call.
 
 - Otherwise, the method is assumed to be a `[@@js.get]` property getter.
 
