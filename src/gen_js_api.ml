@@ -1500,16 +1500,26 @@ and mapper =
   in
   {super with module_expr; structure_item; expr}
 
+let is_js_attribute txt = txt = "js" || has_prefix ~prefix:"js." txt
+
 let check_loc_mapper =
   let mapper = Ast_mapper.default_mapper in
   let attribute _this (({txt; loc}, _) as attr) =
-    if txt = "js" || has_prefix ~prefix:"js." txt then begin
+    if is_js_attribute txt then begin
       if is_registered_loc loc then ()
       else error loc Spurious_attribute
     end;
     attr
   in
   { mapper with Ast_mapper.attribute }
+
+let clear_attr_mapper =
+  let mapper = Ast_mapper.default_mapper in
+  let attributes _this attrs =
+    let f ({txt = _; loc}, _) = not (is_registered_loc loc) in
+    List.filter f attrs
+  in
+  { mapper with Ast_mapper.attributes }
 
 (** Main *)
 
@@ -1538,10 +1548,10 @@ let standalone () =
       ~tool_name:"gen_js_iface"
       src
   in
-  let res = str_of_sg ~global_attrs:[] sg in
+  let str = str_of_sg ~global_attrs:[] sg in
   ignore (check_loc_mapper.Ast_mapper.signature check_loc_mapper sg);
-  Format.fprintf (Format.formatter_of_out_channel oc) "%a@."
-    Pprintast.structure res;
+  let str = clear_attr_mapper.Ast_mapper.structure clear_attr_mapper str in
+  Format.fprintf (Format.formatter_of_out_channel oc) "%a@." Pprintast.structure str;
   if !out <> "-" then close_out oc
 
 let () =
