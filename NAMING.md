@@ -13,8 +13,8 @@ OCaml name by applying the following rules:
   3. uppercasing the first character when generating object constructor names.
 
 This automatic naming convention can be partially disabled by adding
-an attribute `[@js.verbatim]` on outer structures. When the attribute
-`[@js.verbatim]` is inherited from the context, the rule 1 and 2 are
+an attribute `[@js.verbatim_names]` on outer structures. When the attribute
+`[@js.verbatim_names]` is inherited from the context, the rule 1 and 2 are
 disabled.
 
 For instance,
@@ -29,4 +29,4 @@ is mapped to a JS record with two fields named "xCoord" and "Y" whereas
 type myType = { x_coord : int; y_coord : int [@js "Y"]} [@@js.verbatim_names]
 ```
 
-is mapped to a JS record with two fields named "x_coord" and "Y".
+is mapped to a JS record with two fields named "x_coord" and "y".
