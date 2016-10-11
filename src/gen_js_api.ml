@@ -273,6 +273,7 @@ type decl =
   | Val of string * typ * valdef * Location.t
   | Class of classdecl list
   | Implem of Parsetree.structure
+  | Open of Parsetree.open_description
 
 (** Parsing *)
 
@@ -472,6 +473,7 @@ let rec parse_sig_item ~global_attrs rest s =
   | Psig_class cs -> Class (List.map (parse_class_decl ~global_attrs) cs) :: rest
   | Psig_attribute (attr, PStr str) when filter_attr_name "js.implem" attr -> Implem str :: rest
   | Psig_attribute _ -> rest
+  | Psig_open descr -> Open descr :: rest
   | _ ->
       error s.psig_loc Cannot_parse_sigitem
 
@@ -1279,6 +1281,9 @@ and gen_decl ~global_attrs = function
 
   | Implem str ->
       mapper.Ast_mapper.structure mapper str
+
+  | Open descr ->
+      [ Str.open_ descr ]
 
 and gen_classdecl cast_funcs = function
   | Declaration { class_name; class_fields } ->
