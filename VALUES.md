@@ -241,8 +241,8 @@ declarations in most cases.  Here are the rules, applied in order:
   for a type declaration.
 
 - Similarly, if the type has the form `Ojs.t -> t` (for a local named
-  type `t`) and the value name is `t_to_js` (i.e. the type name
-  followed by `_to_js`), then the function is assumed to be a
+  type `t`) and the value name is `t_of_js` (i.e. the type name
+  followed by `_of_js`), then the function is assumed to be a
   `[@@js.cast]`.
 
 - If the value is a function with a single argument `t1 -> unit` and
