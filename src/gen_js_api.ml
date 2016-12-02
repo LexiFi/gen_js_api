@@ -267,13 +267,16 @@ type classdecl =
   | Declaration of { class_name: string; class_fields: class_field list }
   | Constructor of { class_name: string; js_class_name: string; class_arrow: arrow_params }
 
+type require = string option
+
 type decl =
-  | Module of string * attributes * decl list
+  | Module of string * require * attributes * decl list
   | Type of rec_flag * Parsetree.type_declaration list
   | Val of string * typ * valdef * Location.t
   | Class of classdecl list
   | Implem of Parsetree.structure
   | Open of Parsetree.open_description
+  | JsRequire of string * typ option * string
 
 (** Parsing *)
 
@@ -378,10 +381,14 @@ let in_global_scope ~global_attrs js =
   | [] -> js
   | (_ :: _) as revpath -> String.concat "." (List.rev (js :: revpath))
 
-let auto ~global_attrs s ty =
+let auto ~require_ctx ~global_attrs s ty =
   let methcall s =
     let js = js_name ~global_attrs s in
-    if has_attribute "js.scope" global_attrs then Global (in_global_scope ~global_attrs js)
+    if has_attribute "js.scope" global_attrs
+    then
+      let js_scope = in_global_scope ~global_attrs js in
+      if require_ctx then MethCall js_scope
+      else Global js_scope
     else MethCall js
   in
   match ty with
@@ -389,12 +396,17 @@ let auto ~global_attrs s ty =
   | Arrow {ty_args = [{lab=Arg; att=_; typ=Js}]; ty_vararg = None; unit_arg = false; ty_res = Name (t, [])} when check_suffix ~suffix:"_of_js" s = Some t -> Cast
   | Arrow {ty_args = [_]; ty_vararg = None; unit_arg = false; ty_res = Unit _} when has_prefix ~prefix:"set_" s -> PropSet (in_global_scope ~global_attrs (js_name ~global_attrs (drop_prefix ~prefix:"set_" s)))
   | Arrow {ty_args = [{lab=Arg; att=_; typ=Name _}]; ty_vararg = None; unit_arg = false; ty_res = Unit _} -> methcall s
-  | Arrow {ty_args = [{lab=Arg; att=_; typ=Name _}]; ty_vararg = None; unit_arg = false; ty_res = _} -> PropGet (js_name ~global_attrs s)
-  | Arrow {ty_args = []; ty_vararg = None; unit_arg = true; ty_res = _} -> PropGet (in_global_scope ~global_attrs (js_name ~global_attrs s))
+  | Arrow {ty_args = [{lab=Arg; att=_; typ=Name _}]; ty_vararg = None; unit_arg = false; ty_res = _} -> if require_ctx then methcall s else PropGet (js_name ~global_attrs s)
+  | Arrow {ty_args = []; ty_vararg = None; unit_arg = true; ty_res = _} when not (has_prefix ~prefix:"new_" s) -> PropGet (in_global_scope ~global_attrs (js_name ~global_attrs s))
   | Arrow {ty_args = [{lab=Arg; att=_; typ=Name _}; _]; ty_vararg = None; unit_arg = false; ty_res = Unit _} when has_prefix ~prefix:"set_" s -> PropSet (js_name ~global_attrs (drop_prefix ~prefix:"set_" s))
-  | Arrow {ty_args = _; ty_vararg = None; unit_arg = false; ty_res = Name _} when has_prefix ~prefix:"new_" s -> New (in_global_scope ~global_attrs (js_name ~global_attrs (drop_prefix ~prefix:"new_" s)))
+  | Arrow {ty_args = _; ty_vararg = None; unit_arg; ty_res = Name _} when unit_arg = require_ctx && has_prefix ~prefix:"new_" s ->
+      (* When req_ctx is set, allow an automatic binding of a new_X function with type `unit -> ... -> T'. *)
+      New (in_global_scope ~global_attrs (js_name ~global_attrs (drop_prefix ~prefix:"new_" s)))
   | Arrow {ty_args = {lab=Arg; att=_; typ=Name _} :: _; ty_vararg = _; unit_arg = _; ty_res = _} -> methcall s
-  | _ -> Global (in_global_scope ~global_attrs (js_name ~global_attrs s))
+  | _ ->
+      let js_name = in_global_scope ~global_attrs (js_name ~global_attrs s) in
+      if require_ctx then MethCall js_name
+      else Global js_name
 
 let auto_in_object ~global_attrs s = function
   | Arrow {ty_args = [{lab=Arg; att=_; typ=_}]; ty_vararg = None; unit_arg = false; ty_res = Unit _} when has_prefix ~prefix:"set_" s -> PropSet (js_name ~global_attrs (drop_prefix ~prefix:"set_" s))
@@ -444,32 +456,63 @@ let parse_attr ~global_attrs ?ty (s, loc, auto) (k, v) =
   | exception Not_found -> None
   | _, f -> Some (f ())
 
-let parse_valdecl ~global_attrs ~in_sig vd =
+let parse_require_attribute ~require_ctx ~default attributes =
+  let require =
+    match get_attribute "js.require" attributes with
+    | None -> None
+    | Some (k, v) ->
+        if require_ctx then error k.loc (Not_supported_here "nested requires")
+        else
+          match v with
+          | PStr [] -> Some default
+          | _ -> Some (id_of_expr (expr_of_payload k.loc v))
+  in
+  require, require_ctx || require <> None
+
+let parse_valdecl ~require_ctx ~global_attrs ~in_sig vd =
   let attributes = vd.pval_attributes in
   let global_attrs = attributes @ global_attrs in
-  let s = vd.pval_name.txt in
-  let loc = vd.pval_loc in
-  let ty = parse_typ ~global_attrs vd.pval_type in
-  let auto () = auto ~global_attrs s ty in
-  let defs = choose (parse_attr ~global_attrs ~ty (s, loc, auto)) attributes in
-  let r =
-    match defs with
-    | [x] -> x
-    | [] when in_sig -> auto ()
-    | [] -> raise Exit
-    | _ -> error loc Multiple_binding_declarations
+  let require_res =
+    parse_require_attribute ~require_ctx
+      ~default:vd.pval_name.txt attributes
   in
-  Val (s, ty, r, loc)
+  match require_res with
+  | None, _ ->
+      let s = vd.pval_name.txt in
+      let loc = vd.pval_loc in
+      let ty = parse_typ ~global_attrs vd.pval_type in
+      let auto () = auto ~require_ctx ~global_attrs s ty in
+      let defs = choose (parse_attr ~global_attrs ~ty (s, loc, auto)) attributes in
+      let r =
+        match defs with
+        | [x] -> x
+        | [] when in_sig -> auto ()
+        | [] -> raise Exit
+        | _ -> error loc Multiple_binding_declarations
+      in
+      Val (s, ty, r, loc)
+  | Some req_name, _ ->
+      let ty = parse_typ ~global_attrs vd.pval_type in
+      let require_type =
+        match ty with
+        | Name ("Lazy.t", [t]) -> t
+        | _ -> assert false
+      in
+      JsRequire (vd.pval_name.txt, Some require_type, req_name)
 
-let rec parse_sig_item ~global_attrs rest s =
+let rec parse_sig_item ~require_ctx ~global_attrs rest s =
   match s.psig_desc with
   | Psig_value vd when vd.pval_prim = [] ->
-      parse_valdecl ~global_attrs ~in_sig:true vd :: rest
+      parse_valdecl ~require_ctx ~global_attrs ~in_sig:true vd :: rest
   | Psig_type (rec_flag, decls) ->
       Type (rec_flag, decls) :: rest
-  | Psig_module {pmd_name; pmd_type = {pmty_desc = Pmty_signature si; pmty_attributes; pmty_loc = _}; pmd_loc = _; pmd_attributes = _} ->
+  | Psig_module {pmd_name; pmd_type = {pmty_desc = Pmty_signature si; pmty_attributes; pmty_loc = _}; pmd_loc = _; pmd_attributes} ->
       let global_attrs = pmty_attributes @ global_attrs in
-      Module (pmd_name.txt, pmty_attributes, parse_sig ~global_attrs si) :: rest
+      let require, require_ctx =
+        parse_require_attribute ~require_ctx ~default:pmd_name.txt
+          pmd_attributes
+      in
+      Module (pmd_name.txt, require, global_attrs, parse_sig ~require_ctx ~global_attrs si) :: rest
   | Psig_class cs -> Class (List.map (parse_class_decl ~global_attrs) cs) :: rest
   | Psig_attribute (attr, PStr str) when filter_attr_name "js.implem" attr -> Implem str :: rest
   | Psig_attribute _ -> rest
@@ -477,22 +520,27 @@ let rec parse_sig_item ~global_attrs rest s =
   | _ ->
       error s.psig_loc Cannot_parse_sigitem
 
-and parse_sig ~global_attrs = function
+and parse_sig ~require_ctx ~global_attrs = function
   | [] -> []
   | {psig_desc = Psig_attribute (attr, _); _} :: rest when filter_attr_name "js.stop" attr ->
-      parse_sig_verbatim ~global_attrs rest
+      parse_sig_verbatim ~require_ctx ~global_attrs rest
+  | {psig_desc = Psig_attribute (attr, payload); _} :: rest when
+      filter_attr_name "js.require" attr ->
+      let req_name = id_of_expr (expr_of_payload attr.loc payload) in
+      JsRequire ("_require", None, req_name) ::
+        parse_sig ~require_ctx:true ~global_attrs rest
   | {psig_desc = Psig_value vd; _} :: rest when
       has_attribute "js.custom" vd.pval_attributes ->
       let (k, v) = unoption (get_attribute "js.custom" vd.pval_attributes) in
       let str = str_of_payload k.loc v in
-      Implem str :: parse_sig ~global_attrs rest
+      Implem str :: parse_sig ~require_ctx ~global_attrs rest
   | s :: rest ->
-      parse_sig_item ~global_attrs (parse_sig ~global_attrs rest) s
+      parse_sig_item ~require_ctx ~global_attrs (parse_sig ~require_ctx ~global_attrs rest) s
 
-and parse_sig_verbatim ~global_attrs = function
+and parse_sig_verbatim ~require_ctx ~global_attrs = function
   | [] -> []
-  | {psig_desc = Psig_attribute (attr, _); _} :: rest when filter_attr_name "js.start" attr -> parse_sig ~global_attrs rest
-  | _ :: rest -> parse_sig_verbatim ~global_attrs rest
+  | {psig_desc = Psig_attribute (attr, _); _} :: rest when filter_attr_name "js.start" attr -> parse_sig ~require_ctx ~global_attrs rest
+  | _ :: rest -> parse_sig_verbatim ~require_ctx ~global_attrs rest
 
 and parse_class_decl ~global_attrs = function
   | {pci_virt = Concrete; pci_params = []; pci_name; pci_expr = {pcty_desc = Pcty_arrow (Nolabel, {ptyp_desc = Ptyp_constr ({txt = Longident.Ldot (Lident "Ojs", "t"); loc = _}, []); ptyp_loc = _; ptyp_attributes = _}, {pcty_desc = Pcty_signature {pcsig_self = {ptyp_desc = Ptyp_any; _}; pcsig_fields}; pcty_loc = _; pcty_attributes = _}); _}; pci_attributes; pci_loc = _} ->
@@ -658,20 +706,24 @@ let rec select_path o = function
   | [x] -> o, x
   | x :: xs -> select_path (ojs "get" [o; str x]) xs
 
-let qualified_path s =
+let qualified_path o s =
   let path = split '.' s in
-  select_path ojs_global path
+  select_path o path
 
-let ojs_get_global s =
-  let o, x = qualified_path s in
+let ojs_get o s =
+  let o, x = qualified_path o s in
   ojs "get" [o; str x]
+
+let ojs_get_global = ojs_get ojs_global
 
 let ojs_variable s = ojs_get_global s
 
-let ojs_set_global s v =
+let ojs_set o s v =
   let path = split '.' s in
-  match select_path ojs_global path with
+  match select_path o path with
   | o, x -> ojs "set" [o; str x; v]
+
+let ojs_set_global = ojs_set ojs_global
 
 let def s ty body =
   Str.value Nonrecursive [ Vb.mk (Pat.constraint_ (Pat.var (mknoloc s)) ty) body ]
@@ -686,6 +738,11 @@ let let_exp_in exp f =
   let x = fresh () in
   let pat = Pat.var (mknoloc x) in
   Exp.let_ Nonrecursive [Vb.mk pat exp] (f (var x))
+
+let lazy_force vname =
+  apply
+    (Exp.ident (mknoloc (Longident.parse "Lazy.force")))
+    [Nolabel, Exp.ident (mknoloc (Lident vname))]
 
 let ojs_apply_arr o = function
   | `Simple arr -> ojs "apply" [o; arr]
@@ -1182,8 +1239,9 @@ let process_fields ~global_attrs l =
   jsname, (* JS name *)
   parse_typ ~global_attrs typ
 
-let rec gen_decls ~global_attrs si =
-  List.concat (List.map (gen_decl ~global_attrs) si)
+
+let rec gen_decls ~require_ctx ~global_attrs si =
+  List.concat (List.map (gen_decl ~require_ctx ~global_attrs) si)
 
 and gen_funs ~global_attrs p =
   let name = p.ptype_name.txt in
@@ -1261,17 +1319,40 @@ and gen_funs ~global_attrs p =
       choose f [ name ^ "_of_js", Js, Name (name, []), of_js;
                  name ^ "_to_js", Name (name, []), Js, to_js ]
 
-and gen_decl ~global_attrs = function
+and gen_decl ~require_ctx ~global_attrs = function
   | Type (rec_flag, decls) ->
       let decls = List.map rewrite_typ_decl decls in
       let funs = List.concat (List.map (gen_funs ~global_attrs) decls) in
       [ Str.type_ rec_flag decls; Str.value rec_flag funs ]
-  | Module (s, attrs, decls) ->
+  | Module (s, req, attrs, decls) ->
       let global_attrs = attrs @ global_attrs in
-      [ Str.module_ (Mb.mk (mknoloc s) (Mod.structure (gen_decls ~global_attrs decls))) ]
+      let decls, require_ctx =
+        match req with
+        | None ->
+            decls, require_ctx
+        | Some req ->
+            (JsRequire ("_require", None, js_name ~global_attrs req)) ::
+              decls, true
+      in
+      let module_structure = gen_decls ~require_ctx ~global_attrs decls in
+      [ Str.module_ (Mb.mk (mknoloc s) (Mod.structure module_structure)) ]
+
+  | JsRequire (var_name, ty, req_name) ->
+      let ty =
+        match ty with
+        | None -> Js
+        | Some ty -> ty
+      in
+      let lazy_ty =
+        let ty = gen_typ ty in
+        Typ.constr (mknoloc (Longident.parse "Lazy.t")) [ty]
+      in
+      let req_name = js_name ~global_attrs req_name in
+      let call = Exp.lazy_ (apply (ojs_var "require") [Nolabel, str req_name]) in
+      [ def var_name lazy_ty call ]
 
   | Val (s, ty, decl, loc) ->
-      let d = gen_def loc decl ty in
+      let d = gen_def ~require_ctx loc decl ty in
       [ def s (gen_typ ty) d ]
 
   | Class decls ->
@@ -1349,21 +1430,25 @@ and gen_class_cast = function
       [to_js; of_js]
   | Constructor {class_name = _; js_class_name = _; class_arrow = _} -> []
 
-and gen_def loc decl ty =
+and gen_def ~require_ctx loc decl ty =
   match decl, ty with
   | Cast, Arrow {ty_args = [{lab=Arg; att=_; typ}]; ty_vararg = None; unit_arg = false; ty_res} ->
       mkfun (fun this -> js2ml ty_res (ml2js typ this))
 
   | PropGet s, Arrow {ty_args = [{lab=Arg; att=_; typ}]; ty_vararg = None; unit_arg = false; ty_res} ->
-      mkfun (fun this -> js2ml ty_res (ojs "get" [ml2js typ this; str s]))
+      if require_ctx then error loc (Not_supported_here "property getter")
+      else mkfun (fun this -> js2ml ty_res (ojs "get" [ml2js typ this; str s]))
 
   | PropGet s, Arrow {ty_args = []; ty_vararg = None; unit_arg = true; ty_res} ->
-      fun_unit (gen_def loc (Global s) ty_res)
+      fun_unit
+        (if require_ctx
+         then js2ml ty_res (ojs_get (lazy_force "_require") s)
+         else gen_def ~require_ctx loc (Global s) ty_res)
 
   | Global s, ty_res ->
       begin match ty_res with
       | Arrow {ty_args; ty_vararg; unit_arg; ty_res} ->
-          let this, s = qualified_path s in
+          let this, s = qualified_path ojs_global s in
           let formal_args, concrete_args = prepare_args ty_args ty_vararg in
           let res this = ojs_call_arr (ml2js Js this) (str s) concrete_args in
           begin match ty_args, ty_vararg, unit_arg with
@@ -1389,7 +1474,20 @@ and gen_def loc decl ty =
       mkfun (fun this -> mkfun (fun arg -> res this arg))
 
   | PropSet s, Arrow {ty_args = [{lab = Arg; att = _; typ = ty_arg}]; ty_vararg = None; unit_arg = false; ty_res = Unit _} ->
-      mkfun (fun arg -> ojs_set_global s (ml2js ty_arg arg))
+      mkfun (fun arg ->
+        if require_ctx then ojs_set (lazy_force "_require") s (ml2js ty_arg arg)
+        else ojs_set_global s (ml2js ty_arg arg))
+
+  | MethCall s,
+    Arrow {ty_args; ty_vararg; unit_arg; ty_res} when require_ctx ->
+      let formal_args, concrete_args = prepare_args ty_args ty_vararg in
+      let path, fn = qualified_path (lazy_force "_require") s in
+      let res = ojs_call_arr path (str fn) concrete_args in
+      begin match ty_args, ty_vararg, unit_arg with
+      | [], None, false -> js2ml_unit ty_res res
+      | [], _, _
+      | _ :: _, _, _ -> func formal_args unit_arg (js2ml_unit ty_res res)
+      end
 
   | MethCall s,
     Arrow {ty_args = {lab=Arg; att=_; typ} :: ty_args; ty_vararg; unit_arg; ty_res} ->
@@ -1405,7 +1503,11 @@ and gen_def loc decl ty =
 
   | New name, Arrow {ty_args; ty_vararg; unit_arg; ty_res} ->
       let formal_args, concrete_args = prepare_args ty_args ty_vararg in
-      let res = ojs_new_obj_arr (ojs_variable name) concrete_args in
+      let constructor =
+        if require_ctx then ojs_get (lazy_force "_require") name
+        else ojs_variable name
+      in
+      let res = ojs_new_obj_arr constructor concrete_args in
       func formal_args unit_arg (js2ml ty_res res)
 
   | Builder global_attrs, Arrow {ty_args; ty_vararg = None; unit_arg; ty_res} ->
@@ -1447,10 +1549,10 @@ and gen_def loc decl ty =
 (** ppx mapper *)
 
 and str_of_sg ~global_attrs sg =
-  let decls = parse_sig ~global_attrs sg in
+  let decls = parse_sig ~require_ctx:false ~global_attrs sg in
   attr "comment" (str "!! This code has been generated by gen_js_api !!") ::
   disable_warnings ::
-  gen_decls ~global_attrs decls
+  gen_decls ~require_ctx:false ~global_attrs decls
 
 and mapper =
   let open Ast_mapper in
@@ -1466,9 +1568,9 @@ and mapper =
     let global_attrs = [] in
     match str.pstr_desc with
     | Pstr_primitive vd when vd.pval_prim = [] ->
-        begin match parse_valdecl ~global_attrs ~in_sig:false vd with
+        begin match parse_valdecl ~require_ctx:false ~global_attrs ~in_sig:false vd with
         | exception Exit -> str
-        | d -> incl (gen_decls ~global_attrs [d])
+        | d -> incl (gen_decls ~require_ctx:false ~global_attrs [d])
         end
     | Pstr_type (rec_flag, decls) ->
         let js_decls = List.filter (fun d -> has_attribute "js" d.ptype_attributes) decls in

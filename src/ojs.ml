@@ -107,3 +107,6 @@ let call_arr o s arr = call (get o s) "apply" [| o; arr |]
 external new_obj_arr: t -> t -> t = "caml_ojs_new_arr"
 
 external delete: t -> string -> unit = "caml_js_delete"
+
+let internal_require = pure_js_expr "require"
+let require name = apply internal_require [| string_to_js name |]

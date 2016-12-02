@@ -111,3 +111,5 @@ class obj: t ->
   end
 
 external delete: t -> string -> unit = "caml_js_delete"
+
+val require : string -> t
