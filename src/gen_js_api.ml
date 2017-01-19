@@ -12,6 +12,7 @@ open Ast_helper
 
 type error =
   | Expression_expected
+  | Type_expected
   | Identifier_expected
   | Structure_expected
   | Invalid_expression
@@ -70,6 +71,10 @@ let expr_of_payload loc = function
   | PStr [x] -> expr_of_stritem x
   | _ -> error loc Expression_expected
 
+let typ_of_payload loc = function
+  | PTyp x -> x
+  | _ -> error loc Type_expected
+
 let str_of_payload loc = function
   | PStr x -> x
   | _ -> error loc Structure_expected
@@ -98,6 +103,8 @@ let get_string_attribute_default key default attrs =
 let print_error ppf = function
   | Expression_expected ->
       Format.fprintf ppf "Expression expected"
+  | Type_expected ->
+      Format.fprintf ppf "Type expression expected"
   | Structure_expected ->
       Format.fprintf ppf "Structure expected"
   | Identifier_expected ->
@@ -1455,7 +1462,13 @@ and str_of_sg ~global_attrs sg =
 and mapper =
   let open Ast_mapper in
   let super = default_mapper in
-  let module_expr self mexp =
+
+  let typ self ct =
+    let ct = super.typ self ct in
+    match get_attribute "js.replace" ct.ptyp_attributes with
+    | None -> ct
+    | Some (k, v) -> typ_of_payload k.loc v
+  and module_expr self mexp =
     let mexp = super.module_expr self mexp in
     match mexp.pmod_desc with
     | Pmod_constraint({pmod_desc=Pmod_extension (attr, PStr[]); _}, ({pmty_desc=Pmty_signature sg; pmty_attributes; pmty_loc = _} as mty)) when filter_attr_name "js" attr -> Mod.constraint_ (Mod.structure (str_of_sg ~global_attrs:pmty_attributes sg)) mty
@@ -1503,7 +1516,7 @@ and mapper =
     | _ ->
         e
   in
-  {super with module_expr; structure_item; expr}
+  {super with module_expr; structure_item; expr; typ}
 
 let is_js_attribute txt = txt = "js" || has_prefix ~prefix:"js." txt
 
