@@ -107,3 +107,9 @@ let call_arr o s arr = call (get o s) "apply" [| o; arr |]
 external new_obj_arr: t -> t -> t = "caml_ojs_new_arr"
 
 external delete: t -> string -> unit = "caml_js_delete"
+
+let is_null x =
+  equals x null
+
+let obj_type x =
+  string_of_js (call (pure_js_expr "Object.prototype.toString") "call" [|x|])
