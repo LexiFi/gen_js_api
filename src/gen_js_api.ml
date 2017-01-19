@@ -345,6 +345,10 @@ and parse_typ ~global_attrs ty =
   | Ptyp_tuple typs ->
       let typs = List.map (parse_typ ~global_attrs) typs in
       Tuple typs
+
+  | Ptyp_prop (_, typ) ->
+      parse_typ ~global_attrs typ
+
   | _ ->
       error ty.ptyp_loc Cannot_parse_type
 
@@ -685,6 +689,7 @@ let def s ty body =
 
 
 let builtin_type = function
+  | "date"
   | "int" | "string" | "bool" | "float"
   | "array" | "list" | "option" -> true
   | _ -> false

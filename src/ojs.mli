@@ -112,6 +112,9 @@ class obj: t ->
 
 external delete: t -> string -> unit = "caml_js_delete"
 
+val date_to_js: date -> t
+val date_of_js: t -> date
+
 val is_null: t -> bool
 
 val obj_type: t -> string

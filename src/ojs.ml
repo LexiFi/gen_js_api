@@ -108,6 +108,9 @@ external new_obj_arr: t -> t -> t = "caml_ojs_new_arr"
 
 external delete: t -> string -> unit = "caml_js_delete"
 
+let date_to_js d = string_to_js (string_of_date d)
+let date_of_js o = date_of_string (string_of_js o)
+
 let is_null x =
   equals x null
 
