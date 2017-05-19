@@ -66,7 +66,7 @@ Documentation
   - [JS-able types and type declarations](TYPES.md)
   - [Value bindings](VALUES.md)
   - [Class-wrapping bindings](CLASSES.md)
-  - [TODO list] (TODO.md)
+  - [TODO list](TODO.md)
 
 
 Related projects
