@@ -8,9 +8,9 @@ gen_js_api aims at simplifying the creation of OCaml bindings for
 Javascript libraries.  It must currently be used with the [js_of_ocaml
 compiler](https://github.com/ocsigen/js_of_ocaml), although other ways
 to run OCaml code "against" Javascript might be supported later with
-the same binding definitions (for instance, [Bucklescript]
-(https://github.com/bloomberg/bucklescript), or direct embedding of a
-JS engine in a native OCaml application).
+the same binding definitions (for instance,
+[Bucklescript](https://github.com/bloomberg/bucklescript),
+or direct embedding of a JS engine in a native OCaml application).
 
 gen_js_api is based on the following ideas:
 
