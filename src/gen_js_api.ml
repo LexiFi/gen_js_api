@@ -531,7 +531,7 @@ and parse_class_decl ~global_attrs = function
   | {pci_loc; _} -> error pci_loc Cannot_parse_classdecl
 
 and parse_class_field ~global_attrs = function
-  | {pctf_desc = Pctf_method (method_name, Public, Concrete, typ); pctf_loc; pctf_attributes} ->
+  | {pctf_desc = Pctf_method ({txt = method_name; _}, Public, Concrete, typ); pctf_loc; pctf_attributes} ->
       let ty = parse_typ ~global_attrs typ in
       let auto () = auto_in_object ~global_attrs method_name ty in
       let defs = choose (parse_attr ~global_attrs (method_name, pctf_loc, auto)) pctf_attributes in
@@ -1247,7 +1247,7 @@ and gen_funs ~global_attrs p =
             Vb.mk
               (Pat.var (mknoloc (name ^ "_to_js")))
               ~loc:p.ptype_loc
-              (Exp.newtype v
+              (Exp.newtype (mknoloc v)
                  (Exp.constraint_
                     to_js
                     (Typ.arrow Nolabel (Typ.constr (mknoloc (Longident.parse name)) [Typ.constr (mknoloc (Longident.parse v)) []]) ojs_typ)))
@@ -1347,7 +1347,7 @@ and gen_class_cast = function
       let class_typ = Typ.constr (mknoloc (Longident.parse class_name)) [] in
       let to_js =
         let arg = fresh() in
-        Vb.mk (Pat.var (mknoloc (class_name ^ "_to_js"))) (Exp.fun_ Nolabel None (Pat.constraint_ (Pat.var (mknoloc arg)) class_typ) (Exp.constraint_ (Exp.send (var arg) "to_js") ojs_typ))
+        Vb.mk (Pat.var (mknoloc (class_name ^ "_to_js"))) (Exp.fun_ Nolabel None (Pat.constraint_ (Pat.var (mknoloc arg)) class_typ) (Exp.constraint_ (Exp.send (var arg) (mknoloc "to_js")) ojs_typ))
       in
       let of_js =
         let arg = fresh() in

@@ -99,6 +99,8 @@ from Javascript to OCaml.  The tool has been used in production since
 This gen_js_api package is licensed by LexiFi under the terms of the
 MIT license.
 
+See see [Changelog](CHANGES.md)
+
 Contact: alain.frisch@lexifi.com
 
 Contributors:
