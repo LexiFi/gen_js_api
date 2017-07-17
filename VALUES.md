@@ -234,46 +234,46 @@ Some conventions, based on the declared value names and their types,
 allow to get rid of the explicit `[@@js.xxx]` attributes on value
 declarations in most cases.  Here are the rules, applied in order:
 
-- If the type has the form `t -> Ojs.t` (for a local named type `t`) and
-  the value name is `t_to_js` (i.e. the type name followed by `_to_js`),
+- If the type has the form `τ -> Ojs.t` (for a local named type `τ`) and
+  the value name is `τ_to_js` (i.e. the type name followed by `_to_js`),
   then the function is assumed to be a `[@@js.cast]`.  This is used
   to expose the `_to_js` function generated automatically by the tool
   for a type declaration.
 
-- Similarly, if the type has the form `Ojs.t -> t` (for a local named
-  type `t`) and the value name is `t_of_js` (i.e. the type name
+- Similarly, if the type has the form `Ojs.t -> τ` (for a local named
+  type `τ`) and the value name is `τ_of_js` (i.e. the type name
   followed by `_of_js`), then the function is assumed to be a
   `[@@js.cast]`.
 
-- If the value is a function with a single argument `t1 -> unit` and
+- If the value is a function with a single argument `τ1 -> unit` and
   its name starts with `set_`, then the declaration is assumed to be a
   `[@@js.set]` global setter (whose name is obtained by dropping the
   `set_` prefix).
 
-- If the value is a function with a single argument (named type) `t ->
+- If the value is a function with a single argument (named type) `τ ->
   unit`, then the declaration is assumed to be a `[@@js.call]` method
   call, unless a `[@js.scope]` attribute has been defined in an
   englobing module. In this latter case, the value is assumed to be a
   `[@@js.global]` value.
 
-- If the value is a function with a single argument (named type) `t ->
-  t2` (and `t2` is not `unit`), then the declaration is assumed to be
+- If the value is a function with a single argument (named type) `τ ->
+  τ2` (and `τ2` is not `unit`), then the declaration is assumed to be
   a `[@@js.get]` property getter.
 
-- If the value is a function with a single argument `unit -> t2`, then
+- If the value is a function with a single argument `unit -> τ2`, then
   the declaration is assumed to be a `[@@js.get]` global getter.
 
-- If the value is a function with two arguments `t1 -> t2 -> unit` and
+- If the value is a function with two arguments `τ1 -> τ2 -> unit` and
   its name starts with `set_`, then the declaration is assumed to be a
   `[@@js.set]` property setter (on the property whose name is obtained
   by dropping the `set_` prefix).
 
-- If the value is a function whose result is a named type `... -> t`
+- If the value is a function whose result is a named type `... -> τ`
   and its name starts with `new_`, then the declaration is assumed to
   be a `[@@js.new]` object creation (on the class whose name is
   obtained by dropping the `new_`prefix).
 
-- If the value is a function whose first argument is a named type `t
+- If the value is a function whose first argument is a named type `τ
   -> ...`, then the definition is assumed to be a `[@@js.call]` method
   call, unless a `[@js.scope]` attribute has been defined in an
   englobing module. In this latter case, the value is assumed to be a
