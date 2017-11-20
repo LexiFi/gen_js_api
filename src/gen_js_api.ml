@@ -184,7 +184,7 @@ let js_name ~global_attrs ?(capitalize = false) name =
 
 let get_js_constr ~global_attrs name attributes =
   match get_attribute "js" attributes with
-  | None -> `String (js_name ~global_attrs name)
+  | None -> `String (js_name ~global_attrs name.txt)
   | Some (k, v) ->
       begin match (expr_of_payload k.loc v).pexp_desc with
       | Pexp_constant (Pconst_string (s, _)) -> `String s
@@ -233,7 +233,7 @@ and constructor_arg =
 
 and constructor =
   {
-    mlconstr: string;
+    mlconstr: string Location.loc;
     arg: constructor_arg;
     attributes: attributes;
     location: Location.t;
@@ -795,8 +795,8 @@ and js2ml_of_variant ~variant loc ~global_attrs attrs constrs exp =
     | _ -> (fun _ _ -> ())
   in
   let mkval =
-    if variant then fun x arg -> Exp.variant x arg
-    else fun x arg -> Exp.construct (mknoloc (Longident.Lident x)) arg
+    if variant then fun x arg -> Exp.variant x.txt arg
+    else fun x arg -> Exp.construct (mknoloc (Longident.Lident x.txt)) arg
   in
   let f exp =
     let gen_cases (int_default, int_cases, string_default, string_cases) {mlconstr; arg; attributes; location} =
@@ -972,8 +972,8 @@ and ml2js_of_variant ~variant loc ~global_attrs attrs constrs exp =
     | _ -> (fun _ _ -> ())
   in
   let mkpat =
-    if variant then fun x arg -> Pat.variant x arg
-    else fun x arg -> Pat.construct (mknoloc (Longident.Lident x)) arg
+    if variant then fun x arg -> Pat.variant x.txt arg
+    else fun x arg -> Pat.construct (mknoloc (Longident.Lident x.txt)) arg
   in
   let pair key typ value = Exp.tuple [str key; ml2js typ value] in
   let case {mlconstr; arg; attributes; location} =
@@ -1085,9 +1085,9 @@ and prepare_args_push ty_args ty_vararg =
             let xis = List.map (fun typ -> typ, fresh ()) typs in
             let pat =
               match xis with
-              | [] -> Pat.variant mlconstr None
-              | [_, x] -> Pat.variant mlconstr (Some (Pat.var (mknoloc x)))
-              | _ :: _ :: _ -> Pat.variant mlconstr (Some (Pat.tuple (List.map (fun (_, xi) -> Pat.var (mknoloc xi)) xis)))
+              | [] -> Pat.variant mlconstr.txt None
+              | [_, x] -> Pat.variant mlconstr.txt (Some (Pat.var (mknoloc x)))
+              | _ :: _ :: _ -> Pat.variant mlconstr.txt (Some (Pat.tuple (List.map (fun (_, xi) -> Pat.var (mknoloc xi)) xis)))
             in
             Exp.case pat
               (let args = mkargs (List.map (fun (typi, xi) -> ml2js typi (var xi)) xis) in
@@ -1205,7 +1205,7 @@ and gen_funs ~global_attrs p =
         lazy (js2ml_fun ty), lazy (ml2js_fun ty)
     | _, Ptype_variant cstrs ->
         let prepare_constructor c =
-          let mlconstr = c.pcd_name.txt in
+          let mlconstr = c.pcd_name in
           let arg =
             match c.pcd_args with
             | Pcstr_tuple args ->
