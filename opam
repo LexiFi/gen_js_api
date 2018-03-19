@@ -15,6 +15,6 @@ install: [make "install"]
 remove: ["ocamlfind" "remove" "gen_js_api"]
 depends: [
   "ocamlfind" {build}
-  "js_of_ocaml"  {>= "3.0"}
+  "js_of_ocaml"  {>= "3.1.0"}
 ]
 available: [ ocaml-version >= "4.06.0" ]
