@@ -1,0 +1,12 @@
+; The package gen_js_api is released under the terms of an MIT-like license.
+; See the attached LICENSE file.
+; Copyright 2019 by LexiFi.
+
+(library
+  (name gen_js_api)
+  (public_name gen_js_api.ppx)
+  (libraries js_of_ocaml ocaml-migrate-parsetree)
+  (c_names ojs_runtime_stubs)
+  (js_of_ocaml
+    (javascript_files ojs_runtime.js))
+  (kind ppx_rewriter))

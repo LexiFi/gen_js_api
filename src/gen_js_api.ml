@@ -2,6 +2,7 @@
 (* See the attached LICENSE file.                                         *)
 (* Copyright 2015 by LexiFi.                                              *)
 
+open Migrate_parsetree
 open Location
 open Asttypes
 open Parsetree
@@ -29,10 +30,10 @@ type error =
   | Non_constant_constructor_in_enum
   | Multiple_default_case
   | Invalid_variadic_type_arg
-  | No_input
-  | Multiple_inputs
+  (* | No_input *)
+  (* | Multiple_inputs *)
   | Unlabelled_argument_in_builder
-  | Spurious_attribute
+  (* | Spurious_attribute *)
   | Sum_kind_args
   | Union_without_discriminator
 
@@ -40,8 +41,9 @@ exception Error of Location.t * error
 
 let used_attributes_tbl = Hashtbl.create 16
 let register_loc loc = Hashtbl.replace used_attributes_tbl loc ()
+(*
 let is_registered_loc loc = Hashtbl.mem used_attributes_tbl loc
-
+*)
 let error loc err = raise (Error (loc, err))
 
 let filter_attr_name key {txt; loc} =
@@ -133,14 +135,14 @@ let print_error ppf = function
       Format.fprintf ppf "At most one default constructor is supported in variants"
   | Invalid_variadic_type_arg ->
       Format.fprintf ppf "A variadic function argument must be of type list"
-  | No_input ->
-      Format.fprintf ppf "An input file must be provided"
-  | Multiple_inputs ->
-      Format.fprintf ppf "A single input file must be provided"
+  (* | No_input ->
+      Format.fprintf ppf "An input file must be provided" *)
+  (* | Multiple_inputs ->
+      Format.fprintf ppf "A single input file must be provided" *)
   | Unlabelled_argument_in_builder ->
       Format.fprintf ppf "Arguments of builder must be named"
-  | Spurious_attribute ->
-      Format.fprintf ppf "Spurious js.* attribute"
+  (* | Spurious_attribute ->
+      Format.fprintf ppf "Spurious js.* attribute" *)
   | Sum_kind_args ->
       Format.fprintf ppf "Incompatible label name for 'kind' and constructor arguments."
   | Constructor_in_union ->
@@ -1517,6 +1519,7 @@ and mapper =
         e
   in
   {super with module_expr; structure_item; expr; typ}
+(* 
 
 let is_js_attribute txt = txt = "js" || has_prefix ~prefix:"js." txt
 
@@ -1583,4 +1586,10 @@ let () =
         )
   with exn ->
     Format.eprintf "%a@." Location.report_exception exn;
-    exit 2
+    exit 2 *)
+
+let () =
+  Driver.register
+    ~name:"gen_js_api"
+    Migrate_parsetree.Versions.ocaml_406 
+    (fun _config _cookies -> mapper)
