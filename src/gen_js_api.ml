@@ -50,14 +50,14 @@ let filter_attr_name key {txt; loc} =
     true
   end else false
 
-let filter_attr key (k, _) = filter_attr_name key k
+let filter_attr key {attr_name; _} = filter_attr_name key attr_name
 
 let has_attribute key attrs = List.exists (filter_attr key) attrs
 
 let get_attribute key attrs =
   match List.find (filter_attr key) attrs with
   | exception Not_found -> None
-  | (k, v) -> Some (k, v)
+  | {attr_name; attr_payload; _} -> Some (attr_name, attr_payload)
 
 let unoption = function
   | Some x -> x
@@ -153,7 +153,7 @@ let print_error ppf = function
 let () =
   Location.register_error_of_exn
     (function
-      | Error (loc, err) -> Some (Location.error_of_printer loc print_error err)
+      | Error (loc, err) -> Some (Location.error_of_printer ~loc print_error err)
       | _ -> None
     )
 
@@ -184,7 +184,7 @@ let js_name ~global_attrs ?(capitalize = false) name =
 
 let get_js_constr ~global_attrs name attributes =
   match get_attribute "js" attributes with
-  | None -> `String (js_name ~global_attrs name.txt)
+  | None -> `String (js_name ~global_attrs name)
   | Some (k, v) ->
       begin match (expr_of_payload k.loc v).pexp_desc with
       | Pexp_constant (Pconst_string (s, _)) -> `String s
@@ -233,7 +233,7 @@ and constructor_arg =
 
 and constructor =
   {
-    mlconstr: string Location.loc;
+    mlconstr: string;
     arg: constructor_arg;
     attributes: attributes;
     location: Location.t;
@@ -331,9 +331,9 @@ and parse_typ ~global_attrs ty =
   | Ptyp_variant (rows, Closed, None) ->
       let location = ty.ptyp_loc in
       let prepare_row = function
-        | Rtag (mlconstr, attributes, true, []) ->
+        | {prf_desc = Rtag ({txt = mlconstr; _}, true, []); prf_attributes = attributes; prf_loc = location} ->
             { mlconstr; arg = Constant; attributes; location }
-        | Rtag (mlconstr, attributes, false, [typ]) ->
+        | {prf_desc = Rtag ({txt = mlconstr; _}, false, [typ]); prf_attributes = attributes; prf_loc = location} ->
             begin match parse_typ ~global_attrs typ with
             | Tuple typs -> { mlconstr; arg = Nary typs; attributes; location }
             | typ -> { mlconstr; arg = Unary typ; attributes; location }
@@ -409,7 +409,7 @@ let auto_in_object ~global_attrs s = function
   | Unit _ -> MethCall (js_name ~global_attrs s)
   | _ -> PropGet (js_name ~global_attrs s)
 
-let parse_attr ~global_attrs ?ty (s, loc, auto) (k, v) =
+let parse_attr ~global_attrs ?ty (s, loc, auto) {attr_name = k; attr_payload = v; _} =
   let opt_name ?(prefix = "") ?(capitalize = false) ?(global = false) () =
     match v with
     | PStr [] ->
@@ -478,7 +478,7 @@ let rec parse_sig_item ~global_attrs rest s =
       let global_attrs = pmty_attributes @ global_attrs in
       Module (pmd_name.txt, pmty_attributes, parse_sig ~global_attrs si) :: rest
   | Psig_class cs -> Class (List.map (parse_class_decl ~global_attrs) cs) :: rest
-  | Psig_attribute (attr, PStr str) when filter_attr_name "js.implem" attr -> Implem str :: rest
+  | Psig_attribute {attr_name; attr_payload = PStr str; _} when filter_attr_name "js.implem" attr_name -> Implem str :: rest
   | Psig_attribute _ -> rest
   | Psig_open descr -> Open descr :: rest
   | _ ->
@@ -486,7 +486,7 @@ let rec parse_sig_item ~global_attrs rest s =
 
 and parse_sig ~global_attrs = function
   | [] -> []
-  | {psig_desc = Psig_attribute (attr, _); _} :: rest when filter_attr_name "js.stop" attr ->
+  | {psig_desc = Psig_attribute {attr_name; _}; _} :: rest when filter_attr_name "js.stop" attr_name ->
       parse_sig_verbatim ~global_attrs rest
   | {psig_desc = Psig_value vd; _} :: rest when
       has_attribute "js.custom" vd.pval_attributes ->
@@ -498,11 +498,11 @@ and parse_sig ~global_attrs = function
 
 and parse_sig_verbatim ~global_attrs = function
   | [] -> []
-  | {psig_desc = Psig_attribute (attr, _); _} :: rest when filter_attr_name "js.start" attr -> parse_sig ~global_attrs rest
+  | {psig_desc = Psig_attribute {attr_name; _}; _} :: rest when filter_attr_name "js.start" attr_name -> parse_sig ~global_attrs rest
   | _ :: rest -> parse_sig_verbatim ~global_attrs rest
 
 and parse_class_decl ~global_attrs = function
-  | {pci_virt = Concrete; pci_params = []; pci_name; pci_expr = {pcty_desc = Pcty_arrow (Nolabel, {ptyp_desc = Ptyp_constr ({txt = Longident.Ldot (Lident "Ojs", "t"); loc = _}, []); ptyp_loc = _; ptyp_attributes = _}, {pcty_desc = Pcty_signature {pcsig_self = {ptyp_desc = Ptyp_any; _}; pcsig_fields}; pcty_loc = _; pcty_attributes = _}); _}; pci_attributes; pci_loc = _} ->
+  | {pci_virt = Concrete; pci_params = []; pci_name; pci_expr = {pcty_desc = Pcty_arrow (Nolabel, {ptyp_desc = Ptyp_constr ({txt = Longident.Ldot (Lident "Ojs", "t"); loc = _}, []); ptyp_loc = _; ptyp_attributes = _; ptyp_loc_stack = _}, {pcty_desc = Pcty_signature {pcsig_self = {ptyp_desc = Ptyp_any; _}; pcsig_fields}; pcty_loc = _; pcty_attributes = _}); _}; pci_attributes; pci_loc = _} ->
       let global_attrs = pci_attributes @ global_attrs in
       let class_name = pci_name.txt in
       Declaration { class_name; class_fields = List.map (parse_class_field ~global_attrs) pcsig_fields }
@@ -567,7 +567,7 @@ let int n = Exp.constant (Pconst_integer (string_of_int n, None))
 let pat_int n = Pat.constant (Pconst_integer (string_of_int n, None))
 let pat_str s = Pat.constant (Pconst_string (s, None))
 
-let attr s e = Str.attribute (mknoloc s, PStr [Str.eval e])
+let attr s e = Str.attribute (Attr.mk (mknoloc s) (PStr [Str.eval e]))
 
 let disable_warnings = attr "ocaml.warning" (str "-7-32-39")
     (*  7: method overridden.
@@ -795,8 +795,8 @@ and js2ml_of_variant ~variant loc ~global_attrs attrs constrs exp =
     | _ -> (fun _ _ -> ())
   in
   let mkval =
-    if variant then fun x arg -> Exp.variant x.txt arg
-    else fun x arg -> Exp.construct (mknoloc (Longident.Lident x.txt)) arg
+    if variant then fun x arg -> Exp.variant x arg
+    else fun x arg -> Exp.construct (mknoloc (Longident.Lident x)) arg
   in
   let f exp =
     let gen_cases (int_default, int_cases, string_default, string_cases) {mlconstr; arg; attributes; location} =
@@ -972,8 +972,8 @@ and ml2js_of_variant ~variant loc ~global_attrs attrs constrs exp =
     | _ -> (fun _ _ -> ())
   in
   let mkpat =
-    if variant then fun x arg -> Pat.variant x.txt arg
-    else fun x arg -> Pat.construct (mknoloc (Longident.Lident x.txt)) arg
+    if variant then fun x arg -> Pat.variant x arg
+    else fun x arg -> Pat.construct (mknoloc (Longident.Lident x)) arg
   in
   let pair key typ value = Exp.tuple [str key; ml2js typ value] in
   let case {mlconstr; arg; attributes; location} =
@@ -1085,9 +1085,9 @@ and prepare_args_push ty_args ty_vararg =
             let xis = List.map (fun typ -> typ, fresh ()) typs in
             let pat =
               match xis with
-              | [] -> Pat.variant mlconstr.txt None
-              | [_, x] -> Pat.variant mlconstr.txt (Some (Pat.var (mknoloc x)))
-              | _ :: _ :: _ -> Pat.variant mlconstr.txt (Some (Pat.tuple (List.map (fun (_, xi) -> Pat.var (mknoloc xi)) xis)))
+              | [] -> Pat.variant mlconstr None
+              | [_, x] -> Pat.variant mlconstr (Some (Pat.var (mknoloc x)))
+              | _ :: _ :: _ -> Pat.variant mlconstr (Some (Pat.tuple (List.map (fun (_, xi) -> Pat.var (mknoloc xi)) xis)))
             in
             Exp.case pat
               (let args = mkargs (List.map (fun (typi, xi) -> ml2js typi (var xi)) xis) in
@@ -1163,10 +1163,11 @@ and gen_typ = function
       List.fold_right (fun {lab; att=_; typ} t2 -> Typ.arrow (arg_label lab) (gen_typ typ) t2) tl (gen_typ ty_res)
   | Variant {location = _; global_attrs = _; attributes = _; constrs} ->
       let f {mlconstr; arg; attributes = _; location = _} =
+        let mlconstr = Location.mknoloc mlconstr in
         match arg with
-        | Constant -> Rtag (mlconstr, [], true, [])
-        | Unary typ -> Rtag (mlconstr, [], false, [gen_typ typ])
-        | Nary typs -> Rtag (mlconstr, [], false, [gen_typ (Tuple typs)])
+        | Constant -> Rf.mk (Rtag (mlconstr, true, []))
+        | Unary typ -> Rf.mk (Rtag (mlconstr, false, [gen_typ typ]))
+        | Nary typs -> Rf.mk (Rtag (mlconstr, false, [gen_typ (Tuple typs)]))
         | Record _ -> assert false
       in
       let rows = List.map f constrs in
@@ -1205,7 +1206,7 @@ and gen_funs ~global_attrs p =
         lazy (js2ml_fun ty), lazy (ml2js_fun ty)
     | _, Ptype_variant cstrs ->
         let prepare_constructor c =
-          let mlconstr = c.pcd_name in
+          let mlconstr = c.pcd_name.txt in
           let arg =
             match c.pcd_args with
             | Pcstr_tuple args ->
@@ -1238,7 +1239,7 @@ and gen_funs ~global_attrs p =
   let force_opt x = try (Some (Lazy.force x)) with Error (_, Union_without_discriminator) -> None in
   let of_js, to_js = force_opt of_js, force_opt to_js in
   match p.ptype_params with
-  | [{ptyp_desc = Ptyp_any; ptyp_loc = _; ptyp_attributes = _}, Invariant] ->
+  | [{ptyp_desc = Ptyp_any; ptyp_loc = _; ptyp_attributes = _; ptyp_loc_stack = _}, Invariant] ->
       begin match to_js with
       | None -> []
       | Some to_js ->
@@ -1290,6 +1291,7 @@ and gen_decl ~global_attrs = function
       mapper.Ast_mapper.structure mapper str
 
   | Open descr ->
+      let descr = {descr with popen_expr = Mod.ident descr.popen_expr} in
       [ Str.open_ descr ]
 
 and gen_classdecl cast_funcs = function
@@ -1522,7 +1524,7 @@ let is_js_attribute txt = txt = "js" || has_prefix ~prefix:"js." txt
 
 let check_loc_mapper =
   let mapper = Ast_mapper.default_mapper in
-  let attribute _this (({txt; loc}, _) as attr) =
+  let attribute _this ({attr_name = {txt; loc}; _} as attr) =
     if is_js_attribute txt then begin
       if is_registered_loc loc then ()
       else error loc Spurious_attribute
@@ -1534,7 +1536,7 @@ let check_loc_mapper =
 let clear_attr_mapper =
   let mapper = Ast_mapper.default_mapper in
   let attributes _this attrs =
-    let f ({txt = _; loc}, _) = not (is_registered_loc loc) in
+    let f {attr_name = {txt = _; loc}; _} = not (is_registered_loc loc) in
     List.filter f attrs
   in
   { mapper with Ast_mapper.attributes }
@@ -1562,7 +1564,7 @@ let standalone () =
   if !out = "" then out := Filename.chop_extension src ^ ".ml";
   let oc = if !out = "-" then stdout else open_out !out in
   let sg =
-    Pparse.parse_interface Format.err_formatter
+    Pparse.parse_interface
       ~tool_name:"gen_js_iface"
       src
   in
