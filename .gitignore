@@ -10,4 +10,4 @@
 *.exe
 examples/*/*.js
 examples/test/test_bindings.ml
-src/gen_js_api
+src/ppx/bin/gen_js_api

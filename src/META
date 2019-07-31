@@ -5,5 +5,6 @@ archive(byte) = "gen_js_api.cma"
 package "ppx" (
   version = "1.0.4"
   description = "Syntactic support for gen_js_api"
+  archive(byte) = "gen_js_api_ppx.cma"
   ppx = "./gen_js_api -ppx"
 )

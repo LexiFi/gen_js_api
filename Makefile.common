@@ -8,5 +8,5 @@ OCAMLFLAGS = -w +A-4-41-45 -warn-error +8
 OCAMLC = ocamlc $(OCAMLFLAGS)
 
 OJSDIR = $(ROOT)/src
-GENJSAPI = $(ROOT)/src/gen_js_api$(EXE)
+GENJSAPI = $(ROOT)/src/ppx/bin/gen_js_api$(EXE)
 JSOO = js_of_ocaml --pretty --disable genprim

@@ -11,10 +11,19 @@ all:
 	$(OCAMLC) -c ojs.mli ojs.ml
 	$(OCAMLC) -c ojs_exn.mli ojs_exn.ml
 	$(OCAMLC) -a -o gen_js_api.cma ojs.cmo ojs_exn.cmo
-	$(OCAMLC) -I +compiler-libs -o gen_js_api$(EXE) ocamlcommon.cma gen_js_api.mli gen_js_api.ml
+
+	$(OCAMLC) -c -I +compiler-libs -I ppx/lib/ ppx/lib/gen_js_api_ppx.mli ppx/lib/gen_js_api_ppx.ml
+	$(OCAMLC) -a -I +compiler-libs -o ppx/lib/gen_js_api_ppx.cma ppx/lib/gen_js_api_ppx.cmo
+	$(OCAMLC) -c -I +compiler-libs -I ppx/lib/ -I ppx/bin/ ppx/bin/gen_js_api.mli ppx/bin/gen_js_api.ml
+	$(OCAMLC)    -I +compiler-libs -I ppx/bin/ -I ppx/lib/ -o ppx/bin/gen_js_api$(EXE) ocamlcommon.cma gen_js_api_ppx.cma ppx/bin/gen_js_api.cmo
+
+
 
 clean:
-	rm -f *~ gen_js_api$(EXE) *.cm* .*~
+	rm -f *~ ppx/lib/*~ ppx/bin/*~
+	rm -f .*~ ppx/lib/.*~ ppx/bin/.*~
+	rm -f *.cm* ppx/lib/*.cm* ppx/bin/*.cm*
+	rm -f ppx/bin/gen_js_api$(EXE)
 	rm -rf doc
 
 doc:
@@ -26,7 +35,8 @@ doc:
 
 INSTALL = \
   META \
-  gen_js_api$(EXE) \
+  ppx/bin/gen_js_api$(EXE) \
+  ppx/lib/gen_js_api_ppx.cma \
   gen_js_api.cma \
   ojs.cmi ojs_exn.cmi \
   ojs_runtime.js
