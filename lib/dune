@@ -3,5 +3,6 @@
   (public_name gen_js_api)
   (libraries )
   (wrapped false)
+  (c_names ojs_runtime_stubs)
   (js_of_ocaml (javascript_files ojs_runtime.js))
   )

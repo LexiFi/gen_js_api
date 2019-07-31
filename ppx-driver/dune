@@ -1,0 +1,6 @@
+(library
+  (name gen_js_api_ppx_driver)
+  (public_name gen_js_api.ppx)
+  (libraries compiler-libs.common ocaml-migrate-parsetree gen_js_api.ppx-lib)
+  (kind ppx_rewriter)
+  (preprocess no_preprocessing))
