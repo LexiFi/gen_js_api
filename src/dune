@@ -1,0 +1,7 @@
+(library
+  (name gen_js_api)
+  (public_name gen_js_api)
+  (libraries )
+  (wrapped false)
+  (js_of_ocaml (javascript_files ojs_runtime.js))
+  )

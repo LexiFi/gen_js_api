@@ -11,3 +11,6 @@
 examples/*/*.js
 examples/test/test_bindings.ml
 src/ppx/bin/gen_js_api
+*.merlin
+_build
+gen_js_api.install

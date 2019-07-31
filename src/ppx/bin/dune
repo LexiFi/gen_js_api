@@ -1,0 +1,9 @@
+(executables
+  (names gen_js_api)
+  (libraries gen_js_api_ppx)
+  )
+
+(install
+  (section lib)
+  (package gen_js_api)
+  (files (gen_js_api.exe as gen_js_api)))
