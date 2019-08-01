@@ -6,7 +6,6 @@
     of gen_js_api.  The binding is far from complete! *)
 
 
-
 (** {2 Sets of elements} *)
 
 type t = private Ojs.t
@@ -73,9 +72,6 @@ val empty: t -> unit
 
 val focus: t -> unit
 
-val text: t -> string [@@js.call]
-val set_text: t -> string -> unit [@@js.call "text"]
-
 val height: t -> int [@@js.call]
 val set_height: t -> ([`String of string | `Int of int] [@js.union]) -> unit [@@js.call "height"]
 
@@ -93,19 +89,6 @@ val css: t -> string -> Ojs.t [@@js.call]
 val set_css_value: t -> string -> ([`String of string | `Float of float] [@js.union]) -> unit [@@js.call "css"]
 
 val set_css: t -> Ojs.t -> unit [@@js.call "css"]
-
-val find: t -> string -> t list
-    [@@js.custom
-val find: t -> string -> t [@@js.call "find"]
-
-let find x sel = explode (find x sel)
-    ]
-
-val append: t -> (t list [@js.variadic]) -> unit [@@js.call]
-
-val detach: t -> unit [@@js.call]
-
-val empty: t -> unit [@@js.call]
 
 val clone: t -> t [@@js.call]
 
