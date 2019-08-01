@@ -90,20 +90,20 @@ module Engine = struct
     in
     {state with x; y; comma; input = true}
 
-  let apply_comma ({x; y; operator; input; equal; comma} as state) =
+  let apply_comma ({input; comma; _} as state) =
     if comma = 0 then
       if input then {state with comma = 1}
       else {(input_digit state 0) with comma = 1}
     else state
 
-  let apply_equal ({x; y; operator; input; equal} as state) =
+  let apply_equal ({x; y; operator; input; equal; comma = _} as state) =
     match operator with
     | None -> {state with y = x; input = false; equal = true}
     | Some o ->
         if input && not equal then {state with x = make_op o y x; y = x; input = false; equal = true}
         else {state with x = make_op o x y; equal = true}
 
-  let apply_op ({x = _; y = _; operator = _; input; equal} as state) op =
+  let apply_op ({input; equal; _} as state) op =
     if input && not equal then {(apply_equal state) with operator = Some op; equal = false}
     else {state with operator = Some op; equal= false; input = false}
 
