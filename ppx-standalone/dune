@@ -5,6 +5,6 @@
   )
 
 (install
-  (section lib)
+  (section libexec)
   (package gen_js_api)
   (files (gen_js_api.exe as gen_js_api)))
