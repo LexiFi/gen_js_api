@@ -58,6 +58,9 @@ Usage (with dune)
    )
    ```
 
+ - Compiling into Javascript: Just ask dune to build the `*.bc.js`
+   target. (e.g. `dune build test_jquery.bc.js`)
+
 Usage (with ocamlfind)
 ----------------------
 
