@@ -30,9 +30,33 @@ Manual installation
 git clone https://github.com/LexiFi/gen_js_api.git
 cd gen_js_api
 make all
-make install  # assuming ocamlfind is installed
+make install  # assuming opam-installer is installed
 ````
 
+Usage (with dune)
+-----------------
+
+ - Invoking the [standalone tool](IMPLGEN.md) (`.mli` -> `.ml` generator):
+
+   ```
+   (rule
+     (targets my_unit.ml)
+     (deps my_unit.mli)
+     (action (run %{bin:gen_js_api} %{deps})))
+   ```
+
+ - Compiling binding (`.mli` and generated `.ml` files), user
+   code which rely on the `Ojs` or with the [ppx processor](PPX.md):
+
+   ```
+   (executables
+     (names test_jquery)
+     (js_of_ocaml)
+     (libraries gen_js_api js_of_ocaml)
+     (preprocess (pps gen_js_api.ppx))
+     (modes byte)
+   )
+   ```
 
 Usage (with ocamlfind)
 ----------------------
