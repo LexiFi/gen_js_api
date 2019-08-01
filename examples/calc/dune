@@ -1,0 +1,16 @@
+(executables
+  (names calc)
+  (js_of_ocaml)
+  (libraries gen_js_api js_of_ocaml)
+  (preprocess (pps gen_js_api.ppx))
+  (modes byte)
+)
+
+(rule
+  (targets calc.js)
+  (deps calc.bc.js)
+  (action (run cp %{deps} %{targets})))
+
+(alias
+  (name DEFAULT)
+  (deps calc.js calc.html))

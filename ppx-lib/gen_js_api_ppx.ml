@@ -6,7 +6,7 @@ open Location
 open Asttypes
 open Parsetree
 open Longident
-open Ast_helper
+open! Ast_helper
 
 (** Errors *)
 
@@ -1574,15 +1574,11 @@ let standalone () =
   Format.fprintf (Format.formatter_of_out_channel oc) "%a@." Pprintast.structure str;
   if !out <> "-" then close_out oc
 
-let () =
-  try
-    if Array.length Sys.argv < 4 || Sys.argv.(1) <> "-ppx" then standalone ()
-    else
-      Ast_mapper.run_main
-        (fun _ ->
-           { mapper with
-             Ast_mapper.structure = (fun _this str -> check_loc_mapper.Ast_mapper.structure check_loc_mapper (mapper.Ast_mapper.structure mapper str)) }
-        )
-  with exn ->
-    Format.eprintf "%a@." Location.report_exception exn;
-    exit 2
+
+let mapper =
+  { mapper with
+    Ast_mapper.structure = (fun _this str ->
+      check_loc_mapper.Ast_mapper.structure
+        check_loc_mapper
+        (mapper.Ast_mapper.structure mapper str))
+  }

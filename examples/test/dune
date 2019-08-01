@@ -1,0 +1,21 @@
+(executables
+  (names main)
+  (js_of_ocaml)
+  (libraries gen_js_api js_of_ocaml)
+  (preprocess (pps gen_js_api.ppx))
+  (modes byte)
+)
+
+(rule
+  (targets test_bindings.ml)
+  (deps test_bindings.mli)
+  (action (run %{bin:gen_js_api} %{deps})))
+
+(rule
+  (targets main.js)
+  (deps main.bc.js)
+  (action (run cp %{deps} %{targets})))
+
+(alias
+  (name DEFAULT)
+  (deps main.js main.html))
