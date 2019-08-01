@@ -5,20 +5,21 @@
 .PHONY: all examples clean install uninstall doc
 
 all:
-	$(MAKE) -C src all
+	dune build @install @DEFAULT
 
 examples:
-	$(MAKE) -C examples all
+	dune build @examples/DEFAULT
 
 doc:
-	$(MAKE) -C src doc
+	dune build @doc
 
 clean:
-	$(MAKE) -C src clean
-	$(MAKE) -C examples clean
+	dune clean
+
+PREFIX := $$(opam config var prefix)
 
 install:
-	$(MAKE) -C src install
+	opam-installer --prefix $(PREFIX) gen_js_api.install
 
 uninstall:
-	$(MAKE) -C src uninstall
+	opam-installer -u --prefix $(PREFIX) gen_js_api.install
