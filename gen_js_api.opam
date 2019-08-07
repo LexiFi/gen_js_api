@@ -12,9 +12,10 @@ license: "MIT"
 dev-repo: "git+https://github.com/LexiFi/gen_js_api.git"
 build: [["dune" "build" "-p" name "-j" jobs]]
 depends: [
-  "ocaml" {>= "4.06.0" & < "4.09.0"}
+  "ocaml" {>= "4.06.0"}
   "dune" {build & >= "1.11"}
   "js_of_ocaml"  {>= "3.1.0"}
+  "ocaml-migrate-parsetree" {>= "1.4.0"}
 ]
 synopsis: "Easy OCaml bindings for Javascript libraries"
 description: """
