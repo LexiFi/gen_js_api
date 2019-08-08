@@ -1,7 +1,8 @@
 (executables
   (names test_jquery)
   (js_of_ocaml)
-  (libraries gen_js_api js_of_ocaml)
+  (libraries gen_js_api)
+  (link_flags -no-check-prims)
   (preprocess (pps gen_js_api.ppx))
   (modes byte)
 )
