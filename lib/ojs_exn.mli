@@ -6,9 +6,12 @@
 
 type t
 
-val name: t -> string
-val message: t -> string
-val stack: t -> string option
-val to_string: t -> string
+val name : t -> string
+
+val message : t -> string
+
+val stack : t -> string option
+
+val to_string : t -> string
 
 exception Error of t
