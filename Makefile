@@ -2,7 +2,7 @@
 # See the attached LICENSE file.
 # Copyright 2015 by LexiFi.
 
-.PHONY: all examples clean install uninstall doc
+.PHONY: all examples clean install uninstall doc fmt
 
 all:
 	dune build @install @DEFAULT
@@ -12,6 +12,9 @@ examples:
 
 doc:
 	dune build @doc
+
+fmt:
+	dune build @fmt --auto-promote
 
 clean:
 	dune clean
