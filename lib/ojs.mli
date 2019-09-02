@@ -81,7 +81,7 @@ val call_arr: t -> string -> t -> t
     built JS array. *)
 
 val apply_arr: t -> t -> t
-(** Variant of [Ojs.apply_arr] where the arguments are passed as an already
+(** Variant of [Ojs.apply] where the arguments are passed as an already
     built JS array. *)
 
 external new_obj_arr: t -> t -> t = "caml_ojs_new_arr"
