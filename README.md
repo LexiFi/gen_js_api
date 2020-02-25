@@ -1,6 +1,8 @@
 gen_js_api: easy OCaml bindings for Javascript libraries
 ========================================================
 
+[![Build Status](https://travis-ci.com/LexiFi/gen_js_api.svg?branch=master)](https://travis-ci.com/LexiFi/gen_js_api)
+
 Overview
 --------
 
