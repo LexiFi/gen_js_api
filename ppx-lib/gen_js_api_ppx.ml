@@ -347,6 +347,7 @@ and parse_typ ~global_attrs ty =
   | Ptyp_tuple typs ->
       let typs = List.map (parse_typ ~global_attrs) typs in
       Tuple typs
+
   | _ ->
       error ty.ptyp_loc Cannot_parse_type
 
