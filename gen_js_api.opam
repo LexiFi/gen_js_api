@@ -15,7 +15,7 @@ depends: [
   "ocaml" {>= "4.08.0"}
   "dune" {build & >= "1.11"}
   "js_of_ocaml"  {>= "3.1.0"}
-  "ocaml-migrate-parsetree" {>= "1.4.0"}
+  "ocaml-migrate-parsetree" {>= "1.6.0"}
 ]
 synopsis: "Easy OCaml bindings for Javascript libraries"
 description: """
