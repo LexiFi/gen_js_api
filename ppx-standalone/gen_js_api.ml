@@ -2,6 +2,8 @@
 (* See the attached LICENSE file.                                         *)
 (* Copyright 2015 by LexiFi.                                              *)
 
+open Migrate_parsetree.Ast_408
+
 let () =
   try
     if Array.length Sys.argv < 4 || Sys.argv.(1) <> "-ppx" then Gen_js_api_ppx.standalone ()

@@ -2,6 +2,8 @@
 (* See the attached LICENSE file.                                         *)
 (* Copyright 2015 by LexiFi.                                              *)
 
+open Migrate_parsetree.Ast_408
+
 open Location
 open Asttypes
 open Parsetree
@@ -1552,6 +1554,14 @@ let specs =
 
 let usage = "gen_js_api [-o mymodule.ml] mymodule.mli"
 
+let from_current =
+  let open Migrate_parsetree in
+  Versions.migrate Versions.ocaml_current Versions.ocaml_408
+
+let to_current =
+  let open Migrate_parsetree in
+  Versions.migrate Versions.ocaml_408 Versions.ocaml_current
+
 let standalone () =
   let files = ref [] in
   Arg.parse specs (fun s -> files := s :: !files) usage;
@@ -1566,12 +1576,12 @@ let standalone () =
   let sg =
     Pparse.parse_interface
       ~tool_name:"gen_js_iface"
-      src
+      src |> from_current.Migrate_parsetree.Versions.copy_signature
   in
   let str = str_of_sg ~global_attrs:[] sg in
   ignore (check_loc_mapper.Ast_mapper.signature check_loc_mapper sg);
   let str = clear_attr_mapper.Ast_mapper.structure clear_attr_mapper str in
-  Format.fprintf (Format.formatter_of_out_channel oc) "%a@." Pprintast.structure str;
+  Format.fprintf (Format.formatter_of_out_channel oc) "%a@." Pprintast.structure (to_current.copy_structure str);
   if !out <> "-" then close_out oc
 
 
