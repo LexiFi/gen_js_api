@@ -16,3 +16,9 @@ let () = Callback.register_exception "jsError" (Error (Ojs.obj [||]))
 (* The js_of_ocaml runtime expects to have this registered.
    So it's probably a bad idea to use both this Ojs_exn module
    and the js_of_ocaml standard library. *)
+
+let () =
+  Printexc.register_printer (function
+      | Error x -> Some (to_string x)
+      | _ -> None
+    )
