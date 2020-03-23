@@ -40,19 +40,27 @@ type error =
 
 exception Error of Location.t * error
 
+let check_attribute = ref true
+let mark_as_handled_manually = ref (fun (_ : Parsetree.attribute) -> ())
 let used_attributes_tbl = Hashtbl.create 16
-let register_loc loc = Hashtbl.replace used_attributes_tbl loc ()
+
+let register_loc attr =
+  !mark_as_handled_manually attr;
+  Hashtbl.replace used_attributes_tbl attr.attr_name.loc ()
+
 let is_registered_loc loc = Hashtbl.mem used_attributes_tbl loc
 
 let error loc err = raise (Error (loc, err))
 
-let filter_attr_name key {txt; loc} =
-  if txt = key then begin
-    register_loc loc;
+let filter_attr_name key attr =
+  if attr.attr_name.txt = key then begin
+    register_loc attr;
     true
   end else false
 
-let filter_attr key {attr_name; _} = filter_attr_name key attr_name
+let filter_extension key name = name.txt = key
+
+let filter_attr key attribute  = filter_attr_name key attribute
 
 let has_attribute key attrs = List.exists (filter_attr key) attrs
 
@@ -412,9 +420,9 @@ let auto_in_object ~global_attrs s = function
   | Unit _ -> MethCall (js_name ~global_attrs s)
   | _ -> PropGet (js_name ~global_attrs s)
 
-let parse_attr ~global_attrs ?ty (s, loc, auto) {attr_name = k; attr_payload = v; _} =
+let parse_attr ~global_attrs ?ty (s, loc, auto) attribute =
   let opt_name ?(prefix = "") ?(capitalize = false) ?(global = false) () =
-    match v with
+    match attribute.attr_payload with
     | PStr [] ->
         begin match check_prefix ~prefix s with
         | None -> error loc (Implicit_name prefix)
@@ -423,7 +431,7 @@ let parse_attr ~global_attrs ?ty (s, loc, auto) {attr_name = k; attr_payload = v
             if global then in_global_scope ~global_attrs js
             else js
         end
-    | _ -> id_of_expr (expr_of_payload k.loc v)
+    | _ -> id_of_expr (expr_of_payload attribute.attr_name.loc attribute.attr_payload)
   in
   let actions =
     [ "js.cast", (fun () -> Cast);
@@ -450,7 +458,7 @@ let parse_attr ~global_attrs ?ty (s, loc, auto) {attr_name = k; attr_payload = v
       "js.builder", (fun () -> Builder global_attrs);
     ]
   in
-  match List.find (fun (name, _) -> filter_attr_name name k) actions with
+  match List.find (fun (name, _) -> filter_attr_name name attribute) actions with
   | exception Not_found -> None
   | _, f -> Some (f ())
 
@@ -481,7 +489,7 @@ let rec parse_sig_item ~global_attrs rest s =
       let global_attrs = pmty_attributes @ global_attrs in
       Module (pmd_name.txt, pmty_attributes, parse_sig ~global_attrs si) :: rest
   | Psig_class cs -> Class (List.map (parse_class_decl ~global_attrs) cs) :: rest
-  | Psig_attribute {attr_name; attr_payload = PStr str; _} when filter_attr_name "js.implem" attr_name -> Implem str :: rest
+  | Psig_attribute ({attr_payload = PStr str; _} as attribute) when filter_attr_name "js.implem" attribute -> Implem str :: rest
   | Psig_attribute _ -> rest
   | Psig_open descr -> Open descr :: rest
   | _ ->
@@ -489,7 +497,7 @@ let rec parse_sig_item ~global_attrs rest s =
 
 and parse_sig ~global_attrs = function
   | [] -> []
-  | {psig_desc = Psig_attribute {attr_name; _}; _} :: rest when filter_attr_name "js.stop" attr_name ->
+  | {psig_desc = Psig_attribute attribute; _} :: rest when filter_attr_name "js.stop" attribute ->
       parse_sig_verbatim ~global_attrs rest
   | {psig_desc = Psig_value vd; _} :: rest when
       has_attribute "js.custom" vd.pval_attributes ->
@@ -501,7 +509,7 @@ and parse_sig ~global_attrs = function
 
 and parse_sig_verbatim ~global_attrs = function
   | [] -> []
-  | {psig_desc = Psig_attribute {attr_name; _}; _} :: rest when filter_attr_name "js.start" attr_name -> parse_sig ~global_attrs rest
+  | {psig_desc = Psig_attribute attribute; _} :: rest when filter_attr_name "js.start" attribute -> parse_sig ~global_attrs rest
   | _ :: rest -> parse_sig_verbatim ~global_attrs rest
 
 and parse_class_decl ~global_attrs = function
@@ -570,9 +578,9 @@ let int n = Exp.constant (Pconst_integer (string_of_int n, None))
 let pat_int n = Pat.constant (Pconst_integer (string_of_int n, None))
 let pat_str s = Pat.constant (Pconst_string (s, None))
 
-let attr s e = Str.attribute (Attr.mk (mknoloc s) (PStr [Str.eval e]))
+let attr s e = (Attr.mk (mknoloc s) (PStr [Str.eval e]))
 
-let disable_warnings = attr "ocaml.warning" (str "-7-32-39")
+let disable_warnings = Str.attribute (attr "ocaml.warning" (str "-7-32-39"))
     (*  7: method overridden.
        32: unused value declarations (when *_of_js, *_to_js are not needed)
        39: unused rec flag (for *_of_js, *_to_js functions, when the
@@ -1352,11 +1360,17 @@ and gen_class_cast = function
       let class_typ = Typ.constr (mknoloc (Longident.parse class_name)) [] in
       let to_js =
         let arg = fresh() in
-        Vb.mk (Pat.var (mknoloc (class_name ^ "_to_js"))) (Exp.fun_ Nolabel None (Pat.constraint_ (Pat.var (mknoloc arg)) class_typ) (Exp.constraint_ (Exp.send (var arg) (mknoloc "to_js")) ojs_typ))
+        Vb.mk (Pat.var (mknoloc (class_name ^ "_to_js")))
+          (Exp.fun_ Nolabel None
+             (Pat.constraint_ (Pat.var (mknoloc arg)) class_typ)
+             (Exp.constraint_ (Exp.send (var arg) (mknoloc "to_js")) ojs_typ))
       in
       let of_js =
         let arg = fresh() in
-        Vb.mk (Pat.var (mknoloc (class_name ^ "_of_js"))) (Exp.fun_ Nolabel None (Pat.constraint_ (Pat.var (mknoloc arg)) ojs_typ) (Exp.constraint_ (Exp.apply (Exp.new_ (mknoloc (Longident.Lident class_name))) [Nolabel, var arg]) class_typ))
+        Vb.mk (Pat.var (mknoloc (class_name ^ "_of_js")))
+          (Exp.fun_ Nolabel None
+             (Pat.constraint_ (Pat.var (mknoloc arg)) ojs_typ)
+             (Exp.constraint_ (Exp.apply (Exp.new_ (mknoloc (Longident.Lident class_name))) [Nolabel, var arg]) class_typ))
       in
       [to_js; of_js]
   | Constructor {class_name = _; js_class_name = _; class_arrow = _} -> []
@@ -1460,7 +1474,11 @@ and gen_def loc decl ty =
 
 and str_of_sg ~global_attrs sg =
   let decls = parse_sig ~global_attrs sg in
-  attr "comment" (str "!! This code has been generated by gen_js_api !!") ::
+  let attr =
+    attr "js.dummy" (str "!! This code has been generated by gen_js_api !!")
+  in
+  register_loc attr;
+  Str.attribute attr ::
   disable_warnings ::
   gen_decls ~global_attrs decls
 
@@ -1476,7 +1494,10 @@ and mapper =
   and module_expr self mexp =
     let mexp = super.module_expr self mexp in
     match mexp.pmod_desc with
-    | Pmod_constraint({pmod_desc=Pmod_extension (attr, PStr[]); _}, ({pmty_desc=Pmty_signature sg; pmty_attributes; pmty_loc = _} as mty)) when filter_attr_name "js" attr -> Mod.constraint_ (Mod.structure (str_of_sg ~global_attrs:pmty_attributes sg)) mty
+    | Pmod_constraint({pmod_desc=Pmod_extension (attr, PStr[]); _}
+                    , ({pmty_desc=Pmty_signature sg; pmty_attributes; pmty_loc = _} as mty))
+         when filter_extension "js" attr ->
+       Mod.constraint_ (Mod.structure (str_of_sg ~global_attrs:pmty_attributes sg)) mty
     | _ -> mexp
   in
   let structure_item self str =
@@ -1512,16 +1533,20 @@ and mapper =
     let e = super.expr self e in
     let global_attrs = [] in
     match e.pexp_desc with
-    | Pexp_extension (attr, PTyp ty) when filter_attr_name "js.to" attr ->
+    | Pexp_extension (attr, PTyp ty) when filter_extension "js.to" attr ->
         with_default_loc e.pexp_loc
           (fun () -> js2ml_fun (parse_typ ~global_attrs ty))
-    | Pexp_extension (attr, PTyp ty) when filter_attr_name "js.of" attr ->
+    | Pexp_extension (attr, PTyp ty) when filter_extension "js.of" attr ->
         with_default_loc e.pexp_loc
           (fun () -> ml2js_fun (parse_typ ~global_attrs ty))
     | _ ->
         e
   in
-  {super with module_expr; structure_item; expr; typ}
+  let attribute self a =
+    ignore (filter_attr "js.dummy" a : bool);
+    super.attribute self a
+  in
+  {super with module_expr; structure_item; expr; typ; attribute}
 
 let is_js_attribute txt = txt = "js" || has_prefix ~prefix:"js." txt
 
@@ -1529,7 +1554,7 @@ let check_loc_mapper =
   let mapper = Ast_mapper.default_mapper in
   let attribute _this ({attr_name = {txt; loc}; _} as attr) =
     if is_js_attribute txt then begin
-      if is_registered_loc loc then ()
+      if is_registered_loc loc || not !check_attribute  then ()
       else error loc Spurious_attribute
     end;
     attr
@@ -1591,5 +1616,9 @@ let mapper =
     Ast_mapper.structure = (fun _this str ->
       check_loc_mapper.Ast_mapper.structure
         check_loc_mapper
-        (mapper.Ast_mapper.structure mapper str))
+        (mapper.Ast_mapper.structure mapper str));
+    signature = (fun this s ->
+      (* run [str_of_sg] to mark `js.***` attributes as used. *)
+      let (_ : structure) = str_of_sg ~global_attrs:[] s in
+      this.signature mapper s)
   }
