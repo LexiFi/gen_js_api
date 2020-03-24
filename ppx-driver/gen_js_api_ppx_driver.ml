@@ -20,7 +20,10 @@ let () =
     let attribute = copy_attribute attribute in
     Ppxlib.Attribute.mark_as_handled_manually attribute);
   let mapper = Selected.Of_ocaml.copy_mapper Gen_js_api_ppx.mapper in
-  let mapper_for_sig = Gen_js_api_ppx.mark_attributes_as_used Gen_js_api_ppx.mapper in
+  let mapper_for_sig =
+    Selected.Of_ocaml.copy_mapper
+      (Gen_js_api_ppx.mark_attributes_as_used Gen_js_api_ppx.mapper)
+  in
   Ppxlib.Driver.register_transformation
     "gen_js_api"
     ~impl:(fun str -> mapper.structure mapper str)
