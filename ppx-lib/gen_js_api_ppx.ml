@@ -1617,8 +1617,14 @@ let mapper =
       check_loc_mapper.Ast_mapper.structure
         check_loc_mapper
         (mapper.Ast_mapper.structure mapper str));
-    signature = (fun this s ->
-      (* run [str_of_sg] to mark `js.***` attributes as used. *)
-      let (_ : structure) = str_of_sg ~global_attrs:[] s in
-      this.signature mapper s)
   }
+
+let mark_attributes_as_used mapper =
+  (* mark `js.***` attributes as used in mli. *)
+  let attribute : _ -> attribute -> _ =
+    fun this ({attr_name = {txt; _}; _} as attr) ->
+      if is_js_attribute txt then
+        ignore (filter_attr txt attr : bool);
+      mapper.Ast_mapper.attribute this attr
+  in
+  { mapper with attribute }
