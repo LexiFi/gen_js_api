@@ -72,14 +72,7 @@ module Engine = struct
   }
 
   let initial =
-    {
-      x = 0.;
-      y = 0.;
-      operator = None;
-      input = false;
-      equal = false;
-      comma = 0;
-    }
+    { x = 0.; y = 0.; operator = None; input = false; equal = false; comma = 0 }
 
   let make_op op x y =
     match op with
@@ -127,8 +120,8 @@ module Engine = struct
 
   let print ppf { x; y; operator; input; equal; comma } =
     Printf.fprintf ppf
-      "x = %g, y = %g, op = %a, input = %b, equal = %b, comma = %d" x y
-      print_op operator input equal comma
+      "x = %g, y = %g, op = %a, input = %b, equal = %b, comma = %d" x y print_op
+      operator input equal comma
 end
 
 let widget () =

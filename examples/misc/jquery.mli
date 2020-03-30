@@ -93,8 +93,8 @@ val prop : t -> string -> Ojs.t [@@js.call]
 val set_prop :
   t ->
   string ->
-  ([ `String of string | `Int of int | `Bool of bool | `Any of Ojs.t ][@js.union
-                                                                      ]) ->
+  ([ `String of string | `Int of int | `Bool of bool | `Any of Ojs.t ]
+  [@js.union]) ->
   unit
   [@@js.call "prop"]
 

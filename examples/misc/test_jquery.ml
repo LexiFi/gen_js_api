@@ -10,8 +10,8 @@ val alert : string -> unit [@@js.global]
 
 let ( !! ) = Jquery.selector
 
-let block s ?text ?(classes = []) ?(ons = []) ?(css = []) ?(props = [])
-    children =
+let block s ?text ?(classes = []) ?(ons = []) ?(css = []) ?(props = []) children
+    =
   let element = Jquery.selector (Printf.sprintf "<%s>" s) in
   (match text with None -> () | Some text -> Jquery.set_text element text);
   List.iter (fun c -> Jquery.add_class element c) classes;
@@ -29,13 +29,11 @@ let ajax_test () =
         hide pre;
         append !!"body" [ pre ];
         fade_in pre ~duration:2000
-          ~finished:(fun () ->
-            fade_out pre ~finished:(fun () -> detach pre) ())
+          ~finished:(fun () -> fade_out pre ~finished:(fun () -> detach pre) ())
           ()
     | status -> alert (Printf.sprintf "status = %s" status)
   in
-  run
-    (settings ~meth:`GET ~url:"test_jquery.ml" ~data_type:"text" ~complete ())
+  run (settings ~meth:`GET ~url:"test_jquery.ml" ~data_type:"text" ~complete ())
 
 let on_ready () =
   let main = !!"#main" in

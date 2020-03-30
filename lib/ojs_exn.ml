@@ -22,6 +22,5 @@ let () = Callback.register_exception "jsError" (Error (Ojs.obj [||]))
 
 let () =
   Printexc.register_printer (function
-      | Error x -> Some (to_string x)
-      | _ -> None
-    )
+    | Error x -> Some (to_string x)
+    | _ -> None)

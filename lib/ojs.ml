@@ -86,8 +86,7 @@ let array_to_js f arr =
   done;
   a
 
-let list_of_js_from f objs start =
-  Array.to_list (array_of_js_from f objs start)
+let list_of_js_from f objs start = Array.to_list (array_of_js_from f objs start)
 
 let list_of_js f objs = list_of_js_from f objs 0
 
