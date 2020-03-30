@@ -10,7 +10,7 @@ open Test_bindings
 include
   ([%js] :
    sig
-     val wrapper: (int -> int -> int) -> (int -> int -> int [@f])
+     val wrapper: (int -> int -> int) -> (int -> int -> int [@js.dummy])
          [@@js.global "wrapper"]
 
      val caller: (unit -> int) -> int

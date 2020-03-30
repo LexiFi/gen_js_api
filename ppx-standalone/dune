@@ -1,7 +1,7 @@
 (executables
   (names gen_js_api)
   (public_names gen_js_api)
-  (libraries gen_js_api_ppx)
+  (libraries gen_js_api.ppx)
   )
 
 (install

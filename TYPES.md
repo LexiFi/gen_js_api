@@ -105,11 +105,11 @@ provide all arguments to a function defined in OCaml is to use
 optional arguments (or just arguments with option types) on the OCaml
 side.
 
-In order to define **functions that return functions**, one can put an
-arbitrary attribute on the resulting type:
+In order to define **functions that return functions**, one can put a
+`[@js.dummy]` attribute (or any arbitrary attribute) on the resulting type :
 
 ```ocaml
-t1 -> (t2 -> t3 [@foo])
+t1 -> (t2 -> t3 [@js.dummy])
 ```
 
 Without the attribute, such a type would be parsed as a function of
