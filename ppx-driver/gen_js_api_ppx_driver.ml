@@ -9,12 +9,17 @@ let copy_attribute (a : Migrate_parsetree.Ast_408.Parsetree.attribute)
   List.hd pat.ppat_attributes
 
 let check_attributes_with_ppxlib = false
+let check_locations_with_ppxlib = false
 
 let () =
   if check_attributes_with_ppxlib
   then (
     Ppxlib.Driver.enable_checks ();
     Gen_js_api_ppx.check_attribute := false
+  );
+  if check_locations_with_ppxlib
+  then (
+    Ppxlib.Driver.enable_location_check ()
   );
   Gen_js_api_ppx.mark_as_handled_manually := (fun attribute ->
     let attribute = copy_attribute attribute in
