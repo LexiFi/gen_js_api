@@ -61,7 +61,9 @@ let elt name ?(attrs = []) ?onclick subs =
   let e = Document.createElement doc name in
   List.iter (fun (k, v) -> Element.setAttribute e k v) attrs;
   List.iter (Element.appendChild e) subs;
-  (match onclick with Some f -> Element.set_onclick e f | None -> ());
+  ( match onclick with
+  | Some f -> Element.set_onclick e f
+  | None -> () );
   e
 
 let txt = Document.createTextNode doc

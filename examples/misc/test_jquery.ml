@@ -13,12 +13,16 @@ let ( !! ) = Jquery.selector
 let block s ?text ?(classes = []) ?(ons = []) ?(css = []) ?(props = []) children
     =
   let element = Jquery.selector (Printf.sprintf "<%s>" s) in
-  (match text with None -> () | Some text -> Jquery.set_text element text);
+  ( match text with
+  | None -> ()
+  | Some text -> Jquery.set_text element text );
   List.iter (fun c -> Jquery.add_class element c) classes;
   List.iter (fun (key, value) -> Jquery.set_css_value element key value) css;
   List.iter (fun (key, value) -> Jquery.set_prop element key value) props;
   List.iter (fun (event, f) -> Jquery.on element event f) ons;
-  (match children with [] -> () | _ :: _ -> Jquery.append element children);
+  ( match children with
+  | [] -> ()
+  | _ :: _ -> Jquery.append element children );
   element
 
 let ajax_test () =

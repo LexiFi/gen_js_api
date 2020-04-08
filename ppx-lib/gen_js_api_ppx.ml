@@ -70,7 +70,9 @@ let get_attribute key attrs =
   | exception Not_found -> None
   | { attr_name; attr_payload; _ } -> Some (attr_name, attr_payload)
 
-let unoption = function Some x -> x | None -> assert false
+let unoption = function
+  | Some x -> x
+  | None -> assert false
 
 let expr_of_stritem = function
   | { pstr_desc = Pstr_eval (e, _); _ } -> e
@@ -80,7 +82,9 @@ let expr_of_payload loc = function
   | PStr [ x ] -> expr_of_stritem x
   | _ -> error loc Expression_expected
 
-let typ_of_payload loc = function PTyp x -> x | _ -> error loc Type_expected
+let typ_of_payload loc = function
+  | PTyp x -> x
+  | _ -> error loc Type_expected
 
 let str_of_payload loc = function
   | PStr x -> x
@@ -370,7 +374,9 @@ let check_prefix ~prefix s =
 let has_prefix ~prefix s = check_prefix ~prefix s <> None
 
 let drop_prefix ~prefix s =
-  match check_prefix ~prefix s with Some x -> x | None -> assert false
+  match check_prefix ~prefix s with
+  | Some x -> x
+  | None -> assert false
 
 let check_suffix ~suffix s =
   let l = String.length suffix in
@@ -381,7 +387,9 @@ let check_suffix ~suffix s =
 let rec choose f = function
   | [] -> []
   | x :: xs -> (
-      match f x with None -> choose f xs | Some y -> y :: choose f xs )
+      match f x with
+      | None -> choose f xs
+      | Some y -> y :: choose f xs )
 
 let in_global_scope ~global_attrs js =
   match
@@ -731,7 +739,11 @@ let incl = function
   | [ x ] -> x
   | str -> Str.include_ (Incl.mk (Mod.structure str))
 
-let nolabel args = List.map (function x -> (Nolabel, x)) args
+let nolabel args =
+  List.map
+    (function
+      | x -> (Nolabel, x))
+    args
 
 let ojs_typ = Typ.constr (mknoloc (Longident.parse "Ojs.t")) []
 
@@ -839,7 +851,8 @@ let ojs_variable s = ojs_get_global s
 
 let ojs_set_global s v =
   let path = split '.' s in
-  match select_path ojs_global path with o, x -> ojs "set" [ o; str x; v ]
+  match select_path ojs_global path with
+  | o, x -> ojs "set" [ o; str x; v ]
 
 let def s ty body =
   Str.value Nonrecursive
@@ -1174,7 +1187,10 @@ and ml2js ty exp =
       let typed_vars = List.mapi (fun i typ -> (i, typ, fresh ())) typs in
       let pat =
         Pat.tuple
-          (List.map (function _, _, x -> Pat.var (mknoloc x)) typed_vars)
+          (List.map
+             (function
+               | _, _, x -> Pat.var (mknoloc x))
+             typed_vars)
       in
       Exp.let_ Nonrecursive [ Vb.mk pat exp ]
         (let n = List.length typs in
@@ -1405,10 +1421,14 @@ and prepare_args_push ty_args ty_vararg =
     let_exp_in (ojs "new_obj" [ ojs_variable "Array"; Exp.array [] ]) body )
 
 and ml2js_unit ty_res res =
-  match ty_res with Unit _ -> res | _ -> ml2js ty_res res
+  match ty_res with
+  | Unit _ -> res
+  | _ -> ml2js ty_res res
 
 and js2ml_unit ty_res res =
-  match ty_res with Unit _ -> exp_ignore res | _ -> js2ml ty_res res
+  match ty_res with
+  | Unit _ -> exp_ignore res
+  | _ -> js2ml ty_res res
 
 and gen_typ = function
   | Name (s, tyl) ->

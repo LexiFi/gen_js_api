@@ -1,2 +1,3 @@
 profile=conventional
+break-cases=toplevel
 version=0.14.0

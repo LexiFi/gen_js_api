@@ -76,12 +76,20 @@ val regexp :
 
     let regexp txt ?global ?ignore_case ?multiline () =
       let l = [] in
-      let l = match global with Some () -> of_string "g" :: l | None -> l in
       let l =
-        match ignore_case with Some () -> of_string "i" :: l | None -> l
+        match global with
+        | Some () -> of_string "g" :: l
+        | None -> l
       in
       let l =
-        match multiline with Some () -> of_string "m" :: l | None -> l
+        match ignore_case with
+        | Some () -> of_string "i" :: l
+        | None -> l
+      in
+      let l =
+        match multiline with
+        | Some () -> of_string "m" :: l
+        | None -> l
       in
       regexp_internal txt ~flags:(concat (of_string "") l) ()]
 
