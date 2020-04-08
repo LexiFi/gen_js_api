@@ -177,11 +177,11 @@ val dialog :
 (** {2 AJAX} *)
 
 module Ajax : sig
-  type settings
   (** The type describing all settings of an AJAX call. *)
+  type settings
 
-  type t
   (** Corresponds to jQuery's jqXHR object. *)
+  type t
 
   val settings :
     ?async:bool ->

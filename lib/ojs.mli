@@ -4,8 +4,8 @@
 
 (** Binding with JS values. *)
 
-type t
 (** The universal type representing arbitrary JS values. *)
+type t
 
 (** {2 Mapper for built-in types} *)
 
