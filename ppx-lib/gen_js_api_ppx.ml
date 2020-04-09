@@ -44,6 +44,14 @@ let check_attribute = ref true
 let mark_as_handled_manually = ref (fun (_ : Parsetree.attribute) -> ())
 let used_attributes_tbl = Hashtbl.create 16
 
+(* [merlin_hide] tells merlin to not look at a node, or at any of its
+   descendants.  *)
+let merlin_hide =
+  { attr_name = { txt = "merlin.hide"; loc = Location.none }
+  ; attr_payload = PStr []
+  ; attr_loc = Location.none
+  }
+
 let register_loc attr =
   !mark_as_handled_manually attr;
   Hashtbl.replace used_attributes_tbl attr.attr_name.loc ()
@@ -1497,7 +1505,7 @@ and mapper =
     | Pmod_constraint({pmod_desc=Pmod_extension (attr, PStr[]); _}
                     , ({pmty_desc=Pmty_signature sg; pmty_attributes; pmty_loc = _} as mty))
          when filter_extension "js" attr ->
-       Mod.constraint_ (Mod.structure (str_of_sg ~global_attrs:pmty_attributes sg)) mty
+       Mod.constraint_ (Mod.structure ~attrs:[ merlin_hide ] (str_of_sg ~global_attrs:(pmty_attributes) sg)) mty
     | _ -> mexp
   in
   let structure_item self str =
@@ -1514,7 +1522,7 @@ and mapper =
         begin match js_decls with
         | [] -> str
         | l ->
-            with_default_loc str.pstr_loc
+            let itm = with_default_loc {str.pstr_loc with loc_ghost = true}
               (fun () ->
                  let funs = List.concat (List.map (gen_funs ~global_attrs) l) in
                  incl
@@ -1524,6 +1532,8 @@ and mapper =
                      Str.value ~loc:str.pstr_loc rec_flag funs
                    ]
               )
+            in
+            { itm with pstr_loc = str.pstr_loc}
         end
 
     | _ ->
@@ -1534,11 +1544,15 @@ and mapper =
     let global_attrs = [] in
     match e.pexp_desc with
     | Pexp_extension (attr, PTyp ty) when filter_extension "js.to" attr ->
-        with_default_loc e.pexp_loc
+        let e' = with_default_loc {e.pexp_loc with loc_ghost = true}
           (fun () -> js2ml_fun (parse_typ ~global_attrs ty))
+        in
+        { e' with pexp_loc = e.pexp_loc }
     | Pexp_extension (attr, PTyp ty) when filter_extension "js.of" attr ->
-        with_default_loc e.pexp_loc
+        let e' = with_default_loc {e.pexp_loc with loc_ghost = true}
           (fun () -> ml2js_fun (parse_typ ~global_attrs ty))
+        in
+        { e' with pexp_loc = e.pexp_loc }
     | _ ->
         e
   in
