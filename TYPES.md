@@ -11,7 +11,7 @@ The following types are supported out-of-the-box:
 
  - Basic built-in types: `string`, `int`, `bool`, `float` and `Ojs.t`.
 
- - Tuples of JS-table types (mapped to JS arrays).
+ - Tuples of JS-able types (mapped to JS arrays).
 
  - Sequences of JS-able types: `array` and `list`, both mapped to JS
    arrays (which are assumed to be indexed by integers 0..length-1).
