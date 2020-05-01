@@ -33,7 +33,7 @@ Several forms are supported:
      module M : sig ... end = [%js]
    ````
 
-   The signature is processed as it it were found in an .mli file, and
+   The signature is processed as if it were found in an .mli file, and
    the resulting structure is inserted in place of the `[%js]`
    extension.  See [this page](IMPLGEN.md) for a list
    of declarations supported in such interfaces.
