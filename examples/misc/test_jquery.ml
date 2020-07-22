@@ -6,8 +6,10 @@
 
 open Jquery
 
+include [%js:
 val alert: string -> unit
   [@@js.global]
+]
 
 let ( !! ) = Jquery.selector
 

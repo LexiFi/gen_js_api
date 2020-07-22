@@ -40,6 +40,7 @@ let () =
   test_variadic sum;
   test_variadic2 (fun msg xs -> Printf.printf "%s\n%!" msg; sum xs)
 
+include [%js:
 val myArray: int array
     [@@js]
 
@@ -55,6 +56,7 @@ val alert_float: float -> unit
 
 val test_opt_args: (?foo:int -> ?bar:int -> unit-> string) -> unit
   [@@js.global]
+]
 
 let doc = Window.document window
 
@@ -215,6 +217,7 @@ end = struct
     !l
 end
 
+include [%js:
 val int_dict_to_json_string: int Dict.t -> string
   [@@js.global "JSON.stringify"]
 
@@ -226,6 +229,7 @@ val set_x: int -> unit
 
 val get_x: unit -> int
     [@@js.get "x"]
+]
 
 let () =
   print_endline (int_dict_to_json_string ["hello", 1; "world", 2]);
@@ -252,11 +256,13 @@ let print = function
   | C (n, s) -> print_endline (Format.sprintf "C (%d, %S)" n s)
   | D {age; name} -> print_endline (Format.sprintf "D {age = %d; name = %S}" age name)
 
+include [%js:
 val set_print_sum: (t -> unit) -> unit
     [@@js.set "print_sum"]
 
 val test_sum: unit -> unit
     [@@js.global "test_sum"]
+]
 
 let () =
   set_print_sum print
@@ -276,8 +282,10 @@ let () =
   Console3.log4 1 "two" [] [|4|];
 end
 
+include [%js:
 val test_flatten: ([`A | `B of int | `C of string | `D of int * string] [@js.enum]) -> unit
     [@@js.global "test_flatten"]
+]
 
 let () =
   test_flatten `A;

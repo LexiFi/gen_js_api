@@ -24,13 +24,52 @@ let () =
   Gen_js_api_ppx.mark_as_handled_manually := (fun attribute ->
     let attribute = copy_attribute attribute in
     Ppxlib.Attribute.mark_as_handled_manually attribute);
-  let mapper = Selected.Of_ocaml.copy_mapper Gen_js_api_ppx.mapper in
   let mapper_for_sig =
     Selected.Of_ocaml.copy_mapper
       (Gen_js_api_ppx.mark_attributes_as_used Gen_js_api_ppx.mapper)
   in
+  let module_expr_ext =
+    let rewriter ~loc ~path:_ si = Gen_js_api_ppx.module_expr_rewriter ~loc ~attrs:[] si
+    in
+    Ppxlib.Extension.declare "js"
+      Ppxlib.Extension.Context.Module_expr
+      Ppxlib.(Ast_pattern.psig Ast_pattern.__)
+      rewriter
+    |> Ppxlib.Context_free.Rule.extension
+  in
+  let ext_to =
+    let rewriter ~loc ~path:_ core_type =
+      Gen_js_api_ppx.js_to_rewriter ~loc core_type
+    in
+    Ppxlib.Extension.declare "js.to"
+      Ppxlib.Extension.Context.Expression
+      Ppxlib.(Ast_pattern.ptyp Ast_pattern.__)
+      rewriter
+    |> Ppxlib.Context_free.Rule.extension
+  in
+  let ext_of =
+    let rewriter ~loc ~path:_ core_type =
+      Gen_js_api_ppx.js_of_rewriter ~loc core_type
+    in
+    Ppxlib.Extension.declare "js.of"
+      Ppxlib.Extension.Context.Expression
+      Ppxlib.(Ast_pattern.ptyp Ast_pattern.__)
+      rewriter
+    |> Ppxlib.Context_free.Rule.extension
+  in
+  let attr_typ =
+    Ppxlib.Context_free.Rule.attr_str_type_decl
+      (Ppxlib.Attribute.declare "js"
+         Ppxlib.Attribute.Context.type_declaration
+         Ppxlib.(Ast_pattern.pstr Ast_pattern.nil) ())
+      (fun ~ctxt rec_flag tdl _ ->
+         Gen_js_api_ppx.type_decl_rewriter
+           ~loc:(Ppxlib.Expansion_context.Deriver.derived_item_loc ctxt)
+           rec_flag
+           tdl)
+  in
   Ppxlib.Driver.register_transformation
     "gen_js_api"
-    ~impl:(fun str -> mapper.structure mapper str)
+    ~rules:[module_expr_ext; ext_of; ext_to; attr_typ ]
     ~intf:(fun sig_ ->
       mapper_for_sig.signature mapper_for_sig sig_)

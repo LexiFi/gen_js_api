@@ -1572,6 +1572,35 @@ and str_of_sg ~global_attrs sg =
   disable_warnings ::
   gen_decls ~global_attrs decls
 
+and module_expr_rewriter ~loc ~attrs sg =
+  Mod.constraint_
+    (Mod.structure ~attrs:[ merlin_hide ] (str_of_sg ~global_attrs:(attrs) sg))
+    (Mty.signature ~loc ~attrs sg)
+
+and js_to_rewriter ~loc ty =
+  let e' = with_default_loc {loc with loc_ghost = true }
+      (fun () -> js2ml_fun (parse_typ ~global_attrs:[] ty))
+  in
+  { e' with pexp_loc = loc }
+
+and js_of_rewriter ~loc ty =
+  let e' = with_default_loc {loc with loc_ghost = true}
+      (fun () -> ml2js_fun (parse_typ ~global_attrs:[] ty))
+  in
+  { e' with pexp_loc = loc  }
+
+and type_decl_rewriter ~loc rec_flag l =
+  let itm = with_default_loc {loc with loc_ghost = true}
+      (fun () ->
+         let funs = List.concat (List.map (gen_funs ~global_attrs:[]) l) in
+         [
+           disable_warnings;
+           Str.value ~loc:loc rec_flag funs
+         ]
+      )
+  in
+  itm
+
 and mapper =
   let open Ast_mapper in
   let super = default_mapper in
@@ -1585,7 +1614,7 @@ and mapper =
     let mexp = super.module_expr self mexp in
     match mexp.pmod_desc with
     | Pmod_extension ({txt = "js"; _}, PSig sg) ->
-       Mod.constraint_ (Mod.structure ~attrs:[ merlin_hide ] (str_of_sg ~global_attrs:mexp.pmod_attributes sg)) (Mty.signature sg)
+       module_expr_rewriter ~loc:mexp.pmod_loc ~attrs:mexp.pmod_attributes sg
     | _ -> mexp
   in
   let structure_item self str =
@@ -1602,37 +1631,22 @@ and mapper =
         begin match js_decls with
         | [] -> str
         | l ->
-            let itm = with_default_loc {str.pstr_loc with loc_ghost = true}
-              (fun () ->
-                 let funs = List.concat (List.map (gen_funs ~global_attrs) l) in
-                 incl
-                   [
-                     {str with pstr_desc = Pstr_type (rec_flag, List.map (fun d -> if has_attribute "js" d.ptype_attributes then rewrite_typ_decl d else d) decls)};
-                     disable_warnings;
-                     Str.value ~loc:str.pstr_loc rec_flag funs
-                   ]
-              )
-            in
-            { itm with pstr_loc = str.pstr_loc}
+            incl (
+              {str with pstr_desc = Pstr_type (rec_flag, List.map (fun d -> if has_attribute "js" d.ptype_attributes then rewrite_typ_decl d else d) decls)}
+              ::
+              type_decl_rewriter ~loc:str.pstr_loc rec_flag l
+            )
         end
-
     | _ ->
         str
   in
   let expr self e =
     let e = super.expr self e in
-    let global_attrs = [] in
     match e.pexp_desc with
     | Pexp_extension (attr, PTyp ty) when filter_extension "js.to" attr ->
-        let e' = with_default_loc {e.pexp_loc with loc_ghost = true}
-          (fun () -> js2ml_fun [] (parse_typ ~global_attrs ty))
-        in
-        { e' with pexp_loc = e.pexp_loc }
+        js_to_rewriter ~loc:e.pexp_loc ty
     | Pexp_extension (attr, PTyp ty) when filter_extension "js.of" attr ->
-        let e' = with_default_loc {e.pexp_loc with loc_ghost = true}
-          (fun () -> ml2js_fun [] (parse_typ ~global_attrs ty))
-        in
-        { e' with pexp_loc = e.pexp_loc }
+        js_of_rewriter ~loc:e.pexp_loc ty
     | _ ->
         e
   in
