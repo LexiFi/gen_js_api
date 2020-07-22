@@ -1502,10 +1502,8 @@ and mapper =
   and module_expr self mexp =
     let mexp = super.module_expr self mexp in
     match mexp.pmod_desc with
-    | Pmod_constraint({pmod_desc=Pmod_extension (attr, PStr[]); _}
-                    , ({pmty_desc=Pmty_signature sg; pmty_attributes; pmty_loc = _} as mty))
-         when filter_extension "js" attr ->
-       Mod.constraint_ (Mod.structure ~attrs:[ merlin_hide ] (str_of_sg ~global_attrs:(pmty_attributes) sg)) mty
+    | Pmod_extension ({txt = "js"; _}, PSig sg) ->
+       Mod.constraint_ (Mod.structure ~attrs:[ merlin_hide ] (str_of_sg ~global_attrs:mexp.pmod_attributes sg)) (Mty.signature sg)
     | _ -> mexp
   in
   let structure_item self str =
