@@ -28,8 +28,20 @@ let () =
     Selected.Of_ocaml.copy_mapper
       (Gen_js_api_ppx.mark_attributes_as_used Gen_js_api_ppx.mapper)
   in
+  let copy_module_expr m =
+    match
+      Selected.Of_ocaml.copy_structure
+        [ Ppxlib.Ast_helper.(Str.module_ (Mb.mk ({txt="FAKE";loc=Location.none}) m))]
+    with
+    | [{pstr_desc=Pstr_module {pmb_expr;_}; _}] -> pmb_expr
+    | _ -> assert false
+  in
   let module_expr_ext =
-    let rewriter ~loc ~path:_ si = Gen_js_api_ppx.module_expr_rewriter ~loc ~attrs:[] si
+    let rewriter ~loc ~path:_ si =
+      si
+      |> Selected.To_ocaml.copy_signature
+      |> Gen_js_api_ppx.module_expr_rewriter ~loc ~attrs:[]
+      |> copy_module_expr
     in
     Ppxlib.Extension.declare "js"
       Ppxlib.Extension.Context.Module_expr
@@ -39,7 +51,10 @@ let () =
   in
   let ext_to =
     let rewriter ~loc ~path:_ core_type =
-      Gen_js_api_ppx.js_to_rewriter ~loc core_type
+      core_type
+      |> Selected.To_ocaml.copy_core_type
+      |> Gen_js_api_ppx.js_to_rewriter ~loc
+      |> Selected.Of_ocaml.copy_expression
     in
     Ppxlib.Extension.declare "js.to"
       Ppxlib.Extension.Context.Expression
@@ -49,7 +64,10 @@ let () =
   in
   let ext_of =
     let rewriter ~loc ~path:_ core_type =
-      Gen_js_api_ppx.js_of_rewriter ~loc core_type
+      core_type
+      |> Selected.To_ocaml.copy_core_type
+      |> Gen_js_api_ppx.js_of_rewriter ~loc
+      |> Selected.Of_ocaml.copy_expression
     in
     Ppxlib.Extension.declare "js.of"
       Ppxlib.Extension.Context.Expression
@@ -58,15 +76,19 @@ let () =
     |> Ppxlib.Context_free.Rule.extension
   in
   let attr_typ =
+    let rewriter ~ctxt rec_flag tdl _ =
+         tdl
+         |> List.map (Selected.To_ocaml.copy_type_declaration)
+         |> Gen_js_api_ppx.type_decl_rewriter
+           ~loc:(Ppxlib.Expansion_context.Deriver.derived_item_loc ctxt)
+           rec_flag
+         |> Selected.Of_ocaml.copy_structure
+    in
     Ppxlib.Context_free.Rule.attr_str_type_decl
       (Ppxlib.Attribute.declare "js"
          Ppxlib.Attribute.Context.type_declaration
          Ppxlib.(Ast_pattern.pstr Ast_pattern.nil) ())
-      (fun ~ctxt rec_flag tdl _ ->
-         Gen_js_api_ppx.type_decl_rewriter
-           ~loc:(Ppxlib.Expansion_context.Deriver.derived_item_loc ctxt)
-           rec_flag
-           tdl)
+      rewriter
   in
   Ppxlib.Driver.register_transformation
     "gen_js_api"
