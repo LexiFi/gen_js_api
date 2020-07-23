@@ -1,13 +1,34 @@
 module From_ppx = Migrate_parsetree.Versions.OCaml_408
-module Selected = Ppxlib.Select_ast(From_ppx)
+module Selected =  Ppxlib.Select_ast(From_ppx)
 
-let copy_attribute (a : Migrate_parsetree.Ast_408.Parsetree.attribute)
+module Of_ppxlib = struct
+  include Selected.To_ocaml
+  let copy_rec_flag (rec_flag : Ppxlib.Asttypes.rec_flag) : From_ppx.Ast.Asttypes.rec_flag =
+    match rec_flag with
+    | Nonrecursive -> From_ppx.Ast.Asttypes.Nonrecursive
+    | Recursive -> Recursive
+end
+
+module To_ppxlib = struct
+  include Selected.Of_ocaml
+
+  let copy_module_expr (m : From_ppx.Ast.Parsetree.module_expr) : Ppxlib.Parsetree.module_expr =
+    match
+      copy_structure
+        [ From_ppx.Ast.Ast_helper.(Str.module_ (Mb.mk ({txt= "FAKE";loc=Location.none}) m))]
+    with
+    | [{pstr_desc=Pstr_module {pmb_expr;_}; _}] -> pmb_expr
+    | _ -> assert false
+
+  let copy_attribute (a : From_ppx.Ast.Parsetree.attribute)
   : Ppxlib.Ast.attribute =
   let pat : Migrate_parsetree.Ast_408.Parsetree.pattern =
     Migrate_parsetree.Ast_408.Ast_helper.Pat.any ~attrs:[a] ()
   in
-  let pat = Selected.Of_ocaml.copy_pattern pat in
+  let pat = copy_pattern pat in
   List.hd pat.ppat_attributes
+end
+
 
 let check_attributes_with_ppxlib = false
 let check_locations_with_ppxlib = false
@@ -23,30 +44,22 @@ let () =
     Ppxlib.Driver.enable_location_check ()
   );
   Gen_js_api_ppx.mark_as_handled_manually := (fun attribute ->
-    let attribute = copy_attribute attribute in
-    Ppxlib.Attribute.mark_as_handled_manually attribute);
+      let attribute = To_ppxlib.copy_attribute attribute in
+      Ppxlib.Attribute.mark_as_handled_manually attribute);
   let mapper_for_sig =
-    Selected.Of_ocaml.copy_mapper
+    To_ppxlib.copy_mapper
       (Gen_js_api_ppx.mark_attributes_as_used Gen_js_api_ppx.mapper)
   in
   let mapper_for_str =
-    Selected.Of_ocaml.copy_mapper
+    To_ppxlib.copy_mapper
       (Gen_js_api_ppx.mark_attributes_as_used From_ppx.Ast.Ast_mapper.default_mapper)
-  in
-  let copy_module_expr m =
-    match
-      Selected.Of_ocaml.copy_structure
-        [ Ppxlib.Ast_helper.(Str.module_ (Mb.mk ({txt="FAKE";loc=Location.none}) m))]
-    with
-    | [{pstr_desc=Pstr_module {pmb_expr;_}; _}] -> pmb_expr
-    | _ -> assert false
   in
   let module_expr_ext =
     let rewriter ~loc ~path:_ si =
       si
-      |> Selected.To_ocaml.copy_signature
+      |> Of_ppxlib.copy_signature
       |> Gen_js_api_ppx.module_expr_rewriter ~loc ~attrs:[]
-      |> copy_module_expr
+      |> To_ppxlib.copy_module_expr
     in
     Ppxlib.Extension.declare "js"
       Ppxlib.Extension.Context.Module_expr
@@ -57,9 +70,9 @@ let () =
   let ext_to =
     let rewriter ~loc ~path:_ core_type =
       core_type
-      |> Selected.To_ocaml.copy_core_type
+      |> Of_ppxlib.copy_core_type
       |> Gen_js_api_ppx.js_to_rewriter ~loc
-      |> Selected.Of_ocaml.copy_expression
+      |> To_ppxlib.copy_expression
     in
     Ppxlib.Extension.declare "js.to"
       Ppxlib.Extension.Context.Expression
@@ -70,9 +83,9 @@ let () =
   let ext_of =
     let rewriter ~loc ~path:_ core_type =
       core_type
-      |> Selected.To_ocaml.copy_core_type
+      |> Of_ppxlib.copy_core_type
       |> Gen_js_api_ppx.js_of_rewriter ~loc
-      |> Selected.Of_ocaml.copy_expression
+      |> To_ppxlib.copy_expression
     in
     Ppxlib.Extension.declare "js.of"
       Ppxlib.Extension.Context.Expression
@@ -81,13 +94,13 @@ let () =
     |> Ppxlib.Context_free.Rule.extension
   in
   let attr_typ =
-    let rewriter ~ctxt rec_flag tdl _ =
-         tdl
-         |> List.map (Selected.To_ocaml.copy_type_declaration)
-         |> Gen_js_api_ppx.type_decl_rewriter
-           ~loc:(Ppxlib.Expansion_context.Deriver.derived_item_loc ctxt)
-           rec_flag
-         |> Selected.Of_ocaml.copy_structure
+    let rewriter ~ctxt (rec_flag : Ppxlib.Asttypes.rec_flag) tdl _ =
+      tdl
+      |> List.map (Of_ppxlib.copy_type_declaration)
+      |> Gen_js_api_ppx.type_decl_rewriter
+        ~loc:(Ppxlib.Expansion_context.Deriver.derived_item_loc ctxt)
+        (Of_ppxlib.copy_rec_flag rec_flag)
+      |> To_ppxlib.copy_structure
     in
     Ppxlib.Context_free.Rule.attr_str_type_decl
       (Ppxlib.Attribute.declare "js"
@@ -99,6 +112,6 @@ let () =
     "gen_js_api"
     ~rules:[module_expr_ext; ext_of; ext_to; attr_typ ]
     ~impl:(fun str_ ->
-      mapper_for_str.structure mapper_for_str str_)
+        mapper_for_str.structure mapper_for_str str_)
     ~intf:(fun sig_ ->
-      mapper_for_sig.signature mapper_for_sig sig_)
+        mapper_for_sig.signature mapper_for_sig sig_)
