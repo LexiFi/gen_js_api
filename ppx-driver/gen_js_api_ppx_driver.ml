@@ -1,4 +1,5 @@
-module Selected = Ppxlib.Select_ast(Migrate_parsetree.Versions.OCaml_408)
+module From_ppx = Migrate_parsetree.Versions.OCaml_408
+module Selected = Ppxlib.Select_ast(From_ppx)
 
 let copy_attribute (a : Migrate_parsetree.Ast_408.Parsetree.attribute)
   : Ppxlib.Ast.attribute =
@@ -27,6 +28,10 @@ let () =
   let mapper_for_sig =
     Selected.Of_ocaml.copy_mapper
       (Gen_js_api_ppx.mark_attributes_as_used Gen_js_api_ppx.mapper)
+  in
+  let mapper_for_str =
+    Selected.Of_ocaml.copy_mapper
+      (Gen_js_api_ppx.mark_attributes_as_used From_ppx.Ast.Ast_mapper.default_mapper)
   in
   let copy_module_expr m =
     match
@@ -93,5 +98,7 @@ let () =
   Ppxlib.Driver.register_transformation
     "gen_js_api"
     ~rules:[module_expr_ext; ext_of; ext_to; attr_typ ]
+    ~impl:(fun str_ ->
+      mapper_for_str.structure mapper_for_str str_)
     ~intf:(fun sig_ ->
       mapper_for_sig.signature mapper_for_sig sig_)
