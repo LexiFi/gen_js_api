@@ -1,4 +1,4 @@
-module Element : sig
+module Element = [%js:
   type t
 
   val t_of_js: Ojs.t -> t
@@ -8,17 +8,17 @@ module Element : sig
   val set_attribute: t -> string -> string -> unit
 
   val set_onclick: t -> (unit -> unit) -> unit
-end = [%js]
+]
 
-module Window : sig
+module Window = [%js:
   type t
 
   val instance: t [@@js.global "window"]
 
   val set_onload: t -> (unit -> unit) -> unit
-end = [%js]
+]
 
-module Document : sig
+module Document = [%js:
   type t
 
   val instance: t [@@js.global "document"]
@@ -28,7 +28,7 @@ module Document : sig
   val create_text_node: t -> string -> Element.t
 
   val body: t -> Element.t
-end = [%js]
+]
 
 let element tag children =
   let elt = Document.create_element Document.instance tag in

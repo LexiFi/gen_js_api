@@ -24,17 +24,16 @@ Note: the ppx currently does nothing on `.mli` files.
 
 Several forms are supported:
 
- - `[%js]` extension as a module expression, to be used directly under
-   a module-level type constraint.  Examples:
+ - `[%js: <signature>]` extension as a module expression.  Examples:
 
    ````
-     include ([%js] : sig ... end)
+     include [%js: <signature>]
 
-     module M : sig ... end = [%js]
+     module M = [%js: <signature>]
    ````
 
    The signature is processed as if it were found in an .mli file, and
-   the resulting structure is inserted in place of the `[%js]`
+   the resulting structure is inserted in place of the `[%js: ...]`
    extension.  See [this page](IMPLGEN.md) for a list
    of declarations supported in such interfaces.
 

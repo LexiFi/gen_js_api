@@ -8,27 +8,25 @@
 open Test_bindings
 
 include
-  ([%js] :
-   sig
-     val wrapper: (int -> int -> int) -> (int -> int -> int [@js.dummy])
-         [@@js.global "wrapper"]
+  [%js:
+    val wrapper: (int -> int -> int) -> (int -> int -> int [@js.dummy])
+    [@@js.global "wrapper"]
 
-     val caller: (unit -> int) -> int
-         [@@js.global "caller"]
+    val caller: (unit -> int) -> int
+    [@@js.global "caller"]
 
-     val caller_unit: (unit -> unit) -> unit
-         [@@js.global "caller"]
+    val caller_unit: (unit -> unit) -> unit
+    [@@js.global "caller"]
 
-     val test_variadic: ((int list [@js.variadic]) -> int) -> unit
-     val test_variadic2: (string -> (int list [@js.variadic]) -> int) -> unit
-   end)
+    val test_variadic: ((int list [@js.variadic]) -> int) -> unit
+    val test_variadic2: (string -> (int list [@js.variadic]) -> int) -> unit
+  ]
 
-module LocalBindings : sig
+module LocalBindings = [%js:
   type myType = { x : a; y : b [@js "Y"]}
   and a = int option
   and b = { s : string; i : int }
-
-end = [%js]
+]
 
 
 let () =
@@ -236,17 +234,17 @@ let () =
   print_endline (string_of_int (get_x ()))
 
 module Sum = struct
-include ([%js]: sig
-           type t =
-             | A
-             | B of int
-             | C of int * string
-             | D of {age:int; name:string}
-                   [@@js.sum]
+  include [%js:
+    type t =
+      | A
+      | B of int
+      | C of int * string
+      | D of {age:int; name:string}
+    [@@js.sum]
 
-           val t_of_js: Ojs.t -> t
-           val t_to_js: t -> Ojs.t
-         end)
+    val t_of_js: Ojs.t -> t
+    val t_to_js: t -> Ojs.t
+  ]
 
 let print = function
   | A -> print_endline "A"
