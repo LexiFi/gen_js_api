@@ -222,6 +222,7 @@ type typ =
                  attributes:attributes;
                  constrs:constructor list }
   | Tuple of typ list
+  | Typ_var of string
 
 and lab =
   | Arg
@@ -364,6 +365,8 @@ and parse_typ ~global_attrs ty =
       let typs = List.map (parse_typ ~global_attrs) typs in
       Tuple typs
 
+  | Ptyp_var label -> Typ_var label
+  
   | _ ->
       error ty.ptyp_loc Cannot_parse_type
 
@@ -803,6 +806,8 @@ let rec js2ml ty exp =
         Exp.tuple (List.mapi (fun i typ -> js2ml typ (ojs "array_get" [x; int i])) typs)
       in
       let_exp_in exp f
+  | Typ_var _ -> 
+      app (var ("Ojs.typvar_of_js")) (nolabel ([exp])) false
 
 and js2ml_of_variant ~variant loc ~global_attrs attrs constrs exp =
   let variant_kind = get_variant_kind loc attrs in
@@ -980,6 +985,8 @@ and ml2js ty exp =
           List.fold_left f (var a) (List.rev typed_vars)
         end
       end
+  | Typ_var _ -> 
+      app (var ("Ojs.typvar_to_js")) (nolabel ([exp])) false
 
 and ml2js_of_variant ~variant loc ~global_attrs attrs constrs exp =
   let variant_kind = get_variant_kind loc attrs in
@@ -1193,6 +1200,7 @@ and gen_typ = function
       Typ.variant rows Closed None
   | Tuple typs ->
       Typ.tuple (List.map gen_typ typs)
+  | Typ_var label -> Typ.var label
 
 let process_fields ~global_attrs l =
   let loc = l.pld_name.loc in

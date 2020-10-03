@@ -12,6 +12,9 @@ type t
 external t_of_js: t -> t = "%identity"
 external t_to_js: t -> t = "%identity"
 
+external typvar_to_js: 'a -> t = "%identity"
+external typvar_of_js: t -> 'a = "%identity"
+
 external string_of_js: t -> string = "caml_js_to_string"
 external string_to_js: string -> t = "caml_js_from_string"
 
