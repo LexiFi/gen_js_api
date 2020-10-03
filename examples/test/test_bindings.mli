@@ -238,3 +238,13 @@ module Union: sig
     | Moveto_abs of moveto_abs [@js 2]
           [@@js.union on_field "pathSegType"]
 end
+
+module Ref : sig
+  type 'value t
+
+  val make: 'value -> 'value t [@@js.global "makeRef"]
+
+  val current : 'value t -> 'value [@@js.get "current"]
+
+  val setCurrent : 'value t -> 'value -> unit [@@js.set "current"]
+end

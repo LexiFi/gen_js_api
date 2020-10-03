@@ -291,7 +291,7 @@ let () =
   Console3.log (make_string 1234);
   Console3.log (make_string "string");
   Console3.log (make_string ["list"]);
-  Console3.log (make_string [|"array"|]);
+  Console3.log (make_string [|"array"|])
 
 val test_typvars: 'a -> 'a * 'a
     [@@js.global "test_typvars"]
@@ -301,3 +301,9 @@ let () =
   Console3.log (test_typvars 1234);
   Console3.log (test_typvars "string");
   Console3.log (test_typvars ["list"])
+
+let () =
+  let t = Ref.make "foo" in
+  Console3.log (Ref.current t);
+  Ref.setCurrent t "bar";
+  Console3.log (Ref.current t)

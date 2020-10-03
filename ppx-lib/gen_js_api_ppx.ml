@@ -791,7 +791,7 @@ let rec js2ml ty exp =
       exp
   | Name (s, tl) ->
       let s = if builtin_type s then "Ojs." ^ s else s in
-      let args = List.map js2ml_fun tl in
+      let args = List.filter (fun t -> match t with | Typ_var _ -> false  | _ -> true) tl |> List.map js2ml_fun in
       app (var (s ^ "_of_js")) (nolabel (args @ [exp])) false
   | Arrow {ty_args; ty_vararg; unit_arg; ty_res} ->
       let formal_args, concrete_args = prepare_args ty_args ty_vararg in
@@ -929,7 +929,7 @@ and ml2js ty exp =
       exp
   | Name (s, tl) ->
       let s = if builtin_type s then "Ojs." ^ s else s in
-      let args = List.map ml2js_fun tl in
+      let args = List.filter (fun t -> match t with | Typ_var _ -> false  | _ -> true) tl |> List.map ml2js_fun in
       app (var (s ^ "_to_js")) (nolabel (args @ [exp])) false
   | Arrow {ty_args; ty_vararg = None; unit_arg; ty_res} ->
       let args =
@@ -1265,6 +1265,17 @@ and gen_funs ~global_attrs p =
   in
   let force_opt x = try (Some (Lazy.force x)) with Error (_, Union_without_discriminator) -> None in
   let of_js, to_js = force_opt of_js, force_opt to_js in
+  let f (name, input_typ, ret_typ, code) =
+    match code with
+    | None -> None
+    | Some code ->
+        Some
+          (Vb.mk ~loc:p.ptype_loc
+              (Pat.constraint_
+                (Pat.var (mknoloc name))
+                (gen_typ (Arrow {ty_args = [{lab=Arg; att=[]; typ = input_typ}]; ty_vararg = None; unit_arg = false; ty_res = ret_typ})))
+              code)
+  in
   match p.ptype_params with
   | [{ptyp_desc = Ptyp_any; ptyp_loc = _; ptyp_attributes = _; ptyp_loc_stack = _}, Invariant] ->
       begin match to_js with
@@ -1281,18 +1292,10 @@ and gen_funs ~global_attrs p =
                     (Typ.arrow Nolabel (Typ.constr (mknoloc (Longident.parse name)) [Typ.constr (mknoloc (Longident.parse v)) []]) ojs_typ)))
           ]
       end
+  | [{ptyp_desc = Ptyp_var label; ptyp_loc = _; ptyp_attributes = _; ptyp_loc_stack = _}, Invariant] ->
+      choose f [ name ^ "_of_js", Js, Name (name, [Typ_var label]), of_js;
+                 name ^ "_to_js", Name (name, [Typ_var label]), Js, to_js ]
   | _ ->
-      let f (name, input_typ, ret_typ, code) =
-        match code with
-        | None -> None
-        | Some code ->
-            Some
-              (Vb.mk ~loc:p.ptype_loc
-                 (Pat.constraint_
-                    (Pat.var (mknoloc name))
-                    (gen_typ (Arrow {ty_args = [{lab=Arg; att=[]; typ = input_typ}]; ty_vararg = None; unit_arg = false; ty_res = ret_typ})))
-                 code)
-      in
       choose f [ name ^ "_of_js", Js, Name (name, []), of_js;
                  name ^ "_to_js", Name (name, []), Js, to_js ]
 
