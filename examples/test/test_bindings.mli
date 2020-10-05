@@ -248,3 +248,11 @@ module Ref : sig
 
   val setCurrent : 'value t -> 'value -> unit [@@js.set "current"]
 end
+
+type ttt = string list
+val test: ttt -> string array [@@js.global "test"]
+
+module Any : sig
+  type _ t
+
+end
