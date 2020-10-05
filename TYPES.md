@@ -33,6 +33,9 @@ The following types are supported out-of-the-box:
    unions on the JS side (see the section on discriminated union types
    below).
 
+ - Type variables like `'a`, they will involve no runtime mapping when moving
+   between OCaml and JS.
+
 An arbitrary non-parametrized type with path `M.t` is JS-able if the
 following two values are available in module `M`:
 
@@ -144,6 +147,10 @@ implementation).  Mutually recursive type declarations are supported.
   This is used to bind to JS "opaque" objects, with no runtime mapping
   involved when moving between OCaml and JS (mapping functions are the
   identity).
+  A type variable can also be added optionally, still with no runtime mapping:
+  ```ocaml
+  type 'a t = private Ojs.t
+  ```
 
 - Abstract type
 
@@ -165,6 +172,9 @@ implementation).  Mutually recursive type declarations are supported.
   kind of type declaration above (abstract subtypes of `Ojs.t`) are
   a special kind of such declaration, since `abstract` is always dropped
   and `Ojs.t` is JS-able.
+  Note that type variables are not supported with type abbreviation, they have
+  to be implemented manually. See the [low-level binding to Javascript section](LOW_LEVEL_BINDING.md)
+  for an example.
 
 - Record declaration:
 
