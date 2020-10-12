@@ -147,10 +147,41 @@ implementation).  Mutually recursive type declarations are supported.
   This is used to bind to JS "opaque" objects, with no runtime mapping
   involved when moving between OCaml and JS (mapping functions are the
   identity).
-  A type variable can also be added optionally, still with no runtime mapping:
+
+  A type variable can also be added optionally:
   ```ocaml
   type 'a t = private Ojs.t
   ```
+
+  This is useful when writing bindings to JS functions that rely on data structures
+  that can contain OCaml values as is. For example, to use the JS [`Map`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Map)
+  object to store OCaml values in their original runtime representation, a
+  `StringMap` module could be defined:
+
+  ```ocaml
+  module StringMap : sig
+    type 'a t = private Ojs.t
+    val create: unit -> 'a t [@@js.new "Map"]
+    val set: 'a t -> string -> 'a -> unit
+    val get: 'a t -> string -> 'a option 
+  end
+  ```
+
+  **Important:** the functions generated from types with variables will only apply
+  the identity function when converting to or from JS. So this approach should
+  never be used to interface with a JS function that expects the types to be
+  converted. For example, the following would break if we used it as a binding
+  to the [`fetch`](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API)
+  function available in browsers:
+
+  ```ocaml
+  val fetch: string -> Response.t Promise.t [@@js.global "fetch"]
+  ```
+
+  In this case, we would want `Response.t` to be converted from/to JS types, so
+  `Promise.t` would require conversion functions that are manually implemented.
+  See the [section on manually created bindings](LOW_LEVEL_BINDING.md) for more
+  information.
 
 - Abstract type
 
