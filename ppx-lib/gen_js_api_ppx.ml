@@ -817,7 +817,7 @@ let rec js2ml ty exp =
       in
       let_exp_in exp f
   | Typ_var _ ->
-      app (var ("Ojs.typvar_of_js")) (nolabel ([exp])) false
+      app (var ("Obj.magic")) (nolabel ([exp])) false
 
 and js2ml_of_variant ~variant loc ~global_attrs attrs constrs exp =
   let variant_kind = get_variant_kind loc attrs in
@@ -996,7 +996,7 @@ and ml2js ty exp =
         end
       end
   | Typ_var _ ->
-      app (var ("Ojs.typvar_to_js")) (nolabel ([exp])) false
+      app (var ("Obj.magic")) (nolabel ([exp])) false
 
 and ml2js_of_variant ~variant loc ~global_attrs attrs constrs exp =
   let variant_kind = get_variant_kind loc attrs in
