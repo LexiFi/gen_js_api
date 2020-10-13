@@ -265,6 +265,7 @@ let arg_label = function
 
 type valdef =
   | Cast
+  | Ignore
   | PropGet of string
   | PropSet of string
   | MethCall of string
@@ -366,7 +367,7 @@ and parse_typ ~global_attrs ty =
       Tuple typs
 
   | Ptyp_var label -> Typ_var label
-  
+
   | _ ->
       error ty.ptyp_loc Cannot_parse_type
 
@@ -407,6 +408,16 @@ let in_global_scope ~global_attrs js =
   | [] -> js
   | (_ :: _) as revpath -> String.concat "." (List.rev (js :: revpath))
 
+let derived_from_type s ty =
+  match ty with
+  | Arrow {ty_args; ty_vararg = None; unit_arg = false; ty_res = Js} ->
+    begin match List.rev ty_args with
+    | [] -> false
+    | {lab=Arg; att=_; typ=Name (t, _);} :: _ -> check_suffix ~suffix:"_to_js" s = Some t
+    end
+  | Arrow {ty_res = Name (t, _); ty_vararg = None; unit_arg = false } -> check_suffix ~suffix:"_of_js" s = Some t
+  | _ -> false
+
 let auto ~global_attrs s ty =
   let methcall s =
     let js = js_name ~global_attrs s in
@@ -414,8 +425,7 @@ let auto ~global_attrs s ty =
     else MethCall js
   in
   match ty with
-  | Arrow {ty_args = [{lab=Arg; att=_; typ=Name (t, [])}]; ty_vararg = None; unit_arg = false; ty_res = Js} when check_suffix ~suffix:"_to_js" s = Some t -> Cast
-  | Arrow {ty_args = [{lab=Arg; att=_; typ=Js}]; ty_vararg = None; unit_arg = false; ty_res = Name (t, [])} when check_suffix ~suffix:"_of_js" s = Some t -> Cast
+  | _ when derived_from_type s ty -> Ignore
   | Arrow {ty_args = [_]; ty_vararg = None; unit_arg = false; ty_res = Unit _} when has_prefix ~prefix:"set_" s -> PropSet (in_global_scope ~global_attrs (js_name ~global_attrs (drop_prefix ~prefix:"set_" s)))
   | Arrow {ty_args = [{lab=Arg; att=_; typ=Name _}]; ty_vararg = None; unit_arg = false; ty_res = Unit _} -> methcall s
   | Arrow {ty_args = [{lab=Arg; att=_; typ=Name _}]; ty_vararg = None; unit_arg = false; ty_res = _} -> PropGet (js_name ~global_attrs s)
@@ -806,7 +816,7 @@ let rec js2ml ty exp =
         Exp.tuple (List.mapi (fun i typ -> js2ml typ (ojs "array_get" [x; int i])) typs)
       in
       let_exp_in exp f
-  | Typ_var _ -> 
+  | Typ_var _ ->
       app (var ("Ojs.typvar_of_js")) (nolabel ([exp])) false
 
 and js2ml_of_variant ~variant loc ~global_attrs attrs constrs exp =
@@ -985,7 +995,7 @@ and ml2js ty exp =
           List.fold_left f (var a) (List.rev typed_vars)
         end
       end
-  | Typ_var _ -> 
+  | Typ_var _ ->
       app (var ("Ojs.typvar_to_js")) (nolabel ([exp])) false
 
 and ml2js_of_variant ~variant loc ~global_attrs attrs constrs exp =
@@ -1231,7 +1241,7 @@ and gen_funs ~global_attrs p =
         | [], _ ->
           lazy (js2ml_fun ty), lazy (ml2js_fun ty)
         | [{ptyp_desc = Ptyp_var _; ptyp_loc = _; ptyp_attributes = _; ptyp_loc_stack = _}, Invariant], Js ->
-          let s = "_" in  
+          let s = "_" in
           lazy (fun_ (Nolabel, s) (js2ml_fun ty)),
           lazy (fun_ (Nolabel, s) (ml2js_fun ty))
         | _ ->
@@ -1338,6 +1348,8 @@ and gen_decl ~global_attrs = function
   | Module (s, attrs, decls) ->
       let global_attrs = attrs @ global_attrs in
       [ Str.module_ (Mb.mk (mknoloc s) (Mod.structure (gen_decls ~global_attrs decls))) ]
+
+  | Val (_, _, Ignore, _) -> []
 
   | Val (s, ty, decl, loc) ->
       let d = gen_def loc decl ty in
