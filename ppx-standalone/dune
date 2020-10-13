@@ -1,8 +1,7 @@
 (executables
   (names gen_js_api)
   (public_names gen_js_api)
-  (libraries gen_js_api.ppx)
-  )
+  (libraries compiler-libs.common ocaml-migrate-parsetree gen_js_api.ppx-lib))
 
 (install
   (section libexec)
