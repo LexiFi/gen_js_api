@@ -1237,15 +1237,15 @@ and gen_funs ~global_attrs p =
     match p.ptype_manifest, p.ptype_kind with
     | Some ty, Ptype_abstract ->
         let ty = parse_typ ~global_attrs ty in
-        (match p.ptype_params, ty with
-        | [], _ ->
-          lazy (js2ml_fun ty), lazy (ml2js_fun ty)
-        | [{ptyp_desc = Ptyp_var _; ptyp_loc = _; ptyp_attributes = _; ptyp_loc_stack = _}, Invariant], Js ->
-          let s = "_" in
-          lazy (fun_ (Nolabel, s) (js2ml_fun ty)),
-          lazy (fun_ (Nolabel, s) (ml2js_fun ty))
-        | _ ->
-          error p.ptype_loc Cannot_parse_type)
+        let rec ignore_params acc : (core_type * variance) list -> _ = function
+          | [] -> acc
+          | ({ptyp_desc = Ptyp_var _; ptyp_loc = _; ptyp_attributes = _; ptyp_loc_stack = _}, Invariant) :: tl ->
+              let s = "_" in
+              ignore_params (fun_ (Nolabel, s) acc) tl
+          | _ -> error p.ptype_loc Cannot_parse_type
+        in
+        lazy (ignore_params (js2ml_fun ty) p.ptype_params),
+        lazy (ignore_params (ml2js_fun ty) p.ptype_params)
     | None, Ptype_abstract ->
         let ty = Js in
         lazy (js2ml_fun ty), lazy (ml2js_fun ty)
