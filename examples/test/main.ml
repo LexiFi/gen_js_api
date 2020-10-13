@@ -307,3 +307,18 @@ let () =
   Console3.log (Ref.current t);
   Ref.setCurrent t "bar";
   Console3.log (Ref.current t)
+
+let () =
+  let foo = Either.left "foo" in
+  let foobar = Either.right ["foo"; "bar"] in
+  let f x = Either.destruct x ~left:(fun s -> s) ~right:(String.concat "-") in
+  Console3.log (Ojs.string_to_js (f foo));
+  Console3.log (Ojs.string_to_js (f foobar))
+
+let () =
+  let open Variants.M3 in
+  let rec of_list = function
+  | [] -> Empty
+  | hd :: tl -> Cons (hd, of_list tl)
+  in
+  Console3.log ([%js.of: int t] (of_list [1;2;3]))

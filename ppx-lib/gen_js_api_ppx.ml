@@ -37,6 +37,7 @@ type error =
   | Spurious_attribute
   | Sum_kind_args
   | Union_without_discriminator
+  | Contravariant_type_parameter of string
 
 exception Error of Location.t * error
 
@@ -167,6 +168,8 @@ let print_error ppf = function
       Format.fprintf ppf "Unknown method to discriminate unions."
   | Union_without_discriminator ->
       Format.fprintf ppf "js.union without way to discriminate values."
+  | Contravariant_type_parameter label ->
+      Format.fprintf ppf "Contravariant type parameter '%s is not allowed." label
 
 let () =
   Location.register_error_of_exn
@@ -412,10 +415,14 @@ let derived_from_type s ty =
   match ty with
   | Arrow {ty_args; ty_vararg = None; unit_arg = false; ty_res = Js} ->
     begin match List.rev ty_args with
-    | [] -> false
     | {lab=Arg; att=_; typ=Name (t, _);} :: _ -> check_suffix ~suffix:"_to_js" s = Some t
+    | _ -> false
     end
-  | Arrow {ty_res = Name (t, _); ty_vararg = None; unit_arg = false } -> check_suffix ~suffix:"_of_js" s = Some t
+  | Arrow {ty_res = Name (t, _); ty_vararg = None; unit_arg = false; ty_args } ->
+    begin match List.rev ty_args with
+    | {lab=Arg; att=_; typ= Js;} :: _ -> check_suffix ~suffix:"_of_js" s = Some t
+    | _ -> false
+    end
   | _ -> false
 
 let auto ~global_attrs s ty =
@@ -795,31 +802,34 @@ let get_variant_kind loc attrs =
         end
   end else error loc (Not_supported_here "Sum types without js.* attribute")
 
-let rec js2ml ty exp =
+let rec js2ml ctx ty exp =
   match ty with
   | Js ->
       exp
   | Name (s, tl) ->
       let s = if builtin_type s then "Ojs." ^ s else s in
-      let args = List.map js2ml_fun tl in
+      let args = List.map (js2ml_fun ctx) tl in
       app (var (s ^ "_of_js")) (nolabel (args @ [exp])) false
   | Arrow {ty_args; ty_vararg; unit_arg; ty_res} ->
-      let formal_args, concrete_args = prepare_args ty_args ty_vararg in
+      let formal_args, concrete_args = prepare_args ctx ty_args ty_vararg in
       let res = ojs_apply_arr exp concrete_args in
-      func formal_args unit_arg (js2ml_unit ty_res res)
+      func formal_args unit_arg (js2ml_unit ctx ty_res res)
   | Unit loc ->
       error loc (Not_supported_here "Unit")
   | Variant {location; global_attrs; attributes; constrs} ->
-      js2ml_of_variant ~variant:true location ~global_attrs attributes constrs exp
+      js2ml_of_variant ctx ~variant:true location ~global_attrs attributes constrs exp
   | Tuple typs ->
       let f x =
-        Exp.tuple (List.mapi (fun i typ -> js2ml typ (ojs "array_get" [x; int i])) typs)
+        Exp.tuple (List.mapi (fun i typ -> js2ml ctx typ (ojs "array_get" [x; int i])) typs)
       in
       let_exp_in exp f
-  | Typ_var _ ->
-      app (var ("Obj.magic")) (nolabel ([exp])) false
+  | Typ_var alpha ->
+      if List.mem alpha ctx then
+        app (var ("__"^alpha ^ "_of_js")) (nolabel ([exp])) false
+      else
+        app (var ("Obj.magic")) (nolabel ([exp])) false
 
-and js2ml_of_variant ~variant loc ~global_attrs attrs constrs exp =
+and js2ml_of_variant ctx ~variant loc ~global_attrs attrs constrs exp =
   let variant_kind = get_variant_kind loc attrs in
   let string_typ = Name ("string", []) in
   let int_typ = Name ("int", []) in
@@ -839,7 +849,7 @@ and js2ml_of_variant ~variant loc ~global_attrs attrs constrs exp =
         | `String s -> int_default, int_cases, string_default, Exp.case (pat_str s) x :: string_cases
         | `Int n -> int_default, Exp.case (pat_int n) x :: int_cases, string_default, string_cases
       in
-      let get_arg key typ = js2ml typ (ojs "get" [exp; str key]) in
+      let get_arg key typ = js2ml ctx typ (ojs "get" [exp; str key]) in
       match arg with
       | Constant -> case (mkval mlconstr None)
       | Unary arg_typ ->
@@ -850,7 +860,7 @@ and js2ml_of_variant ~variant loc ~global_attrs attrs constrs exp =
                 let loc, arg_field = get_string_attribute_default "js.arg" (location, "arg") attributes in
                 check_label loc arg_field;
                 case (mkval mlconstr (Some (get_arg arg_field arg_typ)))
-            | `Union _ -> case (mkval mlconstr (Some (js2ml arg_typ exp)))
+            | `Union _ -> case (mkval mlconstr (Some (js2ml ctx arg_typ exp)))
           in
           let process_default defs cont =
             match get_attribute "js.default" attributes with
@@ -862,7 +872,7 @@ and js2ml_of_variant ~variant loc ~global_attrs attrs constrs exp =
                       let x = fresh() in
                       cont (Exp.case (Pat.var (mknoloc x)) (mkval mlconstr (Some (var x))))
                   | `Sum _ | `Union _ ->
-                      cont (Exp.case (Pat.any ()) (mkval mlconstr (Some (js2ml arg_typ exp))))
+                      cont (Exp.case (Pat.any ()) (mkval mlconstr (Some (js2ml ctx arg_typ exp))))
                 end else error k.loc Multiple_default_case
           in
           begin match variant_kind with
@@ -880,7 +890,7 @@ and js2ml_of_variant ~variant loc ~global_attrs attrs constrs exp =
           | `Sum _ ->
               let loc, args_field = get_string_attribute_default "js.arg" (location, "arg") attributes in
               check_label loc args_field;
-              let get_args key i typ = js2ml typ (ojs "array_get" [ojs "get" [exp; str key]; int i]) in
+              let get_args key i typ = js2ml ctx typ (ojs "array_get" [ojs "get" [exp; str key]; int i]) in
               case (mkval mlconstr (Some (Exp.tuple (List.mapi (get_args args_field) args_typ))))
           | `Union _ -> error location Constructor_in_union
           end
@@ -910,8 +920,8 @@ and js2ml_of_variant ~variant loc ~global_attrs attrs constrs exp =
       | `Union No_discriminator -> error loc Union_without_discriminator
       | `Union (On_field kind) -> ojs "get" [exp; str kind]
     in
-    let int_match = gen_match (js2ml int_typ discriminator) int_default int_cases in
-    let string_match = gen_match (js2ml string_typ discriminator) string_default string_cases in
+    let int_match = gen_match (js2ml ctx int_typ discriminator) int_default int_cases in
+    let string_match = gen_match (js2ml ctx string_typ discriminator) string_default string_cases in
     match int_match, string_match with
     | None, None -> assert false
     | Some int_match, None -> int_match
@@ -933,13 +943,13 @@ and js2ml_of_variant ~variant loc ~global_attrs attrs constrs exp =
   in
   let_exp_in exp f
 
-and ml2js ty exp =
+and ml2js ctx ty exp =
   match ty with
   | Js ->
       exp
   | Name (s, tl) ->
       let s = if builtin_type s then "Ojs." ^ s else s in
-      let args = List.map ml2js_fun tl in
+      let args = List.map (ml2js_fun ctx) tl in
       app (var (s ^ "_to_js")) (nolabel (args @ [exp])) false
   | Arrow {ty_args; ty_vararg = None; unit_arg; ty_res} ->
       let args =
@@ -950,12 +960,12 @@ and ml2js ty exp =
             | Arg | Lab _ -> typ
             | Opt _ -> Name ("option", [typ])
           in
-          s, (arg_label lab, js2ml typ (var s))
+          s, (arg_label lab, js2ml ctx typ (var s))
         in
         List.mapi f ty_args
       in
       let formal_args, concrete_args = List.map fst args, List.map snd args in
-      let res = ml2js_unit ty_res (app exp concrete_args unit_arg) in
+      let res = ml2js_unit ctx ty_res (app exp concrete_args unit_arg) in
       let body = if formal_args = [] then Exp.fun_ Nolabel None (Pat.any ()) res else res in
       let f = List.fold_right (fun s -> fun_ (Nolabel, s)) formal_args body in
       ojs "fun_to_js" [int (max 1 (List.length formal_args)); f]
@@ -965,9 +975,9 @@ and ml2js ty exp =
       let n_args = List.length ty_args in
       let concrete_args =
         List.mapi
-          (fun i {lab; att=_; typ} -> arg_label lab, js2ml typ (ojs "array_get" [var arguments; int i])) ty_args
+          (fun i {lab; att=_; typ} -> arg_label lab, js2ml ctx typ (ojs "array_get" [var arguments; int i])) ty_args
       in
-      let extra_arg = ojs "list_of_js_from" [ js2ml_fun ty_variadic; var arguments; int n_args ] in
+      let extra_arg = ojs "list_of_js_from" [ js2ml_fun ctx ty_variadic; var arguments; int n_args ] in
       let extra_arg =
         match label_variadic with
         | Arg | Lab _ -> extra_arg
@@ -975,12 +985,12 @@ and ml2js ty exp =
       in
       let concrete_args = concrete_args @ [arg_label label_variadic, extra_arg] in
       let res = app exp concrete_args unit_arg in
-      let f = func [Nolabel, arguments] false (ml2js_unit ty_res res) in
+      let f = func [Nolabel, arguments] false (ml2js_unit ctx ty_res res) in
       ojs "fun_to_js_args" [f]
   | Unit loc ->
       error loc (Not_supported_here "Unit")
   | Variant {location; global_attrs; attributes; constrs} ->
-      ml2js_of_variant ~variant:true location ~global_attrs attributes constrs exp
+      ml2js_of_variant ctx ~variant:true location ~global_attrs attributes constrs exp
   | Tuple typs ->
       let typed_vars = List.mapi (fun i typ -> i, typ, fresh ()) typs in
       let pat = Pat.tuple (List.map (function (_, _, x) -> Pat.var (mknoloc x)) typed_vars) in
@@ -990,15 +1000,18 @@ and ml2js ty exp =
         let new_array = ojs "array_make" [int n] in
         Exp.let_ Nonrecursive [Vb.mk (Pat.var (mknoloc a)) new_array] begin
           let f e (i, typ, x) =
-            Exp.sequence (ojs "array_set" [var a; int i; ml2js typ (var x)]) e
+            Exp.sequence (ojs "array_set" [var a; int i; ml2js ctx typ (var x)]) e
           in
           List.fold_left f (var a) (List.rev typed_vars)
         end
       end
-  | Typ_var _ ->
-      app (var ("Obj.magic")) (nolabel ([exp])) false
+  | Typ_var alpha ->
+      if List.mem alpha ctx then
+        app (var ("__"^alpha ^ "_to_js")) (nolabel ([exp])) false
+      else
+        app (var ("Obj.magic")) (nolabel ([exp])) false
 
-and ml2js_of_variant ~variant loc ~global_attrs attrs constrs exp =
+and ml2js_of_variant ctx ~variant loc ~global_attrs attrs constrs exp =
   let variant_kind = get_variant_kind loc attrs in
   let string_typ = Name ("string", []) in
   let int_typ = Name ("int", []) in
@@ -1011,13 +1024,13 @@ and ml2js_of_variant ~variant loc ~global_attrs attrs constrs exp =
     if variant then fun x arg -> Pat.variant x arg
     else fun x arg -> Pat.construct (mknoloc (Longident.Lident x)) arg
   in
-  let pair key typ value = Exp.tuple [str key; ml2js typ value] in
+  let pair key typ value = Exp.tuple [str key; ml2js ctx typ value] in
   let case {mlconstr; arg; attributes; location} =
     let mkobj args =
       let discriminator =
         match get_js_constr ~global_attrs mlconstr attributes with
-        | `Int n -> ml2js int_typ (int n)
-        | `String s -> ml2js string_typ (str s)
+        | `Int n -> ml2js ctx int_typ (int n)
+        | `String s -> ml2js ctx string_typ (str s)
       in
       match variant_kind, args with
       | `Enum, [] -> discriminator
@@ -1034,12 +1047,12 @@ and ml2js_of_variant ~variant loc ~global_attrs attrs constrs exp =
           match variant_kind with
           | `Enum when
               (arg_typ = int_typ || arg_typ = string_typ) &&
-              has_attribute "js.default" attributes -> ml2js arg_typ (var x)
+              has_attribute "js.default" attributes -> ml2js ctx arg_typ (var x)
           | `Enum | `Sum _ ->
               let loc, arg_field = get_string_attribute_default "js.arg" (location, "arg") attributes in
               check_label loc arg_field;
               mkobj [pair arg_field arg_typ (var x)]
-          | `Union _ -> ml2js arg_typ (var x)
+          | `Union _ -> ml2js ctx arg_typ (var x)
         in
         Exp.case (mkpat mlconstr (Some (Pat.var (mknoloc x)))) value
     | Nary args_typ ->
@@ -1055,7 +1068,7 @@ and ml2js_of_variant ~variant loc ~global_attrs attrs constrs exp =
              (List.fold_left
                 (fun e (i, typi, xi) ->
                    Exp.sequence
-                     (ojs "array_set" [var args; int i; ml2js typi (var xi)]) e)
+                     (ojs "array_set" [var args; int i; ml2js ctx typi (var xi)]) e)
                 (mkobj [pair args_field Js (var args)])
                 xis))
     | Record args ->
@@ -1066,10 +1079,10 @@ and ml2js_of_variant ~variant loc ~global_attrs attrs constrs exp =
   in
   Exp.match_ exp (List.map case constrs)
 
-and js2ml_fun ty = mkfun (js2ml ty)
-and ml2js_fun ty = mkfun (ml2js ty)
+and js2ml_fun ctx ty = mkfun (js2ml ctx ty)
+and ml2js_fun ctx ty = mkfun (ml2js ctx ty)
 
-and prepare_args ty_args ty_vararg =
+and prepare_args ctx ty_args ty_vararg =
   if ty_vararg = None &&
      List.for_all
        (function
@@ -1079,32 +1092,32 @@ and prepare_args ty_args ty_vararg =
        )
        ty_args
   then
-    let x,y = prepare_args_simple ty_args in
+    let x,y = prepare_args_simple ctx ty_args in
     x, `Simple y
   else
-    let x, y = prepare_args_push ty_args ty_vararg in
+    let x, y = prepare_args_push ctx ty_args ty_vararg in
     x, `Push y
 
-and prepare_args_simple ty_args =
+and prepare_args_simple ctx ty_args =
   let f {lab; att=_; typ} =
     let s = fresh () in
     let e =
       match lab with
-      | Arg | Lab _ -> ml2js typ (var s)
+      | Arg | Lab _ -> ml2js ctx typ (var s)
       | Opt {def; _} ->
           begin match def with
           | None -> assert false
           | Some none ->
-              ml2js typ (match_some_none ~none ~some:(fun v -> v) (var s))
+              ml2js ctx typ (match_some_none ~none ~some:(fun v -> v) (var s))
           end
     in
     (arg_label lab, s), e
   in
   let formal_args, concrete = List.split (List.map f ty_args) in
-  let concrete_args =  Exp.array concrete in
+  let concrete_args = Exp.array concrete in
   formal_args, concrete_args
 
-and prepare_args_push ty_args ty_vararg =
+and prepare_args_push ctx ty_args ty_vararg =
   let push arr typ x =
     match typ with
     | Variant {location = _; global_attrs; attributes; constrs} when
@@ -1114,8 +1127,8 @@ and prepare_args_push ty_args ty_vararg =
           let int_typ = Name ("int", []) in
           let mkargs args =
             match get_js_constr ~global_attrs mlconstr attributes with
-            | `Int n -> (ml2js int_typ (int n)) :: args
-            | `String s -> (ml2js string_typ (str s)) :: args
+            | `Int n -> (ml2js ctx int_typ (int n)) :: args
+            | `String s -> (ml2js ctx string_typ (str s)) :: args
           in
           let gen_tuple typs =
             let xis = List.map (fun typ -> typ, fresh ()) typs in
@@ -1126,7 +1139,7 @@ and prepare_args_push ty_args ty_vararg =
               | _ :: _ :: _ -> Pat.variant mlconstr (Some (Pat.tuple (List.map (fun (_, xi) -> Pat.var (mknoloc xi)) xis)))
             in
             Exp.case pat
-              (let args = mkargs (List.map (fun (typi, xi) -> ml2js typi (var xi)) xis) in
+              (let args = mkargs (List.map (fun (typi, xi) -> ml2js ctx typi (var xi)) xis) in
                match args with
                | [] -> unit_expr
                | _ :: _ -> exp_ignore (ojs "call" [arr; str "push"; Exp.array args]))
@@ -1139,7 +1152,7 @@ and prepare_args_push ty_args ty_vararg =
         in
         let cases = List.map f constrs in
         Exp.match_ (Exp.constraint_ x (gen_typ typ)) cases
-    | typ -> exp_ignore (ojs "call" [arr; str "push"; Exp.array [ml2js typ x]])
+    | typ -> exp_ignore (ojs "call" [arr; str "push"; Exp.array [ml2js ctx typ x]])
   in
   let f {lab; att=_; typ} =
     let s = fresh () in
@@ -1173,15 +1186,15 @@ and prepare_args_push ty_args ty_vararg =
   let body arr = List.fold_right (fun code -> Exp.sequence (code arr)) concrete_args arr in
   formal_args, let_exp_in (ojs "new_obj" [ojs_variable "Array"; Exp.array []]) body
 
-and ml2js_unit ty_res res =
+and ml2js_unit ctx ty_res res =
   match ty_res with
   | Unit _ -> res
-  | _ -> ml2js ty_res res
+  | _ -> ml2js ctx ty_res res
 
-and js2ml_unit ty_res res =
+and js2ml_unit ctx ty_res res =
   match ty_res with
   | Unit _ -> exp_ignore res
-  | _ -> js2ml ty_res res
+  | _ -> js2ml ctx ty_res res
 
 and gen_typ = function
   | Name (s, tyl) ->
@@ -1227,29 +1240,69 @@ let process_fields ~global_attrs l =
   jsname, (* JS name *)
   parse_typ ~global_attrs typ
 
+let neg_variance =function
+  | -1 -> 1
+  | 0 | 1 -> -1
+  | _ -> invalid_arg "neg_variance"
+
+let thorough_exists f l =
+  List.fold_left (fun acc x -> acc || f x) false l
+
+let rec typvar_occurs loc variance label = function
+  | Typ_var l ->
+    if label = l then
+      if variance < 0 then
+        error loc (Contravariant_type_parameter l)
+      else
+        true
+    else
+      false
+  | Arrow {ty_args; ty_vararg; ty_res; _} ->
+    let (|||) a b = a || b in
+    thorough_exists (fun {typ; _} -> typvar_occurs loc (neg_variance variance) label typ) ty_args
+    ||| (match ty_vararg with None -> false | Some {typ; _} -> typvar_occurs loc variance label typ)
+    ||| typvar_occurs loc variance label ty_res
+  | Js | Unit _ -> false
+  | Name (_, l) | Tuple l -> thorough_exists (typvar_occurs loc variance label) l
+  | Variant {constrs; _} -> typvar_occurs_constructors loc variance label constrs
+and typvar_occurs_constructors loc variance label =
+  thorough_exists (fun {arg; _} ->
+    match arg with
+    | Constant -> false
+    | Unary typ -> typvar_occurs loc variance label typ
+    | Nary l -> thorough_exists (typvar_occurs loc variance label) l
+    | Record l -> thorough_exists (fun (_, _, _, typ) -> typvar_occurs loc variance label typ) l
+  )
+
+
 let rec gen_decls ~global_attrs si =
   List.concat (List.map (gen_decl ~global_attrs) si)
 
 and gen_funs ~global_attrs p =
   let name = p.ptype_name.txt in
   let global_attrs = p.ptype_attributes @ global_attrs in
-  let of_js, to_js =
-    match p.ptype_manifest, p.ptype_kind with
-    | Some ty, Ptype_abstract ->
-        let ty = parse_typ ~global_attrs ty in
-        let rec ignore_params acc : (core_type * variance) list -> _ = function
-          | [] -> acc
-          | ({ptyp_desc = Ptyp_var _; ptyp_loc = _; ptyp_attributes = _; ptyp_loc_stack = _}, Invariant) :: tl ->
-              let s = "_" in
-              ignore_params (fun_ (Nolabel, s) acc) tl
-          | _ -> error p.ptype_loc Cannot_parse_type
+  let ctx =
+    List.map (function
+      | {ptyp_desc = Ptyp_any; ptyp_loc = _; ptyp_attributes = _; ptyp_loc_stack = _}, Invariant ->
+        fresh ()
+      | {ptyp_desc = Ptyp_var label; ptyp_loc = _; ptyp_attributes = _; ptyp_loc_stack = _}, Invariant ->
+        label
+      | _ -> error p.ptype_loc Cannot_parse_type
+    ) p.ptype_params
+  in
+  let loc = p.ptype_loc in
+  let typvar_used, of_js, to_js =
+    match p.ptype_kind with
+    | Ptype_abstract ->
+        let ty =
+          match p.ptype_manifest with
+          | None -> assert false (* rewrite_typ_decl makes this case impossible *)
+          | Some ty -> parse_typ ~global_attrs ty
         in
-        lazy (ignore_params (js2ml_fun ty) p.ptype_params),
-        lazy (ignore_params (ml2js_fun ty) p.ptype_params)
-    | None, Ptype_abstract ->
-        let ty = Js in
-        lazy (js2ml_fun ty), lazy (ml2js_fun ty)
-    | _, Ptype_variant cstrs ->
+        (fun label -> typvar_occurs loc 0 label ty),
+        lazy (js2ml_fun ctx ty),
+        lazy (ml2js_fun ctx ty)
+    | Ptype_variant cstrs ->
         let prepare_constructor c =
           let mlconstr = c.pcd_name.txt in
           let arg =
@@ -1266,16 +1319,17 @@ and gen_funs ~global_attrs p =
           in
           { mlconstr; arg; attributes = c.pcd_attributes; location = c.pcd_loc }
         in
-        let loc = p.ptype_loc in
         let attrs = p.ptype_attributes in
         let params = List.map prepare_constructor cstrs in
-        lazy (mkfun (js2ml_of_variant ~variant:false loc ~global_attrs attrs params)),
-        lazy (mkfun (ml2js_of_variant ~variant:false loc ~global_attrs attrs params))
-    | _, Ptype_record lbls ->
+        (fun label -> typvar_occurs_constructors loc 0 label params),
+        lazy (mkfun (js2ml_of_variant ctx ~variant:false loc ~global_attrs attrs params)),
+        lazy (mkfun (ml2js_of_variant ctx ~variant:false loc ~global_attrs attrs params))
+    | Ptype_record lbls ->
         let global_attrs = p.ptype_attributes @ global_attrs in
         let lbls = List.map (process_fields ~global_attrs) lbls in
-        let of_js x (_loc, ml, js, ty) = ml, js2ml ty (ojs "get" [x; str js]) in
-        let to_js x (_loc, ml, js, ty) = Exp.tuple [str js; ml2js ty (Exp.field x ml)] in
+        let of_js x (_loc, ml, js, ty) = ml, js2ml ctx ty (ojs "get" [x; str js]) in
+        let to_js x (_loc, ml, js, ty) = Exp.tuple [str js; ml2js ctx ty (Exp.field x ml)] in
+        (fun label -> List.exists (fun (_, _, _, ty) -> typvar_occurs loc 0 label ty) lbls),
         lazy (mkfun (fun x -> Exp.record (List.map (of_js x) lbls) None)),
         lazy (mkfun (fun x -> ojs "obj" [Exp.array (List.map (to_js x) lbls)]))
     | _ ->
@@ -1283,62 +1337,40 @@ and gen_funs ~global_attrs p =
   in
   let force_opt x = try (Some (Lazy.force x)) with Error (_, Union_without_discriminator) -> None in
   let of_js, to_js = force_opt of_js, force_opt to_js in
-  match p.ptype_params with
-  | [{ptyp_desc = Ptyp_any; ptyp_loc = _; ptyp_attributes = _; ptyp_loc_stack = _}, Invariant] ->
-      begin match to_js with
-      | None -> []
-      | Some to_js ->
-          let v = fresh() in
-          [
-            Vb.mk
-              (Pat.var (mknoloc (name ^ "_to_js")))
-              ~loc:p.ptype_loc
-              (Exp.newtype (mknoloc v)
-                 (Exp.constraint_
-                    to_js
-                    (Typ.arrow Nolabel (Typ.constr (mknoloc (Longident.parse name)) [Typ.constr (mknoloc (Longident.parse v)) []]) ojs_typ)))
-          ]
-      end
-  | [{ptyp_desc = Ptyp_var label; ptyp_loc = _; ptyp_attributes = _; ptyp_loc_stack = _}, Invariant] ->
-      let of_js_fun =
-        match of_js with
-        | None -> []
-        | Some code ->
-            let typ_var_fun = Arrow {ty_args = [{lab=Arg; att=[]; typ = Js}]; ty_vararg = None; unit_arg = false; ty_res = Typ_var label}
-            in
-            [(Vb.mk ~loc:p.ptype_loc
-                (Pat.constraint_
-                  (Pat.var (mknoloc (name ^ "_of_js")))
-                  (gen_typ (Arrow {ty_args = [{lab=Arg; att=[]; typ = typ_var_fun}; {lab=Arg; att=[]; typ = Js}]; ty_vararg = None; unit_arg = false; ty_res = Name (name, [Typ_var label])})))
-                code)]
-      in
-      let to_js_fun =
-        match to_js with
-        | None -> []
-        | Some code ->
-            let typ_var_fun = Arrow {ty_args = [{lab=Arg; att=[]; typ = Typ_var label}]; ty_vararg = None; unit_arg = false; ty_res = Js}
-            in
-            [(Vb.mk ~loc:p.ptype_loc
-                (Pat.constraint_
-                  (Pat.var (mknoloc (name ^ "_to_js")))
-                  (gen_typ (Arrow {ty_args = [{lab=Arg; att=[]; typ = typ_var_fun}; {lab=Arg; att=[]; typ = Name (name, [Typ_var label])}]; ty_vararg = None; unit_arg = false; ty_res = Js})))
-                code)]
-      in
-      of_js_fun @ to_js_fun
-  | _ ->
-      let f (name, input_typ, ret_typ, code) =
-        match code with
-        | None -> None
-        | Some code ->
-            Some
-              (Vb.mk ~loc:p.ptype_loc
-                 (Pat.constraint_
-                    (Pat.var (mknoloc name))
-                    (gen_typ (Arrow {ty_args = [{lab=Arg; att=[]; typ = input_typ}]; ty_vararg = None; unit_arg = false; ty_res = ret_typ})))
-                 code)
-      in
-      choose f [ name ^ "_of_js", Js, Name (name, []), of_js;
-                 name ^ "_to_js", Name (name, []), Js, to_js ]
+  let alpha_of_js label =
+    Arrow {ty_args = [{lab=Arg; att=[]; typ = Js}]; ty_vararg = None; unit_arg = false; ty_res = Typ_var label}
+  in
+  let alpha_to_js label =
+    Arrow {ty_args = [{lab=Arg; att=[]; typ = Typ_var label}]; ty_vararg = None; unit_arg = false; ty_res = Js}
+  in
+  let push_typ f l =
+    List.map f ctx @ l
+  in
+  let push_fun suffix acc =
+    match acc with
+    | None -> None
+    | Some acc ->
+      Some
+        (List.fold_left
+          (fun acc label ->
+            let name = if typvar_used label then "__"^label^suffix else "_" in
+            fun_ (Nolabel, name) acc
+          ) acc (List.rev ctx)
+        )
+  in
+  let f (name, input_typs, ret_typ, code) =
+    match code with
+    | None -> None
+    | Some code ->
+        Some
+          (Vb.mk ~loc:p.ptype_loc
+             (Pat.constraint_
+                (Pat.var (mknoloc name))
+                (gen_typ (Arrow {ty_args = (List.map (fun typ -> {lab=Arg; att=[]; typ}) input_typs); ty_vararg = None; unit_arg = false; ty_res = ret_typ})))
+             code)
+  in
+  choose f [ name ^ "_of_js", push_typ alpha_of_js [Js], Name (name, List.map (fun x -> Typ_var x) ctx), push_fun "_of_js" of_js;
+             name ^ "_to_js", push_typ alpha_to_js [Name (name, List.map (fun x -> Typ_var x) ctx)], Js, push_fun "_to_js" to_js ]
 
 and gen_decl ~global_attrs = function
   | Type (rec_flag, decls) ->
@@ -1385,7 +1417,7 @@ and gen_classdecl cast_funcs = function
         (mknoloc class_name)
         (Cl.fun_ Nolabel None (Pat.constraint_ (Pat.var (mknoloc x)) ojs_typ) obj)
   | Constructor {class_name; js_class_name; class_arrow = {ty_args; ty_vararg; unit_arg; ty_res}} ->
-      let formal_args, concrete_args = prepare_args ty_args ty_vararg in
+      let formal_args, concrete_args = prepare_args [] ty_args ty_vararg in
       let obj = ojs_new_obj_arr (ojs_variable js_class_name) concrete_args in
       let super_class =
         match ty_res with
@@ -1401,15 +1433,15 @@ and gen_class_field x = function
   | Method {method_name; method_typ; method_def; method_loc} ->
     let body =
       match method_def, method_typ with
-      | Getter s, ty_res -> js2ml ty_res (ojs "get" [var x; str s])
+      | Getter s, ty_res -> js2ml [] ty_res (ojs "get" [var x; str s])
       | Setter s, Arrow {ty_args = [{lab=Arg; att=_; typ}]; ty_vararg = None; unit_arg = false; ty_res = Unit _} ->
-          mkfun (fun arg -> ojs "set" [var x; str s; ml2js typ arg])
+          mkfun (fun arg -> ojs "set" [var x; str s; ml2js [] typ arg])
       | MethodCall s, Arrow {ty_args; ty_vararg; unit_arg; ty_res} ->
-          let formal_args, concrete_args = prepare_args ty_args ty_vararg in
+          let formal_args, concrete_args = prepare_args [] ty_args ty_vararg in
           let res = ojs_call_arr (var x) (str s) concrete_args in
-          func formal_args unit_arg (js2ml_unit ty_res res)
+          func formal_args unit_arg (js2ml_unit [] ty_res res)
       | MethodCall s, ty_res ->
-          js2ml_unit ty_res (ojs "call" [var x; str s; Exp.array []])
+          js2ml_unit [] ty_res (ojs "call" [var x; str s; Exp.array []])
       | _ -> error method_loc Binding_type_mismatch
     in
     Cf.method_ (mknoloc method_name) Public (Cf.concrete Fresh (Exp.constraint_ body (gen_typ method_typ)))
@@ -1440,10 +1472,10 @@ and gen_class_cast = function
 and gen_def loc decl ty =
   match decl, ty with
   | Cast, Arrow {ty_args = [{lab=Arg; att=_; typ}]; ty_vararg = None; unit_arg = false; ty_res} ->
-      mkfun (fun this -> js2ml ty_res (ml2js typ this))
+      mkfun (fun this -> js2ml [] ty_res (ml2js [] typ this))
 
   | PropGet s, Arrow {ty_args = [{lab=Arg; att=_; typ}]; ty_vararg = None; unit_arg = false; ty_res} ->
-      mkfun (fun this -> js2ml ty_res (ojs "get" [ml2js typ this; str s]))
+      mkfun (fun this -> js2ml [] ty_res (ojs "get" [ml2js [] typ this; str s]))
 
   | PropGet s, Arrow {ty_args = []; ty_vararg = None; unit_arg = true; ty_res} ->
       fun_unit (gen_def loc (Global s) ty_res)
@@ -1452,14 +1484,14 @@ and gen_def loc decl ty =
       begin match ty_res with
       | Arrow {ty_args; ty_vararg; unit_arg; ty_res} ->
           let this, s = qualified_path s in
-          let formal_args, concrete_args = prepare_args ty_args ty_vararg in
-          let res this = ojs_call_arr (ml2js Js this) (str s) concrete_args in
+          let formal_args, concrete_args = prepare_args [] ty_args ty_vararg in
+          let res this = ojs_call_arr (ml2js [] Js this) (str s) concrete_args in
           begin match ty_args, ty_vararg, unit_arg with
-          | [], None, false -> js2ml_unit ty_res (res this)
+          | [], None, false -> js2ml_unit [] ty_res (res this)
           | [], _, _
-          | _ :: _, _, _ -> func formal_args unit_arg (js2ml_unit ty_res (res this))
+          | _ :: _, _, _ -> func formal_args unit_arg (js2ml_unit [] ty_res (res this))
           end
-      | _ -> js2ml ty_res (ojs_get_global s)
+      | _ -> js2ml [] ty_res (ojs_get_global s)
       end
 
   | PropSet s,
@@ -1469,32 +1501,32 @@ and gen_def loc decl ty =
       let res this arg =
         ojs "set"
           [
-            ml2js ty_this this;
+            ml2js [] ty_this this;
             str s;
-            ml2js ty_arg arg
+            ml2js [] ty_arg arg
           ]
       in
       mkfun (fun this -> mkfun (fun arg -> res this arg))
 
   | PropSet s, Arrow {ty_args = [{lab = Arg; att = _; typ = ty_arg}]; ty_vararg = None; unit_arg = false; ty_res = Unit _} ->
-      mkfun (fun arg -> ojs_set_global s (ml2js ty_arg arg))
+      mkfun (fun arg -> ojs_set_global s (ml2js [] ty_arg arg))
 
   | MethCall s,
     Arrow {ty_args = {lab=Arg; att=_; typ} :: ty_args; ty_vararg; unit_arg; ty_res} ->
-      let formal_args, concrete_args = prepare_args ty_args ty_vararg in
-      let res this = ojs_call_arr (ml2js typ this) (str s) concrete_args in
+      let formal_args, concrete_args = prepare_args [] ty_args ty_vararg in
+      let res this = ojs_call_arr (ml2js [] typ this) (str s) concrete_args in
       mkfun
         (fun this ->
            match ty_args, ty_vararg, unit_arg with
-           | [], None, false -> js2ml_unit ty_res (res this)
+           | [], None, false -> js2ml_unit [] ty_res (res this)
            | [], _, _
-           | _ :: _, _, _ -> func formal_args unit_arg (js2ml_unit ty_res (res this))
+           | _ :: _, _, _ -> func formal_args unit_arg (js2ml_unit [] ty_res (res this))
         )
 
   | New name, Arrow {ty_args; ty_vararg; unit_arg; ty_res} ->
-      let formal_args, concrete_args = prepare_args ty_args ty_vararg in
+      let formal_args, concrete_args = prepare_args [] ty_args ty_vararg in
       let res = ojs_new_obj_arr (ojs_variable name) concrete_args in
-      func formal_args unit_arg (js2ml ty_res res)
+      func formal_args unit_arg (js2ml [] ty_res res)
 
   | Builder global_attrs, Arrow {ty_args; ty_vararg = None; unit_arg; ty_res} ->
       let gen_arg {lab; att; typ} =
@@ -1507,7 +1539,7 @@ and gen_def loc decl ty =
             | None, Arg -> error loc Unlabelled_argument_in_builder
             | None, (Lab {ml; _} | Opt {ml; _}) -> js_name ~global_attrs ml
           in
-          let code exp = ojs "set" [x; str js; ml2js typ exp] in
+          let code exp = ojs "set" [x; str js; ml2js [] typ exp] in
           (* special logic to avoid setting optional argument to 'undefined' *)
           match lab with
           | Arg | Lab _ -> code (var s)
@@ -1524,7 +1556,7 @@ and gen_def loc decl ty =
       let formal_args = List.map fst args in
       let concrete_args = List.map snd args in
       let f x init code = Exp.sequence (code x) init in
-      let init x = List.fold_left (f x) (js2ml_unit ty_res x) (List.rev concrete_args) in
+      let init x = List.fold_left (f x) (js2ml_unit [] ty_res x) (List.rev concrete_args) in
       let body = let_exp_in (ojs "empty_obj" [unit_expr]) init in
       func formal_args unit_arg body
 
@@ -1597,12 +1629,12 @@ and mapper =
     match e.pexp_desc with
     | Pexp_extension (attr, PTyp ty) when filter_extension "js.to" attr ->
         let e' = with_default_loc {e.pexp_loc with loc_ghost = true}
-          (fun () -> js2ml_fun (parse_typ ~global_attrs ty))
+          (fun () -> js2ml_fun [] (parse_typ ~global_attrs ty))
         in
         { e' with pexp_loc = e.pexp_loc }
     | Pexp_extension (attr, PTyp ty) when filter_extension "js.of" attr ->
         let e' = with_default_loc {e.pexp_loc with loc_ghost = true}
-          (fun () -> ml2js_fun (parse_typ ~global_attrs ty))
+          (fun () -> ml2js_fun [] (parse_typ ~global_attrs ty))
         in
         { e' with pexp_loc = e.pexp_loc }
     | _ ->
