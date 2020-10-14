@@ -2,7 +2,7 @@
 # See the attached LICENSE file.
 # Copyright 2015 by LexiFi.
 
-.PHONY: all examples clean install uninstall doc
+.PHONY: all examples test test-promote clean install uninstall doc
 
 all:
 	dune build @install @DEFAULT
@@ -12,6 +12,12 @@ examples:
 
 doc:
 	dune build @doc
+
+test:
+	dune build @runtest
+
+test-promote:
+	dune build @runtest --auto-promote
 
 clean:
 	dune clean

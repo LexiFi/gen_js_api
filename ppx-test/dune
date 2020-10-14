@@ -1,0 +1,14 @@
+(executable
+ (name main)
+ (libraries ocaml-migrate-parsetree gen_js_api_ppx_driver))
+
+(rule
+ (targets pp.result)
+ (deps input.ml)
+ (action
+  (run ./main.exe --impl %{deps} -o %{targets})))
+
+(rule
+ (alias runtest)
+ (action
+  (diff pp.expected pp.result)))
