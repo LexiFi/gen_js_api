@@ -93,6 +93,28 @@
         }
         }
       }
+
+      function test_typvars(anything) {
+        return [anything, anything]
+      }
+
+      function makeRef(anything) {
+        return {current: anything}
+      }
+
+      function eitherLeft(anything) {
+        return {left: anything};
+      }
+      function eitherRight(anything) {
+        return {right: anything};
+      }
+      function eitherDestruct(x, left, right) {
+        if (x.hasOwnProperty("left")) {
+          return left(x.left);
+        } else {
+          return right(x.right);
+        }
+      }
     </script>
     <script type="text/javascript" src="main.js">
     </script>

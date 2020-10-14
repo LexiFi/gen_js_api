@@ -268,6 +268,12 @@ let () =
   Console.log console ([%js.of:t] (B 42));
   Console.log console ([%js.of:t] (C (42, "foo")));
   Console.log console ([%js.of:t] (D {age=42; name="foo"}))
+
+let () =
+  Console3.log 1;
+  Console3.log2 1 "two";
+  Console3.log3 1 "two" [];
+  Console3.log4 1 "two" [] [|4|];
 end
 
 val test_flatten: ([`A | `B of int | `C of string | `D of int * string] [@js.enum]) -> unit
@@ -278,3 +284,41 @@ let () =
   test_flatten (`B 42);
   test_flatten (`C "hello");
   test_flatten (`D (42, "foo"))
+
+val make_string : 'a -> string [@@js.global "String"]
+
+let () =
+  Console3.log (make_string 1234);
+  Console3.log (make_string "string");
+  Console3.log (make_string ["list"]);
+  Console3.log (make_string [|"array"|])
+
+val test_typvars: 'a -> 'a * 'a
+    [@@js.global "test_typvars"]
+
+let () =
+  Console3.log (test_typvars `A);
+  Console3.log (test_typvars 1234);
+  Console3.log (test_typvars "string");
+  Console3.log (test_typvars ["list"])
+
+let () =
+  let t = Ref.make "foo" in
+  Console3.log (Ref.current t);
+  Ref.setCurrent t "bar";
+  Console3.log (Ref.current t)
+
+let () =
+  let foo = Either.left "foo" in
+  let foobar = Either.right ["foo"; "bar"] in
+  let f x = Either.destruct x ~left:(fun s -> s) ~right:(String.concat "-") in
+  Console3.log (Ojs.string_to_js (f foo));
+  Console3.log (Ojs.string_to_js (f foobar))
+
+let () =
+  let open Variants.M3 in
+  let rec of_list = function
+  | [] -> Empty
+  | hd :: tl -> Cons (hd, of_list tl)
+  in
+  Console3.log ([%js.of: int t] (of_list [1;2;3]))

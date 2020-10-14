@@ -204,6 +204,13 @@ module Console2: sig
     [@@js.global]
 end [@js.scope "console"]
 
+module Console3: sig
+  val log: 'a -> unit [@@js.global "console.log"]
+  val log2: 'a -> 'b -> unit [@@js.global "console.log"]
+  val log3: 'a -> 'b -> 'c -> unit [@@js.global "console.log"]
+  val log4: 'a -> 'b -> 'c -> 'd -> unit [@@js.global "console.log"]
+end
+
 module Location: sig
   val hash: unit -> string
   val set_hash: string -> unit
@@ -230,4 +237,103 @@ module Union: sig
     | Close_path of close_path [@js 1]
     | Moveto_abs of moveto_abs [@js 2]
           [@@js.union on_field "pathSegType"]
+end
+
+module Ref : sig
+  type 'value t = private Ojs.t
+  val t_to_js: ('a -> Ojs.t) -> 'a t -> Ojs.t
+  val t_of_js: (Ojs.t -> 'a) -> Ojs.t -> 'a t
+
+  val make: 'value -> 'value t [@@js.global "makeRef"]
+
+  val current : 'value t -> 'value [@@js.get "current"]
+
+  val setCurrent : 'value t -> 'value -> unit [@@js.set "current"]
+end
+
+module Either : sig
+  type ('a, 'b) t
+  val t_to_js: ('a -> Ojs.t) -> ('b -> Ojs.t) -> ('a, 'b) t -> Ojs.t
+  val t_of_js: (Ojs.t -> 'a) -> (Ojs.t -> 'b) -> Ojs.t -> ('a, 'b) t
+
+  val left: 'a -> ('a, 'b) t [@@js.global "eitherLeft"]
+  val right: 'b -> ('a, 'b) t [@@js.global "eitherRight"]
+  val destruct: ('a, 'b) t -> left:('a -> 'c) -> right:('b -> 'c) -> 'c [@@js.global "eitherDestruct"]
+end
+
+module Alias : sig
+  module Swap : sig
+    type ('a, 'b) t = ('b, 'a) Either.t
+    val t_to_js: ('a -> Ojs.t) -> ('b -> Ojs.t) -> ('a, 'b) t -> Ojs.t
+    val t_of_js: (Ojs.t -> 'a) -> (Ojs.t -> 'b) -> Ojs.t -> ('a, 'b) t
+  end
+
+  (* Error: Contravariant type parameter !
+  module E : sig
+    type 'a t = 'a -> int
+  end *)
+
+  module Id : sig
+    type 'a t = 'a
+    val t_to_js: ('a -> Ojs.t) -> 'a t -> Ojs.t
+    val t_of_js: (Ojs.t -> 'a) -> Ojs.t -> 'a t
+  end
+
+  module Arrow : sig
+    type 'a t = ('a -> int) -> string
+    val t_to_js: ('a -> Ojs.t) -> 'a t -> Ojs.t
+    val t_of_js: (Ojs.t -> 'a) -> Ojs.t -> 'a t
+  end
+
+  module Record : sig
+    type ('a, 'b) t =
+      {
+        x: 'a;
+        y: 'b
+      }
+    val t_to_js: ('a -> Ojs.t) -> ('b -> Ojs.t) -> ('a, 'b) t -> Ojs.t
+    val t_of_js: (Ojs.t -> 'a) -> (Ojs.t -> 'b) -> Ojs.t -> ('a, 'b) t
+  end
+
+end
+
+module Variants : sig
+
+  module M1 : sig
+    type 'a t =
+      | X of 'a
+      | Y of int
+      [@@js.sum]
+  end
+
+  module M2 : sig
+    type ('a, 'b) t =
+      | X of 'a
+      | Y of 'b
+      [@@js.sum]
+  end
+
+  module M3 : sig
+    type 'a t =
+      | Empty
+      | Cons of 'a * 'a t
+      [@@js.sum]
+
+    val t_to_js: ('a -> Ojs.t) -> 'a t -> Ojs.t
+    val t_of_js: (Ojs.t -> 'a) -> Ojs.t -> 'a t
+  end
+
+(* Error: Contravariant type parameter !
+  module E : sig
+    type 'a t =
+      | F of ('a -> int)
+      [@@js.sum]
+  end
+*)
+  module M4 : sig
+    type 'a t =
+      | F of (('a -> int) -> int)
+      [@@js.sum]
+  end
+
 end
