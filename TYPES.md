@@ -33,8 +33,8 @@ The following types are supported out-of-the-box:
    unions on the JS side (see the section on discriminated union types
    below).
 
- - Type variables like `'a`, they will involve no runtime mapping when moving
-   between OCaml and JS.
+ - Free type variables like `'a`, they will involve no runtime
+   mapping when moving between OCaml and JS (see type variable section).
 
 An arbitrary non-parametrized type with path `M.t` is JS-able if the
 following two values are available in module `M`:
@@ -127,7 +127,6 @@ arguments):
 val sep: string -> (string list [@js.variadic]) -> string
 ```
 
-
 Type declarations
 -----------------
 
@@ -147,41 +146,6 @@ implementation).  Mutually recursive type declarations are supported.
   This is used to bind to JS "opaque" objects, with no runtime mapping
   involved when moving between OCaml and JS (mapping functions are the
   identity).
-
-  A type variable can also be added optionally:
-  ```ocaml
-  type 'a t = private Ojs.t
-  ```
-
-  This is useful when writing bindings to JS functions that rely on data structures
-  that can contain OCaml values as is. For example, to use the JS [`Map`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Map)
-  object to store OCaml values in their original runtime representation, a
-  `StringMap` module could be defined:
-
-  ```ocaml
-  module StringMap : sig
-    type 'a t = private Ojs.t
-    val create: unit -> 'a t [@@js.new "Map"]
-    val set: 'a t -> string -> 'a -> unit
-    val get: 'a t -> string -> 'a option 
-  end
-  ```
-
-  **Important:** the functions generated from types with variables will only apply
-  the identity function when converting to or from JS. So this approach should
-  never be used to interface with a JS function that expects the types to be
-  converted. For example, the following would break if we used it as a binding
-  to the [`fetch`](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API)
-  function available in browsers:
-
-  ```ocaml
-  val fetch: string -> Response.t Promise.t [@@js.global "fetch"]
-  ```
-
-  In this case, we would want `Response.t` to be converted from/to JS types, so
-  `Promise.t` would require conversion functions that are manually implemented.
-  See the [section on manually created bindings](LOW_LEVEL_BINDING.md) for more
-  information.
 
 - Abstract type
 
@@ -203,9 +167,6 @@ implementation).  Mutually recursive type declarations are supported.
   kind of type declaration above (abstract subtypes of `Ojs.t`) are
   a special kind of such declaration, since `abstract` is always dropped
   and `Ojs.t` is JS-able.
-  Note that type variables are not supported with type abbreviation, they have
-  to be implemented manually. See the [low-level binding to Javascript section](LOW_LEVEL_BINDING.md)
-  for an example.
 
 - Record declaration:
 
@@ -223,6 +184,21 @@ implementation).  Mutually recursive type declarations are supported.
   ```ocaml
   type myType = { x : int; y : int [@js "Y"]}
   ```
+
+- Parametrized Type:
+
+  It is allowed to parametrize types processed by gen_js_api as long as
+  type variables does not occur at contravariant positions.
+
+  For instance :
+  ```ocaml
+    type ('a, 'b) coord = { x : 'a; y : 'b}
+  ```
+  is accepted while :
+  ```ocaml
+    type 'a t = 'a -> int
+  ```
+  is rejected.
 
 - Sum type declaration, mapped to enums (see Enums section).
 
@@ -357,7 +333,7 @@ this case, the JS to ML conversion function will inspect the value of
 the field named "kind" and will map the JS value to the corresponding
 unary constructor. As for sum types, the value of the discriminator
 field is deduced from the name of the constructors but it can always
-be overriden by using a `[@js]`attribute.
+be overridden by using a `[@js]`attribute.
 
 ```
 type close_path
@@ -397,3 +373,44 @@ this calling convention, first the representation of the constructor
 (which can be either an integer or a string, which is derived
 automatically if not specified with a `[@js]` attribute) is passed,
 followed by the n arguments of the constructor.
+
+Type variables
+--------------
+
+Unbound type variable are processed implicitly coerced from and to
+`Ojs.t` using unsafe coercion.
+
+This is useful when writing bindings to JS functions that rely on data structures
+that can contain OCaml values as is. For example, to directly use the JS
+arrays to store OCaml values in their original runtime representation, a
+`JsArray` module could be defined:
+
+```ocaml
+module JsArray : sig
+  type 'a t = private Ojs.t
+  val t_of_js: (Ojs.t -> 'a) -> Ojs.t -> 'a t
+  val t_to_js: ('a -> Ojs.t) -> 'a t -> Ojs.t
+
+  val create: int -> 'a t [@@js.new "Array"]
+  val push: 'a t -> 'a -> unit
+  val pop: 'a t -> 'a option
+end
+```
+
+**Important:** the functions generated from types with variables will only apply
+the identity function when converting to or from JS. So this approach should
+never be used to interface with a JS function that expects the types to be
+converted. For example, the following would break if we used it as a binding
+to the [`Array.join`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/join)
+function:
+```ocaml
+val join: string JsArray.t -> string -> string
+```
+Indeed, the objects contained in the JsArray.t are not javascript strings but
+representation of caml strings.
+To properly do this, we would want the strings contained in the data structure
+to be converted /to JS types, this would require conversion functions not
+ignoring their first argument that are manually implemented.
+
+See the [section on manually created bindings](LOW_LEVEL_BINDING.md) for more
+information.
