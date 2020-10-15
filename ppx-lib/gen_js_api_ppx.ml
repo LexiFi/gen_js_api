@@ -1296,7 +1296,7 @@ and gen_funs ~global_attrs p =
     | Ptype_abstract ->
         let ty =
           match p.ptype_manifest with
-          | None -> assert false (* rewrite_typ_decl makes this case impossible *)
+          | None -> Js
           | Some ty -> parse_typ ~global_attrs ty
         in
         (fun label -> typvar_occurs loc 0 label ty),

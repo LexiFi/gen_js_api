@@ -10,7 +10,10 @@ homepage: "https://github.com/LexiFi/gen_js_api"
 bug-reports: "https://github.com/LexiFi/gen_js_api/issues"
 license: "MIT"
 dev-repo: "git+https://github.com/LexiFi/gen_js_api.git"
-build: [["dune" "build" "-p" name "-j" jobs]]
+build: [
+  ["dune" "build" "-p" name "-j" jobs]
+  ["dune" "runtest" "-p" name "-j" jobs] {with-test}
+]
 depends: [
   "ocaml" {>= "4.08.0"}
   "dune" {>= "2.0"}

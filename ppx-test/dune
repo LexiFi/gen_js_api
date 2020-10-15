@@ -1,14 +1,70 @@
-(executable
- (name main)
- (libraries ocaml-migrate-parsetree gen_js_api_ppx_driver))
-
 (rule
- (targets pp.result)
- (deps input.ml)
+ (targets extension.ml.result)
+ (deps extension.ml)
  (action
-  (run ./main.exe --impl %{deps} -o %{targets})))
+  (run ppx/main.exe --impl %{deps} -o %{targets})))
 
 (rule
  (alias runtest)
  (action
-  (diff pp.expected pp.result)))
+  (diff expected/extension.ml extension.ml.result)))
+
+(rule
+ (targets issues.ml.result)
+ (deps issues.ml)
+ (action
+  (run ppx/main.exe --impl %{deps} -o %{targets})))
+
+(rule
+ (alias runtest)
+ (action
+  (diff expected/issues.ml issues.ml.result)))
+
+
+(rule
+ (targets binding_automatic.ml)
+ (deps binding_automatic.mli)
+ (action (run %{bin:gen_js_api} %{deps} -o %{targets})))
+
+(rule
+ (alias runtest)
+ (action
+  (diff expected/binding_automatic.ml binding_automatic.ml)))
+
+(rule
+ (targets binding_explicitly_automatic.ml)
+ (deps binding_explicitly_automatic.mli)
+ (action (run %{bin:gen_js_api} %{deps} -o %{targets})))
+
+(rule
+ (alias runtest)
+ (action
+  (diff binding_automatic.ml binding_explicitly_automatic.ml)))
+
+(rule
+ (targets binding_manual.ml)
+ (deps binding_manual.mli)
+ (action (run %{bin:gen_js_api} %{deps} -o %{targets})))
+
+(rule
+ (alias runtest)
+ (action
+  (diff binding_automatic.ml binding_manual.ml)))
+
+(rule
+ (targets binding.ml)
+ (deps binding.mli)
+ (action (run %{bin:gen_js_api} %{deps} -o %{targets})))
+
+(rule
+ (alias runtest)
+ (action
+  (diff expected/binding.ml binding.ml)))
+
+(library
+  (name test_library)
+  (libraries gen_js_api)
+  (preprocess (pps gen_js_api.ppx))
+  (modes byte)
+  (modules binding_automatic binding_manual extension issues)
+)
