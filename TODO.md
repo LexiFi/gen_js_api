@@ -1,15 +1,12 @@
 TODO list for gen_js_api
 ========================
 
-- Create reasonnably complete bindings for Javascript's stdlib
+- Create reasonably complete bindings for Javascript's stdlib
   (string, regexp), for the DOM, for jQuery, etc.
 
 - Add a safe mode, where the generated code is augmented with explicit
   checks (e.g. when casting a JS value to a string or integer, when
   accessing a property, etc).
-
-- Support sum types / polymorphic variants with non constant constructors
-  (mapped to objects with a discriminator field).
 
 - Optimize generated code (for instance, lift calls to string_of_js on
   literals).
@@ -74,4 +71,3 @@ TODO list for gen_js_api
   function.  One could interpret it as calling the bar method on
   object foo, which would have the effect of assigning `this` during
   the function evaluation.
-
