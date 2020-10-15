@@ -1486,11 +1486,7 @@ and gen_def loc decl ty =
           let this, s = qualified_path s in
           let formal_args, concrete_args = prepare_args [] ty_args ty_vararg in
           let res this = ojs_call_arr (ml2js [] Js this) (str s) concrete_args in
-          begin match ty_args, ty_vararg, unit_arg with
-          | [], None, false -> js2ml_unit [] ty_res (res this)
-          | [], _, _
-          | _ :: _, _, _ -> func formal_args unit_arg (js2ml_unit [] ty_res (res this))
-          end
+          func formal_args unit_arg (js2ml_unit [] ty_res (res this))
       | _ -> js2ml [] ty_res (ojs_get_global s)
       end
 
