@@ -75,21 +75,3 @@ TODO list for gen_js_api
   object foo, which would have the effect of assigning `this` during
   the function evaluation.
 
-
-- Extend default heuristic for simplifying binding to "singleton objects", e.g.:
-
-
-  ```ocaml
-  module Console : sig
-    [@@@js.singleton "Console"]
-
-    val log: string -> unit
-  end
-  ```
-
-  The `[@@js.singleton]` attribute would change the automatic heuristic
-  (until the end of the current structure) so that the declaration
-  above is interpreted as `[@@js.global "Console.log"]` (i.e. functions
-  are interpreted as calling methods on the object specified
-  in the `singleton` attribute).
-
