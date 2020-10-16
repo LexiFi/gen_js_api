@@ -123,3 +123,5 @@ val obj_type: t -> string
       "[object Null]"
       "[object Boolean]"
   *)
+
+val require : string -> t

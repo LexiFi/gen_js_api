@@ -1,0 +1,31 @@
+(library
+ (name node)
+ (synopsis "Bindings")
+ (libraries gen_js_api)
+ (preprocess (pps gen_js_api.ppx))
+ (modes byte)
+ (js_of_ocaml))
+
+(rule
+ (targets promise.ml)
+ (deps promise.mli)
+ (action
+  (run gen_js_api %{deps})))
+
+(rule
+ (targets path.ml)
+ (deps path.mli)
+ (action
+  (run gen_js_api %{deps})))
+
+(rule
+ (targets process.ml)
+ (deps process.mli)
+ (action
+  (run gen_js_api %{deps})))
+
+(rule
+ (targets console.ml)
+ (deps console.mli)
+ (action
+  (run gen_js_api %{deps})))

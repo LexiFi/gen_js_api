@@ -1,0 +1,11 @@
+(executable
+  (name test)
+  (libraries gen_js_api node)
+  (link_flags -no-check-prims)
+  (preprocess (pps gen_js_api.ppx))
+  (modes js)
+)
+
+(rule
+ (alias runtest)
+ (action (run node %{dep:./test.bc.js})))

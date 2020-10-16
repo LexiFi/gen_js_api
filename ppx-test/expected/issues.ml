@@ -28,7 +28,7 @@ module Issue117 :
             fun x4 ->
               fun x5 ->
                 ignore
-                  (Ojs.call Ojs.global "jsLog2"
+                  (Ojs.call (Ojs.get Ojs.global "console") "jsLog2"
                      [|(Obj.magic x4);(Obj.magic x5)|])
         end
     end)[@merlin.hide ]) 

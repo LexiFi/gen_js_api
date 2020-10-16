@@ -113,3 +113,6 @@ let is_null x =
 
 let obj_type x =
   string_of_js (call (pure_js_expr "Object.prototype.toString") "call" [|x|])
+
+let internal_require = pure_js_expr "require"
+let require name = apply internal_require [| string_to_js name |]
