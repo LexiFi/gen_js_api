@@ -6,6 +6,7 @@
 
 (rule
  (alias runtest)
+ (package gen_js_api)
  (action
   (diff expected/extension.ml extension.ml.result)))
 
@@ -17,6 +18,7 @@
 
 (rule
  (alias runtest)
+ (package gen_js_api)
  (action
   (diff expected/issues.ml issues.ml.result)))
 
@@ -28,6 +30,7 @@
 
 (rule
  (alias runtest)
+ (package gen_js_api)
  (action
   (diff expected/binding_automatic.ml binding_automatic.ml)))
 
@@ -38,6 +41,7 @@
 
 (rule
  (alias runtest)
+ (package gen_js_api)
  (action
   (diff binding_automatic.ml binding_explicitly_automatic.ml)))
 
@@ -48,6 +52,7 @@
 
 (rule
  (alias runtest)
+ (package gen_js_api)
  (action
   (diff binding_automatic.ml binding_manual.ml)))
 
@@ -58,13 +63,13 @@
 
 (rule
  (alias runtest)
+ (package gen_js_api)
  (action
   (diff expected/binding.ml binding.ml)))
 
 (library
-  (name test_library)
-  (libraries gen_js_api)
-  (preprocess (pps gen_js_api.ppx))
-  (modes byte)
-  (modules binding_automatic binding_manual extension issues)
-)
+ (name test_library)
+ (libraries ojs)
+ (preprocess (pps gen_js_api.ppx))
+ (modes byte)
+ (modules binding_automatic binding_manual extension issues))

@@ -1,10 +1,9 @@
 (executables
   (names main)
-  (libraries gen_js_api)
+  (libraries ojs)
   (link_flags -no-check-prims)
   (preprocess (pps gen_js_api.ppx))
-  (modes js)
-)
+  (modes js))
 
 (rule
   (targets test_bindings.ml)

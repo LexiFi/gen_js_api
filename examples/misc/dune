@@ -1,6 +1,6 @@
 (executables
   (names test_jquery)
-  (libraries gen_js_api)
+  (libraries ojs)
   (link_flags -no-check-prims)
   (preprocess (pps gen_js_api.ppx))
   (modes js)

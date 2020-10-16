@@ -13,6 +13,13 @@
 (license MIT)
 
 (package
+ (name ojs)
+ (synopsis "Runtime Library for gen_js_api generated libraries")
+ (description "To be used in conjunction with gen_js_api")
+ (conflicts (js_of_compiler-compiler (< 3.0.0)))
+ (depends (ocaml (>= 4.08))))
+
+(package
  (name gen_js_api)
  (synopsis "Easy OCaml bindings for Javascript libraries")
  (description "
@@ -28,4 +35,4 @@ gen_js_api is to be used with the js_of_ocaml compiler.
   (ocaml (>= 4.08))
   (ppxlib (>= 0.9))
   (ocaml-migrate-parsetree (and (>= 1.6.0) (<= 2.0.0)))
-  (js_of_ocaml-compiler (and :with-test (>= 3.0)))))
+  ojs))

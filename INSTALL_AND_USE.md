@@ -52,7 +52,7 @@ Usage (with dune)
    (executables
      (names test_jquery)
      (js_of_ocaml)
-     (libraries gen_js_api js_of_ocaml)
+     (libraries ojs js_of_ocaml)
      (preprocess (pps gen_js_api.ppx))
      (modes byte)
    )
