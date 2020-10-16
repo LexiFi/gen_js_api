@@ -41,10 +41,10 @@ Supported forms
   passed to it.
 
   By default, the name of the class on the JS side is derived from the
-  name of the OCaml value (`myClass` above): in this case, the value
-  name must start with the `new_` prefix which is dropped to obtain
-  the class name.  It is also possible to specify a custom name
-  explicitly.
+  name of the OCaml value (`MyClass` above): in this case, the value
+  name must start with the `new_` prefix which is dropped and the
+  remaining name is capitalize to obtain the class name.  It is
+  also possible to specify a custom name explicitly.
 
   ```ocaml
   val f: T1 -> ... -> Tn -> t

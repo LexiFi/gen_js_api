@@ -434,11 +434,11 @@ let auto ~global_attrs s ty =
   match ty with
   | _ when derived_from_type s ty -> Ignore
   | Arrow {ty_args = [_]; ty_vararg = None; unit_arg = false; ty_res = Unit _} when has_prefix ~prefix:"set_" s -> PropSet (in_global_scope ~global_attrs (js_name ~global_attrs (drop_prefix ~prefix:"set_" s)))
+  | Arrow {ty_args = [{lab=Arg; att=_; typ=Name _}; _]; ty_vararg = None; unit_arg = false; ty_res = Unit _} when has_prefix ~prefix:"set_" s -> PropSet (js_name ~global_attrs (drop_prefix ~prefix:"set_" s))
+  | Arrow {ty_args = _; ty_vararg = None; unit_arg = _; ty_res = Name _} when has_prefix ~prefix:"new_" s -> New (in_global_scope ~global_attrs (js_name ~capitalize:true ~global_attrs (drop_prefix ~prefix:"new_" s)))
   | Arrow {ty_args = [{lab=Arg; att=_; typ=Name _}]; ty_vararg = None; unit_arg = false; ty_res = Unit _} -> methcall s
   | Arrow {ty_args = [{lab=Arg; att=_; typ=Name _}]; ty_vararg = None; unit_arg = false; ty_res = _} -> PropGet (js_name ~global_attrs s)
   | Arrow {ty_args = []; ty_vararg = None; unit_arg = true; ty_res = _} -> PropGet (in_global_scope ~global_attrs (js_name ~global_attrs s))
-  | Arrow {ty_args = [{lab=Arg; att=_; typ=Name _}; _]; ty_vararg = None; unit_arg = false; ty_res = Unit _} when has_prefix ~prefix:"set_" s -> PropSet (js_name ~global_attrs (drop_prefix ~prefix:"set_" s))
-  | Arrow {ty_args = _; ty_vararg = None; unit_arg = false; ty_res = Name _} when has_prefix ~prefix:"new_" s -> New (in_global_scope ~global_attrs (js_name ~global_attrs (drop_prefix ~prefix:"new_" s)))
   | Arrow {ty_args = {lab=Arg; att=_; typ=Name _} :: _; ty_vararg = _; unit_arg = _; ty_res = _} -> methcall s
   | _ -> Global (in_global_scope ~global_attrs (js_name ~global_attrs s))
 
@@ -1296,7 +1296,7 @@ and gen_funs ~global_attrs p =
     | Ptype_abstract ->
         let ty =
           match p.ptype_manifest with
-          | None -> assert false (* rewrite_typ_decl makes this case impossible *)
+          | None -> Js
           | Some ty -> parse_typ ~global_attrs ty
         in
         (fun label -> typvar_occurs loc 0 label ty),
@@ -1486,11 +1486,7 @@ and gen_def loc decl ty =
           let this, s = qualified_path s in
           let formal_args, concrete_args = prepare_args [] ty_args ty_vararg in
           let res this = ojs_call_arr (ml2js [] Js this) (str s) concrete_args in
-          begin match ty_args, ty_vararg, unit_arg with
-          | [], None, false -> js2ml_unit [] ty_res (res this)
-          | [], _, _
-          | _ :: _, _, _ -> func formal_args unit_arg (js2ml_unit [] ty_res (res this))
-          end
+          func formal_args unit_arg (js2ml_unit [] ty_res (res this))
       | _ -> js2ml [] ty_res (ojs_get_global s)
       end
 
