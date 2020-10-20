@@ -429,20 +429,20 @@ let derived_from_type s ty =
   | _ -> false
 
 let auto ~global_attrs s ty =
-  let methcall s =
+  let global_or f s =
     let js = js_name ~global_attrs s in
     if has_attribute "js.scope" global_attrs then Global (in_global_scope ~global_attrs js)
-    else MethCall js
+    else f js
   in
   match ty with
   | _ when derived_from_type s ty -> Ignore
   | Arrow {ty_args = [_]; ty_vararg = None; unit_arg = false; ty_res = Unit _} when has_prefix ~prefix:"set_" s -> GlobalSet (in_global_scope ~global_attrs (js_name ~global_attrs (drop_prefix ~prefix:"set_" s)))
   | Arrow {ty_args = [{lab=Arg; att=_; typ=Name _}; _]; ty_vararg = None; unit_arg = false; ty_res = Unit _} when has_prefix ~prefix:"set_" s -> PropSet (js_name ~global_attrs (drop_prefix ~prefix:"set_" s))
   | Arrow {ty_args = _; ty_vararg = None; unit_arg = _; ty_res = Name _} when has_prefix ~prefix:"new_" s -> New (in_global_scope ~global_attrs (js_name ~capitalize:true ~global_attrs (drop_prefix ~prefix:"new_" s)))
-  | Arrow {ty_args = [{lab=Arg; att=_; typ=Name _}]; ty_vararg = None; unit_arg = false; ty_res = Unit _} -> methcall s
-  | Arrow {ty_args = [{lab=Arg; att=_; typ=Name _}]; ty_vararg = None; unit_arg = false; ty_res = _} -> PropGet (js_name ~global_attrs s)
+  | Arrow {ty_args = [{lab=Arg; att=_; typ=Name _}]; ty_vararg = None; unit_arg = false; ty_res = Unit _} -> global_or (fun s -> MethCall s) s
+  | Arrow {ty_args = [{lab=Arg; att=_; typ=Name _}]; ty_vararg = None; unit_arg = false; ty_res = _} -> global_or (fun s -> PropGet s) s
   | Arrow {ty_args = []; ty_vararg = None; unit_arg = true; ty_res = _} -> GlobalGet (in_global_scope ~global_attrs (js_name ~global_attrs s))
-  | Arrow {ty_args = {lab=Arg; att=_; typ=Name _} :: _; ty_vararg = _; unit_arg = _; ty_res = _} -> methcall s
+  | Arrow {ty_args = {lab=Arg; att=_; typ=Name _} :: _; ty_vararg = _; unit_arg = _; ty_res = _} -> global_or (fun s -> MethCall s) s
   | _ -> Global (in_global_scope ~global_attrs (js_name ~global_attrs s))
 
 let auto_in_object ~global_attrs s = function
@@ -452,7 +452,6 @@ let auto_in_object ~global_attrs s = function
   | _ -> PropGet (js_name ~global_attrs s)
 
 let parse_attr ~global_attrs ?ty (s, loc, auto) attribute =
-
   let opt_name ?(prefix = "") ?(capitalize = false) () =
     match attribute.attr_payload with
     | PStr [] ->
@@ -1495,6 +1494,7 @@ and gen_def loc decl ty =
 
   | GlobalGet s, Arrow {ty_args = []; ty_vararg = None; unit_arg = true; ty_res} ->
       fun_unit (gen_def loc (Global s) ty_res)
+
   | Global s, ty_res ->
       begin match ty_res with
       | Arrow {ty_args; ty_vararg; unit_arg; ty_res} ->
