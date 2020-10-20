@@ -1,4 +1,4 @@
-[@@@js.scope (Ojs.require "path")]
+[@@@js.scope Imports.path]
 
 val sep: string
 val dirname: string -> string

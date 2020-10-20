@@ -4,11 +4,30 @@
  (libraries gen_js_api)
  (preprocess (pps gen_js_api.ppx))
  (modes byte)
- (js_of_ocaml))
+ (js_of_ocaml (javascript_files imports.js)))
+
+(rule
+ (targets imports.ml)
+ (deps imports.mli)
+ (action
+  (run gen_js_api %{deps})))
+
+(rule
+ (targets global.ml)
+ (deps global.mli)
+ (action
+  (run gen_js_api %{deps})))
+
 
 (rule
  (targets promise.ml)
  (deps promise.mli)
+ (action
+  (run gen_js_api %{deps})))
+
+(rule
+ (targets fs.ml)
+ (deps fs.mli)
  (action
   (run gen_js_api %{deps})))
 
