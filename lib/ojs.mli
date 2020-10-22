@@ -115,11 +115,11 @@ external delete: t -> string -> unit = "caml_js_delete"
 val is_null: t -> bool
 
 val obj_type: t -> string
-  (** Returns:
-      "[object Array]"
-      "[object Object]"
-      "[object Number]"
-      "[object String]"
-      "[object Null]"
-      "[object Boolean]"
-  *)
+(** Returns:
+    "[object Array]"
+    "[object Object]"
+    "[object Number]"
+    "[object String]"
+    "[object Null]"
+    "[object Boolean]"
+*)

@@ -18,5 +18,4 @@ module M : sig
   val method_call_unit_unit: t -> unit -> unit
   val method_call_args_unit: t -> int -> unit
   val global: t
-end[@
-js.scope "scope"]
+end[@js.scope "scope"]

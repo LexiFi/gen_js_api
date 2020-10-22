@@ -11,11 +11,11 @@ val normalize: string -> string
 
 type parse_result =
   {
-      dir: string;
-      root: string;
-      base: string;
-      name: string;
-      ext: string
+    dir: string;
+    root: string;
+    base: string;
+    name: string;
+    ext: string
   }
 
 val parse: string -> parse_result

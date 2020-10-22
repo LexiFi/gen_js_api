@@ -400,15 +400,15 @@ let rec choose f = function
 let derived_from_type s ty =
   match ty with
   | Arrow {ty_args; ty_vararg = None; unit_arg = false; ty_res = Js} ->
-    begin match List.rev ty_args with
-    | {lab=Arg; att=_; typ=Name (t, _);} :: _ -> check_suffix ~suffix:"_to_js" s = Some t
-    | _ -> false
-    end
+      begin match List.rev ty_args with
+      | {lab=Arg; att=_; typ=Name (t, _);} :: _ -> check_suffix ~suffix:"_to_js" s = Some t
+      | _ -> false
+      end
   | Arrow {ty_res = Name (t, _); ty_vararg = None; unit_arg = false; ty_args } ->
-    begin match List.rev ty_args with
-    | {lab=Arg; att=_; typ= Js;} :: _ -> check_suffix ~suffix:"_of_js" s = Some t
-    | _ -> false
-    end
+      begin match List.rev ty_args with
+      | {lab=Arg; att=_; typ= Js;} :: _ -> check_suffix ~suffix:"_of_js" s = Some t
+      | _ -> false
+      end
   | _ -> false
 
 type mode =
@@ -514,8 +514,8 @@ let rec parse_sig_item ~global_attrs rest s =
   | Psig_class cs -> Class (List.map (parse_class_decl ~global_attrs) cs) :: rest ~global_attrs
   | Psig_attribute ({attr_payload = PStr str; _} as attribute) when filter_attr_name "js.implem" attribute -> Implem str :: rest ~global_attrs
   | Psig_attribute attribute ->
-    let global_attrs = attribute :: global_attrs in
-    rest ~global_attrs
+      let global_attrs = attribute :: global_attrs in
+      rest ~global_attrs
   | Psig_open descr -> Open descr :: rest ~global_attrs
   | _ ->
       error s.psig_loc Cannot_parse_sigitem
@@ -606,10 +606,10 @@ let pat_str s = Pat.constant (Pconst_string (s, None))
 let attr s e = (Attr.mk (mknoloc s) (PStr [Str.eval e]))
 
 let disable_warnings = Str.attribute (attr "ocaml.warning" (str "-7-32-39"))
-    (*  7: method overridden.
-       32: unused value declarations (when *_of_js, *_to_js are not needed)
-       39: unused rec flag (for *_of_js, *_to_js functions, when the
-           type is not actually recursive) *)
+(*  7: method overridden.
+    32: unused value declarations (when *_of_js, *_to_js are not needed)
+    39: unused rec flag (for *_of_js, *_to_js functions, when the
+       type is not actually recursive) *)
 
 
 let incl = function
@@ -632,7 +632,7 @@ let list_iter f x =
 let fun_ (label, s) e =
   match e.pexp_desc with
   | Pexp_apply (f, [Nolabel, {pexp_desc = Pexp_ident {txt = Lident x; loc = _}; _}])
-      when x = s -> f
+    when x = s -> f
   | _ ->
       Exp.fun_ label None (Pat.var (mknoloc s)) e
 
@@ -1173,10 +1173,10 @@ and prepare_args_push ctx ty_args ty_vararg =
         let arg = fresh () in
         formal_args @ [arg_label lab, arg],
         concrete_args @ [fun arr ->
-          let extra_args = list_iter (mkfun (fun x -> push arr typ x)) in
-          match lab with
-          | Arg | Lab _ -> extra_args (var arg)
-          | Opt _ -> match_some_none ~none:unit_expr ~some:extra_args (var arg)
+            let extra_args = list_iter (mkfun (fun x -> push arr typ x)) in
+            match lab with
+            | Arg | Lab _ -> extra_args (var arg)
+            | Opt _ -> match_some_none ~none:unit_expr ~some:extra_args (var arg)
           ]
   in
   let body arr = List.fold_right (fun code -> Exp.sequence (code arr)) concrete_args arr in
@@ -1246,39 +1246,39 @@ let thorough_exists f l =
 
 let rec typvar_occurs loc variance label = function
   | Typ_var l ->
-    if label = l then
-      if variance < 0 then
-        error loc (Contravariant_type_parameter l)
+      if label = l then
+        if variance < 0 then
+          error loc (Contravariant_type_parameter l)
+        else
+          true
       else
-        true
-    else
-      false
+        false
   | Arrow {ty_args; ty_vararg; ty_res; _} ->
-    let (|||) a b = a || b in
-    thorough_exists (fun {typ; _} -> typvar_occurs loc (neg_variance variance) label typ) ty_args
-    ||| (match ty_vararg with None -> false | Some {typ; _} -> typvar_occurs loc variance label typ)
-    ||| typvar_occurs loc variance label ty_res
+      let (|||) a b = a || b in
+      thorough_exists (fun {typ; _} -> typvar_occurs loc (neg_variance variance) label typ) ty_args
+      ||| (match ty_vararg with None -> false | Some {typ; _} -> typvar_occurs loc variance label typ)
+      ||| typvar_occurs loc variance label ty_res
   | Js | Unit _ -> false
   | Name (_, l) | Tuple l -> thorough_exists (typvar_occurs loc variance label) l
   | Variant {constrs; _} -> typvar_occurs_constructors loc variance label constrs
 and typvar_occurs_constructors loc variance label =
   thorough_exists (fun {arg; _} ->
-    match arg with
-    | Constant -> false
-    | Unary typ -> typvar_occurs loc variance label typ
-    | Nary l -> thorough_exists (typvar_occurs loc variance label) l
-    | Record l -> thorough_exists (fun (_, _, _, typ) -> typvar_occurs loc variance label typ) l
-  )
+      match arg with
+      | Constant -> false
+      | Unary typ -> typvar_occurs loc variance label typ
+      | Nary l -> thorough_exists (typvar_occurs loc variance label) l
+      | Record l -> thorough_exists (fun (_, _, _, typ) -> typvar_occurs loc variance label typ) l
+    )
 
 let global_object ~global_attrs =
   let rec traverse = function
     | [] -> ojs_global
     | hd :: tl ->
-      begin match get_expr_attribute "js.scope" [hd] with
-      | None -> traverse tl
-      | Some {pexp_desc=Pexp_constant (Pconst_string (prop, _)); _} -> ojs "get" [(traverse tl); str prop]
-      | Some global_object -> global_object
-      end
+        begin match get_expr_attribute "js.scope" [hd] with
+        | None -> traverse tl
+        | Some {pexp_desc=Pexp_constant (Pconst_string (prop, _)); _} -> ojs "get" [(traverse tl); str prop]
+        | Some global_object -> global_object
+        end
   in
   traverse global_attrs
 
@@ -1290,12 +1290,12 @@ and gen_funs ~global_attrs p =
   let global_attrs = p.ptype_attributes @ global_attrs in
   let ctx =
     List.map (function
-      | {ptyp_desc = Ptyp_any; ptyp_loc = _; ptyp_attributes = _; ptyp_loc_stack = _}, Invariant ->
-        fresh ()
-      | {ptyp_desc = Ptyp_var label; ptyp_loc = _; ptyp_attributes = _; ptyp_loc_stack = _}, Invariant ->
-        label
-      | _ -> error p.ptype_loc Cannot_parse_type
-    ) p.ptype_params
+        | {ptyp_desc = Ptyp_any; ptyp_loc = _; ptyp_attributes = _; ptyp_loc_stack = _}, Invariant ->
+            fresh ()
+        | {ptyp_desc = Ptyp_var label; ptyp_loc = _; ptyp_attributes = _; ptyp_loc_stack = _}, Invariant ->
+            label
+        | _ -> error p.ptype_loc Cannot_parse_type
+      ) p.ptype_params
   in
   let loc = p.ptype_loc in
   let typvar_used, of_js, to_js =
@@ -1357,13 +1357,13 @@ and gen_funs ~global_attrs p =
     match acc with
     | None -> None
     | Some acc ->
-      Some
-        (List.fold_left
-          (fun acc label ->
-            let name = if typvar_used label then "__"^label^suffix else "_" in
-            fun_ (Nolabel, name) acc
-          ) acc (List.rev ctx)
-        )
+        Some
+          (List.fold_left
+             (fun acc label ->
+                let name = if typvar_used label then "__"^label^suffix else "_" in
+                fun_ (Nolabel, name) acc
+             ) acc (List.rev ctx)
+          )
   in
   let f (name, input_typs, ret_typ, code) =
     match code with
@@ -1439,23 +1439,23 @@ and gen_classdecl cast_funcs = function
 
 and gen_class_field x = function
   | Method {method_name; method_typ; method_def; method_loc} ->
-    let body =
-      match method_def, method_typ with
-      | Getter s, ty_res -> js2ml [] ty_res (ojs "get" [var x; str s])
-      | Setter s, Arrow {ty_args = [{lab=Arg; att=_; typ}]; ty_vararg = None; unit_arg = false; ty_res = Unit _} ->
-          mkfun (fun arg -> ojs "set" [var x; str s; ml2js [] typ arg])
-      | MethodCall s, Arrow {ty_args; ty_vararg; unit_arg; ty_res} ->
-          let formal_args, concrete_args = prepare_args [] ty_args ty_vararg in
-          let res = ojs_call_arr (var x) (str s) concrete_args in
-          func formal_args unit_arg (js2ml_unit [] ty_res res)
-      | MethodCall s, ty_res ->
-          js2ml_unit [] ty_res (ojs "call" [var x; str s; Exp.array []])
-      | _ -> error method_loc Binding_type_mismatch
-    in
-    Cf.method_ (mknoloc method_name) Public (Cf.concrete Fresh (Exp.constraint_ body (gen_typ method_typ)))
+      let body =
+        match method_def, method_typ with
+        | Getter s, ty_res -> js2ml [] ty_res (ojs "get" [var x; str s])
+        | Setter s, Arrow {ty_args = [{lab=Arg; att=_; typ}]; ty_vararg = None; unit_arg = false; ty_res = Unit _} ->
+            mkfun (fun arg -> ojs "set" [var x; str s; ml2js [] typ arg])
+        | MethodCall s, Arrow {ty_args; ty_vararg; unit_arg; ty_res} ->
+            let formal_args, concrete_args = prepare_args [] ty_args ty_vararg in
+            let res = ojs_call_arr (var x) (str s) concrete_args in
+            func formal_args unit_arg (js2ml_unit [] ty_res res)
+        | MethodCall s, ty_res ->
+            js2ml_unit [] ty_res (ojs "call" [var x; str s; Exp.array []])
+        | _ -> error method_loc Binding_type_mismatch
+      in
+      Cf.method_ (mknoloc method_name) Public (Cf.concrete Fresh (Exp.constraint_ body (gen_typ method_typ)))
   | Inherit super ->
-    let e = Cl.apply (Cl.constr super []) [Nolabel, var x] in
-    Cf.inherit_ Fresh e None
+      let e = Cl.apply (Cl.constr super []) [Nolabel, var x] in
+      Cf.inherit_ Fresh e None
 
 and gen_class_cast = function
   | Declaration { class_name; class_fields = _ } ->
@@ -1725,9 +1725,9 @@ let standalone () =
 let mapper =
   { mapper with
     Ast_mapper.structure = (fun _this str ->
-      check_loc_mapper.Ast_mapper.structure
-        check_loc_mapper
-        (mapper.Ast_mapper.structure mapper str));
+        check_loc_mapper.Ast_mapper.structure
+          check_loc_mapper
+          (mapper.Ast_mapper.structure mapper str));
   }
 
 let mark_attributes_as_used mapper =
