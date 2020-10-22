@@ -43,7 +43,7 @@ module UntypedPromise : sig
 end
 
   [@@@js.stop]
-  type 'a t = UntypedPromise.t
+  type 'a t
   val t_to_js: ('a -> Ojs.t) -> 'a t -> Ojs.t
   val t_of_js: (Ojs.t -> 'a) -> Ojs.t -> 'a t
 
@@ -60,6 +60,8 @@ end
   val ( let* ): 'a t -> ('a -> 'b t) -> 'b t
   val ( and* ): 'a t -> 'b t -> ('a * 'b) t
 
+  val catch: 'a t -> (error -> 'a t) -> 'a t
+
   [@@@js.start]
   [@@@js.implem
     type 'a t = UntypedPromise.t
@@ -74,8 +76,7 @@ end
       bind (UntypedPromise.all [p1; p2])
         (fun ojs ->
           match Ojs.list_of_js Ojs.t_of_js ojs with
-          | [x1; x2] ->
-            UntypedPromise.return ([%js.of: Ojs.t * Ojs.t] (x1, x2))
+          | [x1; x2] -> return (x1, x2)
           | _ -> assert false
         )
     let map f p = bind p (fun x -> return (f x))
@@ -86,5 +87,7 @@ end
     let (and+) = prod
     let (let*) p f = bind p f
     let (and*) = prod
+
+    let catch p error = bind p ~error return
 
   ]

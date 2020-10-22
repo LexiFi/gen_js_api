@@ -6,10 +6,7 @@ module M =
     let rec (t_of_js : Ojs.t -> t) = fun x2 -> x2
     and (t_to_js : t -> Ojs.t) = fun x1 -> x1
     let (prop_get_arg : t -> int) =
-      fun x3 ->
-        Ojs.int_of_js
-          (Ojs.call (Ojs.get Ojs.global "scope") "propGetArg"
-             [|(t_to_js x3)|])
+      fun x3 -> Ojs.int_of_js (Ojs.get (t_to_js x3) "propGetArg")
     let (prop_get : unit -> int) =
       fun () ->
         Ojs.int_of_js (Ojs.get (Ojs.get Ojs.global "scope") "propGet")
@@ -29,34 +26,24 @@ module M =
           (Ojs.new_obj (Ojs.get (Ojs.get Ojs.global "scope") "ThingArgs")
              [|(Ojs.int_to_js x7)|])
     let (method_call_global : t -> unit) =
-      fun x8 ->
-        ignore
-          (Ojs.call (Ojs.get Ojs.global "scope") "methodCallGlobal"
-             [|(t_to_js x8)|])
+      fun x8 -> ignore (Ojs.call (t_to_js x8) "methodCallGlobal" [||])
     let (method_call_unit : t -> unit -> int) =
       fun x9 ->
-        fun () ->
-          Ojs.int_of_js
-            (Ojs.call (Ojs.get Ojs.global "scope") "methodCallUnit"
-               [|(t_to_js x9)|])
+        fun () -> Ojs.int_of_js (Ojs.call (t_to_js x9) "methodCallUnit" [||])
     let (method_call_args : t -> int -> int) =
-      fun x10 ->
-        fun x11 ->
+      fun x11 ->
+        fun x10 ->
           Ojs.int_of_js
-            (Ojs.call (Ojs.get Ojs.global "scope") "methodCallArgs"
-               [|(t_to_js x10);(Ojs.int_to_js x11)|])
+            (Ojs.call (t_to_js x11) "methodCallArgs" [|(Ojs.int_to_js x10)|])
     let (method_call_unit_unit : t -> unit -> unit) =
       fun x12 ->
-        fun () ->
-          ignore
-            (Ojs.call (Ojs.get Ojs.global "scope") "methodCallUnitUnit"
-               [|(t_to_js x12)|])
+        fun () -> ignore (Ojs.call (t_to_js x12) "methodCallUnitUnit" [||])
     let (method_call_args_unit : t -> int -> unit) =
-      fun x13 ->
-        fun x14 ->
+      fun x14 ->
+        fun x13 ->
           ignore
-            (Ojs.call (Ojs.get Ojs.global "scope") "methodCallArgsUnit"
-               [|(t_to_js x13);(Ojs.int_to_js x14)|])
+            (Ojs.call (t_to_js x14) "methodCallArgsUnit"
+               [|(Ojs.int_to_js x13)|])
     let (global : t) =
       t_of_js (Ojs.get (Ojs.get Ojs.global "scope") "global")
   end

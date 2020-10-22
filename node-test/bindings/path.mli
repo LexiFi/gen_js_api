@@ -1,5 +1,7 @@
 [@@@js.scope Imports.path]
 
+[@@@js.static]
+
 val sep: string
 val dirname: string -> string
 val extname: string -> string

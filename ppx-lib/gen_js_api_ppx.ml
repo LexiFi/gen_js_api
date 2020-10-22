@@ -257,21 +257,14 @@ let arg_label = function
   | Lab {ml; _} -> Labelled ml
   | Opt {ml; _} -> Optional ml
 
-type rooted_path = {
-  root: expression option;
-  path: string list;
-}
-
 type valdef =
   | Cast
   | Ignore
   | PropGet of string
   | PropSet of string
   | MethCall of string
-  | Global of rooted_path
-  | GlobalSet of rooted_path
-  | GlobalGet of rooted_path
-  | New of rooted_path
+  | Global of string
+  | New of string
   | Builder of attributes
 
 type methoddef =
@@ -296,9 +289,9 @@ type classdecl =
   | Constructor of { class_name: string; js_class_name: string; class_arrow: arrow_params }
 
 type decl =
-  | Module of string * attributes * decl list
-  | Type of rec_flag * Parsetree.type_declaration list
-  | Val of string * typ * valdef * Location.t
+  | Module of string * decl list
+  | Type of rec_flag * Parsetree.type_declaration list * attributes
+  | Val of string * typ * valdef * Location.t * attributes
   | Class of classdecl list
   | Implem of Parsetree.structure
   | Open of Parsetree.open_description
@@ -404,16 +397,6 @@ let rec choose f = function
       | Some y -> y :: choose f xs
       end
 
-let in_global_scope ~global_attrs name =
-    let scopes = choose (fun x -> get_expr_attribute "js.scope" [x]) global_attrs in
-    let rec traverse path = function
-      | [] -> { root = None; path }
-      | {pexp_desc=Pexp_constant (Pconst_string (field, _)); _} :: tl ->
-        traverse (field :: path) tl
-      | root :: _ -> { root = Some root; path }
-    in
-    traverse [name] scopes
-
 let derived_from_type s ty =
   match ty with
   | Arrow {ty_args; ty_vararg = None; unit_arg = false; ty_res = Js} ->
@@ -428,22 +411,36 @@ let derived_from_type s ty =
     end
   | _ -> false
 
-let auto ~global_attrs s ty =
-  let global_or f s =
-    let js = js_name ~global_attrs s in
-    if has_attribute "js.scope" global_attrs then Global (in_global_scope ~global_attrs js)
-    else f js
-  in
-  match ty with
-  | _ when derived_from_type s ty -> Ignore
-  | Arrow {ty_args = [_]; ty_vararg = None; unit_arg = false; ty_res = Unit _} when has_prefix ~prefix:"set_" s -> GlobalSet (in_global_scope ~global_attrs (js_name ~global_attrs (drop_prefix ~prefix:"set_" s)))
-  | Arrow {ty_args = [{lab=Arg; att=_; typ=Name _}; _]; ty_vararg = None; unit_arg = false; ty_res = Unit _} when has_prefix ~prefix:"set_" s -> PropSet (js_name ~global_attrs (drop_prefix ~prefix:"set_" s))
-  | Arrow {ty_args = _; ty_vararg = None; unit_arg = _; ty_res = Name _} when has_prefix ~prefix:"new_" s -> New (in_global_scope ~global_attrs (js_name ~capitalize:true ~global_attrs (drop_prefix ~prefix:"new_" s)))
-  | Arrow {ty_args = [{lab=Arg; att=_; typ=Name _}]; ty_vararg = None; unit_arg = false; ty_res = Unit _} -> global_or (fun s -> MethCall s) s
-  | Arrow {ty_args = [{lab=Arg; att=_; typ=Name _}]; ty_vararg = None; unit_arg = false; ty_res = _} -> global_or (fun s -> PropGet s) s
-  | Arrow {ty_args = []; ty_vararg = None; unit_arg = true; ty_res = _} -> GlobalGet (in_global_scope ~global_attrs (js_name ~global_attrs s))
-  | Arrow {ty_args = {lab=Arg; att=_; typ=Name _} :: _; ty_vararg = _; unit_arg = _; ty_res = _} -> global_or (fun s -> MethCall s) s
-  | _ -> Global (in_global_scope ~global_attrs (js_name ~global_attrs s))
+type mode =
+  | Default
+  | Static
+  | Prototype
+
+let auto_default ~global_attrs s = function
+  | Arrow {ty_args = [{lab=Arg; att=_; typ=Name _}]; ty_vararg = None; unit_arg = false; ty_res = Unit _} -> MethCall (js_name ~global_attrs s)
+  | Arrow {ty_args = [{lab=Arg; att=_; typ=Name _}]; ty_vararg = None; unit_arg = false; ty_res = _} -> PropGet (js_name ~global_attrs s)
+  | Arrow {ty_args = []; ty_vararg = None; unit_arg = true; ty_res = _} -> PropGet (js_name ~global_attrs s)
+  | Arrow {ty_args = {lab=Arg; att=_; typ=Name _} :: _; ty_vararg = _; unit_arg = _; ty_res = _} -> MethCall (js_name ~global_attrs s)
+  | _ -> Global (js_name ~global_attrs s)
+
+let auto_prototype ~global_attrs s = function
+  | Arrow {ty_args = [{lab=Arg; att=_; typ=Name _}]; ty_vararg = None; unit_arg = false; ty_res = Unit _} -> MethCall (js_name ~global_attrs s)
+  | Arrow {ty_args = [{lab=Arg; att=_; typ=Name _}]; ty_vararg = None; unit_arg = false; ty_res = _} -> PropGet (js_name ~global_attrs s)
+  | Arrow {ty_args = {lab=Arg; att=_; typ=Name _} :: _; ty_vararg = _; unit_arg = _; ty_res = _} -> MethCall (js_name ~global_attrs s)
+  | _ -> Global (js_name ~global_attrs s)
+
+let auto mode ~global_attrs s ty =
+  if derived_from_type s ty then
+    Ignore
+  else if has_prefix ~prefix:"set_" s then
+    PropSet (js_name ~global_attrs (drop_prefix ~prefix:"set_" s))
+  else if has_prefix ~prefix:"new_" s then
+    New (js_name ~capitalize:true ~global_attrs (drop_prefix ~prefix:"new_" s))
+  else
+    match mode with
+    | Default -> auto_default ~global_attrs s ty
+    | Static -> Global (js_name ~global_attrs s)
+    | Prototype -> auto_prototype ~global_attrs s ty
 
 let auto_in_object ~global_attrs s = function
   | Arrow {ty_args = [{lab=Arg; att=_; typ=_}]; ty_vararg = None; unit_arg = false; ty_res = Unit _} when has_prefix ~prefix:"set_" s -> PropSet (js_name ~global_attrs (drop_prefix ~prefix:"set_" s))
@@ -451,7 +448,7 @@ let auto_in_object ~global_attrs s = function
   | Unit _ -> MethCall (js_name ~global_attrs s)
   | _ -> PropGet (js_name ~global_attrs s)
 
-let parse_attr ~global_attrs ?ty (s, loc, auto) attribute =
+let parse_attr ~global_attrs (s, loc, auto) attribute =
   let opt_name ?(prefix = "") ?(capitalize = false) () =
     match attribute.attr_payload with
     | PStr [] ->
@@ -464,32 +461,12 @@ let parse_attr ~global_attrs ?ty (s, loc, auto) attribute =
   in
   let actions =
     [ "js.cast", (fun () -> Cast);
-      "js.get",
-      (fun () ->
-         let global =
-           match ty with
-           | Some (Arrow {ty_args = []; ty_vararg = None; unit_arg = true; ty_res = _}) -> true
-           | _ -> false
-         in
-         if global then
-          GlobalGet (in_global_scope ~global_attrs (opt_name ()))
-         else
-          PropGet (opt_name ()));
-      "js.set",
-      (fun () ->
-         let global =
-           match ty with
-           | Some (Arrow {ty_args = [_]; ty_vararg = None; unit_arg = false; ty_res = Unit _}) -> true
-           | _ -> false
-         in
-         if global then
-          GlobalSet (in_global_scope ~global_attrs (opt_name ~prefix:"set_" ()))
-         else
-          PropSet (opt_name ~prefix:"set_" ()));
+      "js.get", (fun () -> PropGet (opt_name ()));
+      "js.set", (fun () -> PropSet (opt_name ~prefix:"set_" ()));
       "js.call", (fun () -> MethCall (opt_name ()));
-      "js.global", (fun () -> Global (in_global_scope ~global_attrs (opt_name ())));
+      "js.global", (fun () -> Global (opt_name ()));
       "js", (fun () -> auto ());
-      "js.new", (fun () -> New (in_global_scope ~global_attrs (opt_name ~prefix:"new_" ~capitalize:true ())));
+      "js.new", (fun () -> New (opt_name ~prefix:"new_" ~capitalize:true ()));
       "js.builder", (fun () -> Builder global_attrs);
     ]
   in
@@ -497,14 +474,25 @@ let parse_attr ~global_attrs ?ty (s, loc, auto) attribute =
   | exception Not_found -> None
   | _, f -> Some (f ())
 
+let auto_mode ~global_attrs =
+  let rec traverse = function
+    | [] -> Default
+    | attr :: _ when filter_attr "js.static" attr -> Static
+    | attr :: _ when filter_attr "js.prototype" attr -> Prototype
+    | attr :: _ when filter_attr "js.auto" attr -> Default
+    | _ :: tl -> traverse tl
+  in
+  traverse global_attrs
+
 let parse_valdecl ~global_attrs ~in_sig vd =
   let attributes = vd.pval_attributes in
   let global_attrs = attributes @ global_attrs in
   let s = vd.pval_name.txt in
   let loc = vd.pval_loc in
   let ty = parse_typ ~global_attrs vd.pval_type in
-  let auto () = auto ~global_attrs s ty in
-  let defs = choose (parse_attr ~global_attrs ~ty (s, loc, auto)) attributes in
+  let mode = lazy (auto_mode ~global_attrs) in
+  let auto () = auto (Lazy.force mode) ~global_attrs s ty in
+  let defs = choose (parse_attr ~global_attrs (s, loc, auto)) attributes in
   let r =
     match defs with
     | [x] -> x
@@ -512,17 +500,17 @@ let parse_valdecl ~global_attrs ~in_sig vd =
     | [] -> raise Exit
     | _ -> error loc Multiple_binding_declarations
   in
-  Val (s, ty, r, loc)
+  Val (s, ty, r, loc, global_attrs)
 
 let rec parse_sig_item ~global_attrs rest s =
   match s.psig_desc with
   | Psig_value vd when vd.pval_prim = [] ->
       parse_valdecl ~global_attrs ~in_sig:true vd :: rest ~global_attrs
   | Psig_type (rec_flag, decls) ->
-      Type (rec_flag, decls) :: rest ~global_attrs
+      Type (rec_flag, decls, global_attrs) :: rest ~global_attrs
   | Psig_module {pmd_name; pmd_type = {pmty_desc = Pmty_signature si; pmty_attributes; pmty_loc = _}; pmd_loc = _; pmd_attributes = _} ->
       let global_attrs = pmty_attributes @ global_attrs in
-      Module (pmd_name.txt, pmty_attributes, parse_sig ~global_attrs si) :: rest ~global_attrs
+      Module (pmd_name.txt, parse_sig ~global_attrs si) :: rest ~global_attrs
   | Psig_class cs -> Class (List.map (parse_class_decl ~global_attrs) cs) :: rest ~global_attrs
   | Psig_attribute ({attr_payload = PStr str; _} as attribute) when filter_attr_name "js.implem" attribute -> Implem str :: rest ~global_attrs
   | Psig_attribute attribute ->
@@ -705,33 +693,26 @@ let split sep s =
   in
   aux 0 0
 
-let rooted_path_of_string s =
-  let path = split '.' s in
-  { root = None; path }
-
 let ojs_global = ojs_var "global"
 
-let rec select_path o = function
-  | [] -> assert false
-  | [x] -> o, x
-  | x :: xs -> select_path (ojs "get" [o; str x]) xs
 
-let qualified_path {root; path} =
-  let root =
-    match root with
-    | None -> ojs_global
-    | Some root -> root
+let select_path o s =
+  let rec select_path o = function
+    | [] -> assert false
+    | [x] -> o, x
+    | x :: xs -> select_path (ojs "get" [o; str x]) xs
   in
-  select_path root path
+  select_path o (split '.' s)
 
-let ojs_get_global s =
-  let o, x = qualified_path s in
+let get_path global_object s =
+  let o, x = select_path global_object s in
   ojs "get" [o; str x]
 
-let ojs_variable s = ojs_get_global (rooted_path_of_string s)
+let ojs_variable s =
+  get_path ojs_global s
 
-let ojs_set_global s v =
-  let o, x = qualified_path s in
+let set_path global_object s v =
+  let o, x = select_path global_object s in
   ojs "set" [o; str x; v]
 
 let def s ty body =
@@ -1289,9 +1270,20 @@ and typvar_occurs_constructors loc variance label =
     | Record l -> thorough_exists (fun (_, _, _, typ) -> typvar_occurs loc variance label typ) l
   )
 
+let global_object ~global_attrs =
+  let rec traverse = function
+    | [] -> ojs_global
+    | hd :: tl ->
+      begin match get_expr_attribute "js.scope" [hd] with
+      | None -> traverse tl
+      | Some {pexp_desc=Pexp_constant (Pconst_string (prop, _)); _} -> ojs "get" [(traverse tl); str prop]
+      | Some global_object -> global_object
+      end
+  in
+  traverse global_attrs
 
-let rec gen_decls ~global_attrs si =
-  List.concat (List.map (gen_decl ~global_attrs) si)
+let rec gen_decls si =
+  List.concat (List.map gen_decl si)
 
 and gen_funs ~global_attrs p =
   let name = p.ptype_name.txt in
@@ -1387,19 +1379,20 @@ and gen_funs ~global_attrs p =
   choose f [ name ^ "_of_js", push_typ alpha_of_js [Js], Name (name, List.map (fun x -> Typ_var x) ctx), push_fun "_of_js" of_js;
              name ^ "_to_js", push_typ alpha_to_js [Name (name, List.map (fun x -> Typ_var x) ctx)], Js, push_fun "_to_js" to_js ]
 
-and gen_decl ~global_attrs = function
-  | Type (rec_flag, decls) ->
+and gen_decl = function
+  | Type (rec_flag, decls, global_attrs) ->
       let decls = List.map rewrite_typ_decl decls in
       let funs = List.concat (List.map (gen_funs ~global_attrs) decls) in
       [ Str.type_ rec_flag decls; Str.value rec_flag funs ]
-  | Module (s, attrs, decls) ->
-      let global_attrs = attrs @ global_attrs in
-      [ Str.module_ (Mb.mk (mknoloc s) (Mod.structure (gen_decls ~global_attrs decls))) ]
 
-  | Val (_, _, Ignore, _) -> []
+  | Module (s, decls) ->
+      [ Str.module_ (Mb.mk (mknoloc s) (Mod.structure (gen_decls decls))) ]
 
-  | Val (s, ty, decl, loc) ->
-      let d = gen_def loc decl ty in
+  | Val (_, _, Ignore, _, _) -> []
+
+  | Val (s, ty, decl, loc, global_attrs) ->
+      let global_object = global_object ~global_attrs in
+      let d = gen_def ~global_object loc decl ty in
       [ def s (gen_typ ty) d ]
 
   | Class decls ->
@@ -1484,7 +1477,7 @@ and gen_class_cast = function
       [to_js; of_js]
   | Constructor {class_name = _; js_class_name = _; class_arrow = _} -> []
 
-and gen_def loc decl ty =
+and gen_def ~global_object loc decl ty =
   match decl, ty with
   | Cast, Arrow {ty_args = [{lab=Arg; att=_; typ}]; ty_vararg = None; unit_arg = false; ty_res} ->
       mkfun (fun this -> js2ml [] ty_res (ml2js [] typ this))
@@ -1492,17 +1485,17 @@ and gen_def loc decl ty =
   | PropGet s, Arrow {ty_args = [{lab=Arg; att=_; typ}]; ty_vararg = None; unit_arg = false; ty_res} ->
       mkfun (fun this -> js2ml [] ty_res (ojs "get" [ml2js [] typ this; str s]))
 
-  | GlobalGet s, Arrow {ty_args = []; ty_vararg = None; unit_arg = true; ty_res} ->
-      fun_unit (gen_def loc (Global s) ty_res)
+  | PropGet s, Arrow {ty_args = []; ty_vararg = None; unit_arg = true; ty_res} ->
+      fun_unit (gen_def ~global_object loc (Global s) ty_res)
 
   | Global s, ty_res ->
       begin match ty_res with
       | Arrow {ty_args; ty_vararg; unit_arg; ty_res} ->
-          let this, s = qualified_path s in
+          let this, s = select_path global_object s in
           let formal_args, concrete_args = prepare_args [] ty_args ty_vararg in
           let res this = ojs_call_arr (ml2js [] Js this) (str s) concrete_args in
           func formal_args unit_arg (js2ml_unit [] ty_res (res this))
-      | _ -> js2ml [] ty_res (ojs_get_global s)
+      | _ -> js2ml [] ty_res (get_path global_object s)
       end
 
   | PropSet s,
@@ -1519,8 +1512,8 @@ and gen_def loc decl ty =
       in
       mkfun (fun this -> mkfun (fun arg -> res this arg))
 
-  | GlobalSet s, Arrow {ty_args = [{lab = Arg; att = _; typ = ty_arg}]; ty_vararg = None; unit_arg = false; ty_res = Unit _} ->
-      mkfun (fun arg -> ojs_set_global s (ml2js [] ty_arg arg))
+  | PropSet s, Arrow {ty_args = [{lab = Arg; att = _; typ = ty_arg}]; ty_vararg = None; unit_arg = false; ty_res = Unit _} ->
+      mkfun (fun arg -> set_path global_object s (ml2js [] ty_arg arg))
 
   | MethCall s,
     Arrow {ty_args = {lab=Arg; att=_; typ} :: ty_args; ty_vararg; unit_arg; ty_res} ->
@@ -1536,7 +1529,7 @@ and gen_def loc decl ty =
 
   | New name, Arrow {ty_args; ty_vararg; unit_arg; ty_res} ->
       let formal_args, concrete_args = prepare_args [] ty_args ty_vararg in
-      let res = ojs_new_obj_arr (ojs_get_global name) concrete_args in
+      let res = ojs_new_obj_arr (get_path global_object name) concrete_args in
       func formal_args unit_arg (js2ml [] ty_res res)
 
   | Builder global_attrs, Arrow {ty_args; ty_vararg = None; unit_arg; ty_res} ->
@@ -1585,7 +1578,7 @@ and str_of_sg ~global_attrs sg =
   register_loc attr;
   Str.attribute attr ::
   disable_warnings ::
-  gen_decls ~global_attrs decls
+  gen_decls decls
 
 and module_expr_rewriter ~loc ~attrs sg =
   Mod.constraint_
@@ -1634,7 +1627,7 @@ and mapper =
     | Pstr_primitive vd when vd.pval_prim = [] ->
         begin match parse_valdecl ~global_attrs ~in_sig:false vd with
         | exception Exit -> str
-        | d -> incl (gen_decls ~global_attrs [d])
+        | d -> incl (gen_decls [d])
         end
     | Pstr_type (rec_flag, decls) ->
         let js_decls = List.filter (fun d -> has_attribute "js" d.ptype_attributes) decls in
@@ -1672,7 +1665,7 @@ let check_loc_mapper =
   let mapper = Ast_mapper.default_mapper in
   let attribute _this ({attr_name = {txt; loc}; _} as attr) =
     if is_js_attribute txt then begin
-      if is_registered_loc loc || not !check_attribute  then ()
+      if is_registered_loc loc || not !check_attribute then ()
       else error loc Spurious_attribute
     end;
     attr
