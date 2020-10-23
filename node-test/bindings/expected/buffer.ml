@@ -35,39 +35,13 @@ let (slice : t -> int -> int -> t) =
              [|(Ojs.int_to_js x13);(Ojs.int_to_js x14)|])
 let (to_string : t -> string) =
   fun x16 -> Ojs.string_of_js (Ojs.get (t_to_js x16) "toString")
-let (copy :
-  src:t ->
-    dst:t -> ?src_start:int -> ?dst_start:int -> ?dst_end:int -> unit -> int)
-  =
-  fun ~src:x17 ->
-    fun ~dst:x18 ->
-      fun ?src_start:x19 ->
-        fun ?dst_start:x20 ->
-          fun ?dst_end:x21 ->
-            fun () ->
-              Ojs.int_of_js
-                (let x26 = Ojs.get Ojs.global "Buffer" in
-                 Ojs.call (Ojs.get x26 "copy") "apply"
-                   [|x26;((let x22 =
-                             Ojs.new_obj (Ojs.get Ojs.global "Array") [||] in
-                           ignore (Ojs.call x22 "push" [|(t_to_js x17)|]);
-                           ignore (Ojs.call x22 "push" [|(t_to_js x18)|]);
-                           (match x19 with
-                            | Some x25 ->
-                                ignore
-                                  (Ojs.call x22 "push"
-                                     [|(Ojs.int_to_js x25)|])
-                            | None -> ());
-                           (match x20 with
-                            | Some x24 ->
-                                ignore
-                                  (Ojs.call x22 "push"
-                                     [|(Ojs.int_to_js x24)|])
-                            | None -> ());
-                           (match x21 with
-                            | Some x23 ->
-                                ignore
-                                  (Ojs.call x22 "push"
-                                     [|(Ojs.int_to_js x23)|])
-                            | None -> ());
-                           x22))|])
+let (copy : t -> dst:t -> start:int -> dst_start:int -> dst_end:int -> int) =
+  fun x21 ->
+    fun ~dst:x17 ->
+      fun ~start:x18 ->
+        fun ~dst_start:x19 ->
+          fun ~dst_end:x20 ->
+            Ojs.int_of_js
+              (Ojs.call (t_to_js x21) "copy"
+                 [|(t_to_js x17);(Ojs.int_to_js x18);(Ojs.int_to_js x19);(
+                   Ojs.int_to_js x20)|])
