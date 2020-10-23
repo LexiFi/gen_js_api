@@ -417,13 +417,19 @@ type mode =
   | Prototype
 
 let auto_default ~global_attrs s = function
+  | Arrow {ty_args = [{lab=Arg; att=_; typ=Name _}; _]; ty_vararg = None; unit_arg = false; ty_res = Unit _} when has_prefix ~prefix:"set_" s -> PropSet (js_name ~global_attrs (drop_prefix ~prefix:"set_" s))
   | Arrow {ty_args = [{lab=Arg; att=_; typ=Name _}]; ty_vararg = None; unit_arg = false; ty_res = Unit _} -> MethCall (js_name ~global_attrs s)
   | Arrow {ty_args = [{lab=Arg; att=_; typ=Name _}]; ty_vararg = None; unit_arg = false; ty_res = _} -> PropGet (js_name ~global_attrs s)
   | Arrow {ty_args = []; ty_vararg = None; unit_arg = true; ty_res = _} -> PropGet (js_name ~global_attrs s)
   | Arrow {ty_args = {lab=Arg; att=_; typ=Name _} :: _; ty_vararg = _; unit_arg = _; ty_res = _} -> MethCall (js_name ~global_attrs s)
   | _ -> Global (js_name ~global_attrs s)
 
+let auto_static ~global_attrs s = function
+  | Arrow {ty_args = [_]; ty_vararg = None; unit_arg = false; ty_res = Unit _} when has_prefix ~prefix:"set_" s -> PropSet (js_name ~global_attrs (drop_prefix ~prefix:"set_" s))
+  | _ -> Global (js_name ~global_attrs s)
+
 let auto_prototype ~global_attrs s = function
+  | Arrow {ty_args = [{lab=Arg; att=_; typ=Name _}; _]; ty_vararg = None; unit_arg = false; ty_res = Unit _} when has_prefix ~prefix:"set_" s -> PropSet (js_name ~global_attrs (drop_prefix ~prefix:"set_" s))
   | Arrow {ty_args = [{lab=Arg; att=_; typ=Name _}]; ty_vararg = None; unit_arg = false; ty_res = Unit _} -> MethCall (js_name ~global_attrs s)
   | Arrow {ty_args = [{lab=Arg; att=_; typ=Name _}]; ty_vararg = None; unit_arg = false; ty_res = _} -> PropGet (js_name ~global_attrs s)
   | Arrow {ty_args = {lab=Arg; att=_; typ=Name _} :: _; ty_vararg = _; unit_arg = _; ty_res = _} -> MethCall (js_name ~global_attrs s)
@@ -432,15 +438,15 @@ let auto_prototype ~global_attrs s = function
 let auto mode ~global_attrs s ty =
   if derived_from_type s ty then
     Ignore
-  else if has_prefix ~prefix:"set_" s then
-    PropSet (js_name ~global_attrs (drop_prefix ~prefix:"set_" s))
-  else if has_prefix ~prefix:"new_" s then
-    New (js_name ~capitalize:true ~global_attrs (drop_prefix ~prefix:"new_" s))
   else
-    match mode with
-    | Default -> auto_default ~global_attrs s ty
-    | Static -> Global (js_name ~global_attrs s)
-    | Prototype -> auto_prototype ~global_attrs s ty
+    begin match ty with
+    | Arrow {ty_args = _; ty_vararg = None; unit_arg = _; ty_res = Name _} when has_prefix ~prefix:"new_" s -> New (js_name ~capitalize:true ~global_attrs (drop_prefix ~prefix:"new_" s))
+    | _ ->
+        match mode with
+        | Default -> auto_default ~global_attrs s ty
+        | Static -> auto_static ~global_attrs s ty
+        | Prototype -> auto_prototype ~global_attrs s ty
+    end
 
 let auto_in_object ~global_attrs s = function
   | Arrow {ty_args = [{lab=Arg; att=_; typ=_}]; ty_vararg = None; unit_arg = false; ty_res = Unit _} when has_prefix ~prefix:"set_" s -> PropSet (js_name ~global_attrs (drop_prefix ~prefix:"set_" s))
