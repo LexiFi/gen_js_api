@@ -37,6 +37,7 @@ type error =
   | Sum_kind_args
   | Union_without_discriminator
   | Contravariant_type_parameter of string
+  | Global_object_reference_in_prototype_section
 
 exception Error of Location.t * error
 
@@ -161,6 +162,9 @@ let print_error ppf = function
       Format.fprintf ppf "js.union without way to discriminate values."
   | Contravariant_type_parameter label ->
       Format.fprintf ppf "Contravariant type parameter '%s is not allowed." label
+  | Global_object_reference_in_prototype_section ->
+      Format.fprintf ppf "Reference to the current global object are not allowed in a 'prototype' section."
+
 
 let () =
   Location.register_error_of_exn
@@ -264,7 +268,7 @@ type valdef =
   | PropSet of string
   | MethCall of string
   | Global of string
-  | New of string
+  | New of string option
   | Builder of attributes
 
 type methoddef =
@@ -417,7 +421,8 @@ type mode =
   | Prototype
 
 let auto_default ~global_attrs s = function
-  | Arrow {ty_args = _; ty_vararg = None; unit_arg = _; ty_res = Name _} when has_prefix ~prefix:"new_" s -> New (js_name ~capitalize:true ~global_attrs (drop_prefix ~prefix:"new_" s))
+  | Arrow {ty_args = _; ty_vararg = None; unit_arg = _; ty_res = Name _} when s = "create" -> New None
+  | Arrow {ty_args = _; ty_vararg = None; unit_arg = _; ty_res = Name _} when has_prefix ~prefix:"new_" s -> New (Some (js_name ~capitalize:true ~global_attrs (drop_prefix ~prefix:"new_" s)))
   | Arrow {ty_args = [_]; ty_vararg = None; unit_arg = false; ty_res = Unit _} when has_prefix ~prefix:"set_" s -> PropSet (js_name ~global_attrs (drop_prefix ~prefix:"set_" s))
   | Arrow {ty_args = [{lab=Arg; att=_; typ=Name _}; _]; ty_vararg = None; unit_arg = false; ty_res = Unit _} when has_prefix ~prefix:"set_" s -> PropSet (js_name ~global_attrs (drop_prefix ~prefix:"set_" s))
   | Arrow {ty_args = [{lab=Arg; att=_; typ=Name _}]; ty_vararg = None; unit_arg = false; ty_res = Unit _} -> MethCall (js_name ~global_attrs s)
@@ -427,7 +432,8 @@ let auto_default ~global_attrs s = function
   | _ -> Global (js_name ~global_attrs s)
 
 let auto_static ~global_attrs s = function
-  | Arrow {ty_args = _; ty_vararg = None; unit_arg = _; ty_res = Name _} when has_prefix ~prefix:"new_" s -> New (js_name ~capitalize:true ~global_attrs (drop_prefix ~prefix:"new_" s))
+  | Arrow {ty_args = _; ty_vararg = None; unit_arg = _; ty_res = Name _} when s = "create" -> New None
+  | Arrow {ty_args = _; ty_vararg = None; unit_arg = _; ty_res = Name _} when has_prefix ~prefix:"new_" s -> New (Some (js_name ~capitalize:true ~global_attrs (drop_prefix ~prefix:"new_" s)))
   | Arrow {ty_args = [_]; ty_vararg = None; unit_arg = false; ty_res = Unit _} when has_prefix ~prefix:"set_" s -> PropSet (js_name ~global_attrs (drop_prefix ~prefix:"set_" s))
   | _ -> Global (js_name ~global_attrs s)
 
@@ -471,7 +477,8 @@ let parse_attr ~global_attrs (s, loc, auto) attribute =
       "js.call", (fun () -> MethCall (opt_name ()));
       "js.global", (fun () -> Global (opt_name ()));
       "js", (fun () -> auto ());
-      "js.new", (fun () -> New (opt_name ~prefix:"new_" ~capitalize:true ()));
+      "js.create", (fun () -> New None);
+      "js.new", (fun () -> New (Some (opt_name ~prefix:"new_" ~capitalize:true ())));
       "js.builder", (fun () -> Builder global_attrs);
     ]
   in
@@ -1285,17 +1292,20 @@ and typvar_occurs_constructors loc variance label =
       | Record l -> thorough_exists (fun (_, _, _, typ) -> typvar_occurs loc variance label typ) l
     )
 
-let global_object ~global_attrs =
-  let rec traverse = function
-    | [] -> ojs_global
-    | hd :: tl ->
-        begin match get_expr_attribute "js.scope" [hd] with
-        | None -> traverse tl
-        | Some {pexp_desc=Pexp_constant (Pconst_string (prop, _)); _} -> ojs "get" [(traverse tl); str prop]
-        | Some global_object -> global_object
-        end
-  in
-  traverse global_attrs
+let global_object ~loc ~global_attrs =
+  if auto_mode ~global_attrs = Prototype then
+    error loc Global_object_reference_in_prototype_section
+  else
+    let rec traverse = function
+      | [] -> ojs_global
+      | hd :: tl ->
+          begin match get_expr_attribute "js.scope" [hd] with
+          | None -> traverse tl
+          | Some {pexp_desc=Pexp_constant (Pconst_string (prop, _)); _} -> ojs "get" [(traverse tl); str prop]
+          | Some global_object -> global_object
+          end
+    in
+    traverse global_attrs
 
 let rec gen_decls si =
   List.concat (List.map gen_decl si)
@@ -1506,11 +1516,11 @@ and gen_def ~global_object loc decl ty =
   | Global s, ty_res ->
       begin match ty_res with
       | Arrow {ty_args; ty_vararg; unit_arg; ty_res} ->
-          let this, s = select_path global_object s in
+          let this, s = select_path (global_object ~loc) s in
           let formal_args, concrete_args = prepare_args [] ty_args ty_vararg in
           let res this = ojs_call_arr (ml2js [] Js this) (str s) concrete_args in
           func formal_args unit_arg (js2ml_unit [] ty_res (res this))
-      | _ -> js2ml [] ty_res (get_path global_object s)
+      | _ -> js2ml [] ty_res (get_path (global_object ~loc) s)
       end
 
   | PropSet s,
@@ -1528,7 +1538,7 @@ and gen_def ~global_object loc decl ty =
       mkfun (fun this -> mkfun (fun arg -> res this arg))
 
   | PropSet s, Arrow {ty_args = [{lab = Arg; att = _; typ = ty_arg}]; ty_vararg = None; unit_arg = false; ty_res = Unit _} ->
-      mkfun (fun arg -> set_path global_object s (ml2js [] ty_arg arg))
+      mkfun (fun arg -> set_path (global_object ~loc) s (ml2js [] ty_arg arg))
 
   | MethCall s,
     Arrow {ty_args = {lab=Arg; att=_; typ} :: ty_args; ty_vararg; unit_arg; ty_res} ->
@@ -1544,7 +1554,14 @@ and gen_def ~global_object loc decl ty =
 
   | New name, Arrow {ty_args; ty_vararg; unit_arg; ty_res} ->
       let formal_args, concrete_args = prepare_args [] ty_args ty_vararg in
-      let res = ojs_new_obj_arr (get_path global_object name) concrete_args in
+      let res =
+        let constructor =
+          match name with
+          | None -> global_object ~loc
+          | Some name -> get_path (global_object ~loc) name
+        in
+        ojs_new_obj_arr constructor concrete_args
+      in
       func formal_args unit_arg (js2ml [] ty_res res)
 
   | Builder global_attrs, Arrow {ty_args; ty_vararg = None; unit_arg; ty_res} ->

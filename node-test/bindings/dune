@@ -17,6 +17,16 @@
  (action
   (diff expected/imports.ml imports.ml)))
 
+(rule
+ (targets errors.ml)
+ (deps errors.mli)
+ (action
+  (run gen_js_api %{deps})))
+
+(rule
+ (alias runtest)
+ (action
+  (diff expected/errors.ml errors.ml)))
 
 (rule
  (targets global.ml)

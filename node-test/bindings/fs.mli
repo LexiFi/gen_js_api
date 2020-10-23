@@ -3,7 +3,7 @@
 module[@js.prototype] Dirent : sig
   type t = Ojs.t
   val t_of_js: Ojs.t -> t
-  val js_of_t: Ojs.t -> t
+  val t_to_js: t -> Ojs.t
 
   val name: t -> string
   val is_file: t -> bool
@@ -13,7 +13,7 @@ end
 module[@js.prototype] Dir : sig
   type t = Ojs.t
   val t_of_js: Ojs.t -> t
-  val js_of_t: Ojs.t -> t
+  val t_to_js: t -> Ojs.t
 
   val path: t -> string
   val close: t -> unit Promise.t
@@ -23,7 +23,7 @@ end
 module[@js.prototype] FileHandle : sig
   type t = Ojs.t
   val t_of_js: Ojs.t -> t
-  val js_of_t: Ojs.t -> t
+  val t_to_js: t -> Ojs.t
 
   type read = {
     bytes_read: int;

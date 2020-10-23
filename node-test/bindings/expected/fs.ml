@@ -5,112 +5,105 @@ module Dirent =
     type t = Ojs.t
     let rec (t_of_js : Ojs.t -> t) = fun x2 -> x2
     and (t_to_js : t -> Ojs.t) = fun x1 -> x1
-    let (js_of_t : Ojs.t -> t) =
-      fun x3 -> t_of_js (Ojs.call Imports.fs_promises "jsOfT" [|x3|])
     let (name : t -> string) =
-      fun x4 -> Ojs.string_of_js (Ojs.get (t_to_js x4) "name")
+      fun x3 -> Ojs.string_of_js (Ojs.get (t_to_js x3) "name")
     let (is_file : t -> bool) =
-      fun x5 -> Ojs.bool_of_js (Ojs.get (t_to_js x5) "isFile")
+      fun x4 -> Ojs.bool_of_js (Ojs.get (t_to_js x4) "isFile")
     let (is_directory : t -> bool) =
-      fun x6 -> Ojs.bool_of_js (Ojs.get (t_to_js x6) "isDirectory")
+      fun x5 -> Ojs.bool_of_js (Ojs.get (t_to_js x5) "isDirectory")
   end
 module Dir =
   struct
     type t = Ojs.t
-    let rec (t_of_js : Ojs.t -> t) = fun x8 -> x8
-    and (t_to_js : t -> Ojs.t) = fun x7 -> x7
-    let (js_of_t : Ojs.t -> t) =
-      fun x9 -> t_of_js (Ojs.call Imports.fs_promises "jsOfT" [|x9|])
+    let rec (t_of_js : Ojs.t -> t) = fun x7 -> x7
+    and (t_to_js : t -> Ojs.t) = fun x6 -> x6
     let (path : t -> string) =
-      fun x10 -> Ojs.string_of_js (Ojs.get (t_to_js x10) "path")
+      fun x8 -> Ojs.string_of_js (Ojs.get (t_to_js x8) "path")
     let (close : t -> unit Promise.t) =
-      fun x11 ->
-        Promise.t_of_js Ojs.unit_of_js (Ojs.get (t_to_js x11) "close")
+      fun x9 -> Promise.t_of_js Ojs.unit_of_js (Ojs.get (t_to_js x9) "close")
     let (read : t -> Dirent.t option Promise.t) =
-      fun x13 ->
-        Promise.t_of_js (fun x14 -> Ojs.option_of_js Dirent.t_of_js x14)
-          (Ojs.get (t_to_js x13) "read")
+      fun x11 ->
+        Promise.t_of_js (fun x12 -> Ojs.option_of_js Dirent.t_of_js x12)
+          (Ojs.get (t_to_js x11) "read")
   end
 module FileHandle =
   struct
     type t = Ojs.t
-    let rec (t_of_js : Ojs.t -> t) = fun x17 -> x17
-    and (t_to_js : t -> Ojs.t) = fun x16 -> x16
-    let (js_of_t : Ojs.t -> t) =
-      fun x18 -> t_of_js (Ojs.call Imports.fs_promises "jsOfT" [|x18|])
+    let rec (t_of_js : Ojs.t -> t) = fun x15 -> x15
+    and (t_to_js : t -> Ojs.t) = fun x14 -> x14
     type read = {
       bytes_read: int ;
       buffer: Buffer.t }
     let rec (read_of_js : Ojs.t -> read) =
-      fun x20 ->
+      fun x17 ->
         {
-          bytes_read = (Ojs.int_of_js (Ojs.get x20 "bytesRead"));
-          buffer = (Buffer.t_of_js (Ojs.get x20 "buffer"))
+          bytes_read = (Ojs.int_of_js (Ojs.get x17 "bytesRead"));
+          buffer = (Buffer.t_of_js (Ojs.get x17 "buffer"))
         }
     and (read_to_js : read -> Ojs.t) =
-      fun x19 ->
+      fun x16 ->
         Ojs.obj
-          [|("bytesRead", (Ojs.int_to_js x19.bytes_read));("buffer",
+          [|("bytesRead", (Ojs.int_to_js x16.bytes_read));("buffer",
                                                             (Buffer.t_to_js
-                                                               x19.buffer))|]
+                                                               x16.buffer))|]
     let (append_file : t -> Buffer.t -> unit Promise.t) =
-      fun x22 ->
-        fun x21 ->
+      fun x19 ->
+        fun x18 ->
           Promise.t_of_js Ojs.unit_of_js
-            (Ojs.call (t_to_js x22) "appendFile" [|(Buffer.t_to_js x21)|])
+            (Ojs.call (t_to_js x19) "appendFile" [|(Buffer.t_to_js x18)|])
     let (read : t -> Buffer.t -> int -> int -> int -> read Promise.t) =
-      fun x28 ->
-        fun x24 ->
-          fun x25 ->
-            fun x26 ->
-              fun x27 ->
+      fun x25 ->
+        fun x21 ->
+          fun x22 ->
+            fun x23 ->
+              fun x24 ->
                 Promise.t_of_js read_of_js
-                  (Ojs.call (t_to_js x28) "read"
-                     [|(Buffer.t_to_js x24);(Ojs.int_to_js x25);(Ojs.int_to_js
-                                                                   x26);(
-                       Ojs.int_to_js x27)|])
+                  (Ojs.call (t_to_js x25) "read"
+                     [|(Buffer.t_to_js x21);(Ojs.int_to_js x22);(Ojs.int_to_js
+                                                                   x23);(
+                       Ojs.int_to_js x24)|])
     let (chmod : t -> int -> unit Promise.t) =
-      fun x31 ->
-        fun x30 ->
+      fun x28 ->
+        fun x27 ->
           Promise.t_of_js Ojs.unit_of_js
-            (Ojs.call (t_to_js x31) "chmod" [|(Ojs.int_to_js x30)|])
+            (Ojs.call (t_to_js x28) "chmod" [|(Ojs.int_to_js x27)|])
     let (chmown : t -> uid:int -> gid:int -> unit Promise.t) =
-      fun x35 ->
-        fun ~uid:x33 ->
-          fun ~gid:x34 ->
+      fun x32 ->
+        fun ~uid:x30 ->
+          fun ~gid:x31 ->
             Promise.t_of_js Ojs.unit_of_js
-              (Ojs.call (t_to_js x35) "chmown"
-                 [|(Ojs.int_to_js x33);(Ojs.int_to_js x34)|])
+              (Ojs.call (t_to_js x32) "chmown"
+                 [|(Ojs.int_to_js x30);(Ojs.int_to_js x31)|])
     let (close : t -> unit Promise.t) =
-      fun x37 ->
-        Promise.t_of_js Ojs.unit_of_js (Ojs.get (t_to_js x37) "close")
+      fun x34 ->
+        Promise.t_of_js Ojs.unit_of_js (Ojs.get (t_to_js x34) "close")
     let (datasync : t -> unit Promise.t) =
-      fun x39 ->
-        Promise.t_of_js Ojs.unit_of_js (Ojs.get (t_to_js x39) "datasync")
+      fun x36 ->
+        Promise.t_of_js Ojs.unit_of_js (Ojs.get (t_to_js x36) "datasync")
     let (fd : t -> int) =
-      fun x41 -> Ojs.int_of_js (Ojs.get (t_to_js x41) "fd")
+      fun x38 -> Ojs.int_of_js (Ojs.get (t_to_js x38) "fd")
   end
 let (readdir : string -> string list Promise.t) =
-  fun x42 ->
-    Promise.t_of_js (fun x43 -> Ojs.list_of_js Ojs.string_of_js x43)
-      (Ojs.call Imports.fs_promises "readdir" [|(Ojs.string_to_js x42)|])
+  fun x39 ->
+    Promise.t_of_js (fun x40 -> Ojs.list_of_js Ojs.string_of_js x40)
+      (Ojs.call Imports.fs_promises "readdir" [|(Ojs.string_to_js x39)|])
 let (open_ : string -> flag:string -> FileHandle.t Promise.t) =
-  fun x45 ->
-    fun ~flag:x46 ->
+  fun x42 ->
+    fun ~flag:x43 ->
       Promise.t_of_js FileHandle.t_of_js
         (Ojs.call Imports.fs_promises "open"
-           [|(Ojs.string_to_js x45);(Ojs.string_to_js x46)|])
+           [|(Ojs.string_to_js x42);(Ojs.string_to_js x43)|])
 let (rmdir : string -> unit Promise.t) =
-  fun x48 ->
+  fun x45 ->
     Promise.t_of_js Ojs.unit_of_js
-      (Ojs.call Imports.fs_promises "rmdir" [|(Ojs.string_to_js x48)|])
+      (Ojs.call Imports.fs_promises "rmdir" [|(Ojs.string_to_js x45)|])
 let (rename : string -> string -> unit Promise.t) =
-  fun x50 ->
-    fun x51 ->
+  fun x47 ->
+    fun x48 ->
       Promise.t_of_js Ojs.unit_of_js
         (Ojs.call Imports.fs_promises "rename"
-           [|(Ojs.string_to_js x50);(Ojs.string_to_js x51)|])
+           [|(Ojs.string_to_js x47);(Ojs.string_to_js x48)|])
 let (unlink : string -> unit Promise.t) =
-  fun x53 ->
+  fun x50 ->
     Promise.t_of_js Ojs.unit_of_js
-      (Ojs.call Imports.fs_promises "unlink" [|(Ojs.string_to_js x53)|])
+      (Ojs.call Imports.fs_promises "unlink" [|(Ojs.string_to_js x50)|])
