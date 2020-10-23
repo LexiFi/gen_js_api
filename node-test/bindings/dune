@@ -13,11 +13,21 @@
   (run gen_js_api %{deps})))
 
 (rule
+ (alias runtest)
+ (action
+  (diff expected/imports.ml imports.ml)))
+
+
+(rule
  (targets global.ml)
  (deps global.mli)
  (action
   (run gen_js_api %{deps})))
 
+(rule
+ (alias runtest)
+ (action
+  (diff expected/global.ml global.ml)))
 
 (rule
  (targets promise.ml)
@@ -26,10 +36,31 @@
   (run gen_js_api %{deps})))
 
 (rule
+ (alias runtest)
+ (action
+  (diff expected/promise.ml promise.ml)))
+
+(rule
+ (targets buffer.ml)
+ (deps buffer.mli)
+ (action
+  (run gen_js_api %{deps})))
+
+(rule
+ (alias runtest)
+ (action
+  (diff expected/buffer.ml buffer.ml)))
+
+(rule
  (targets fs.ml)
  (deps fs.mli)
  (action
   (run gen_js_api %{deps})))
+
+(rule
+ (alias runtest)
+ (action
+  (diff expected/fs.ml fs.ml)))
 
 (rule
  (targets path.ml)
@@ -38,13 +69,28 @@
   (run gen_js_api %{deps})))
 
 (rule
+ (alias runtest)
+ (action
+  (diff expected/path.ml path.ml)))
+
+(rule
  (targets process.ml)
  (deps process.mli)
  (action
   (run gen_js_api %{deps})))
 
 (rule
+ (alias runtest)
+ (action
+  (diff expected/process.ml process.ml)))
+
+(rule
  (targets console.ml)
  (deps console.mli)
  (action
   (run gen_js_api %{deps})))
+
+(rule
+ (alias runtest)
+ (action
+  (diff expected/console.ml console.ml)))

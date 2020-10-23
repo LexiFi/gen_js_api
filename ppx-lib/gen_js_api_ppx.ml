@@ -417,6 +417,8 @@ type mode =
   | Prototype
 
 let auto_default ~global_attrs s = function
+  | Arrow {ty_args = _; ty_vararg = None; unit_arg = _; ty_res = Name _} when has_prefix ~prefix:"new_" s -> New (js_name ~capitalize:true ~global_attrs (drop_prefix ~prefix:"new_" s))
+  | Arrow {ty_args = [_]; ty_vararg = None; unit_arg = false; ty_res = Unit _} when has_prefix ~prefix:"set_" s -> PropSet (js_name ~global_attrs (drop_prefix ~prefix:"set_" s))
   | Arrow {ty_args = [{lab=Arg; att=_; typ=Name _}; _]; ty_vararg = None; unit_arg = false; ty_res = Unit _} when has_prefix ~prefix:"set_" s -> PropSet (js_name ~global_attrs (drop_prefix ~prefix:"set_" s))
   | Arrow {ty_args = [{lab=Arg; att=_; typ=Name _}]; ty_vararg = None; unit_arg = false; ty_res = Unit _} -> MethCall (js_name ~global_attrs s)
   | Arrow {ty_args = [{lab=Arg; att=_; typ=Name _}]; ty_vararg = None; unit_arg = false; ty_res = _} -> PropGet (js_name ~global_attrs s)
@@ -425,6 +427,7 @@ let auto_default ~global_attrs s = function
   | _ -> Global (js_name ~global_attrs s)
 
 let auto_static ~global_attrs s = function
+  | Arrow {ty_args = _; ty_vararg = None; unit_arg = _; ty_res = Name _} when has_prefix ~prefix:"new_" s -> New (js_name ~capitalize:true ~global_attrs (drop_prefix ~prefix:"new_" s))
   | Arrow {ty_args = [_]; ty_vararg = None; unit_arg = false; ty_res = Unit _} when has_prefix ~prefix:"set_" s -> PropSet (js_name ~global_attrs (drop_prefix ~prefix:"set_" s))
   | _ -> Global (js_name ~global_attrs s)
 
@@ -439,14 +442,10 @@ let auto mode ~global_attrs s ty =
   if derived_from_type s ty then
     Ignore
   else
-    begin match ty with
-    | Arrow {ty_args = _; ty_vararg = None; unit_arg = _; ty_res = Name _} when has_prefix ~prefix:"new_" s -> New (js_name ~capitalize:true ~global_attrs (drop_prefix ~prefix:"new_" s))
-    | _ ->
-        match mode with
-        | Default -> auto_default ~global_attrs s ty
-        | Static -> auto_static ~global_attrs s ty
-        | Prototype -> auto_prototype ~global_attrs s ty
-    end
+    match mode with
+    | Default -> auto_default ~global_attrs s ty
+    | Static -> auto_static ~global_attrs s ty
+    | Prototype -> auto_prototype ~global_attrs s ty
 
 let auto_in_object ~global_attrs s = function
   | Arrow {ty_args = [{lab=Arg; att=_; typ=_}]; ty_vararg = None; unit_arg = false; ty_res = Unit _} when has_prefix ~prefix:"set_" s -> PropSet (js_name ~global_attrs (drop_prefix ~prefix:"set_" s))
@@ -514,9 +513,12 @@ let rec parse_sig_item ~global_attrs rest s =
       parse_valdecl ~global_attrs ~in_sig:true vd :: rest ~global_attrs
   | Psig_type (rec_flag, decls) ->
       Type (rec_flag, decls, global_attrs) :: rest ~global_attrs
-  | Psig_module {pmd_name; pmd_type = {pmty_desc = Pmty_signature si; pmty_attributes; pmty_loc = _}; pmd_loc = _; pmd_attributes = _} ->
-      let global_attrs = pmty_attributes @ global_attrs in
-      Module (pmd_name.txt, parse_sig ~global_attrs si) :: rest ~global_attrs
+  | Psig_module {pmd_name; pmd_type = {pmty_desc = Pmty_signature si; pmty_attributes; pmty_loc = _}; pmd_loc = _; pmd_attributes} ->
+      (let global_attrs =
+         push_module_attributes pmd_name.txt pmty_attributes
+           (push_module_attributes pmd_name.txt pmd_attributes global_attrs)
+       in
+       Module (pmd_name.txt, parse_sig ~global_attrs si)) :: rest ~global_attrs
   | Psig_class cs -> Class (List.map (parse_class_decl ~global_attrs) cs) :: rest ~global_attrs
   | Psig_attribute ({attr_payload = PStr str; _} as attribute) when filter_attr_name "js.implem" attribute -> Implem str :: rest ~global_attrs
   | Psig_attribute attribute ->
@@ -525,6 +527,15 @@ let rec parse_sig_item ~global_attrs rest s =
   | Psig_open descr -> Open descr :: rest ~global_attrs
   | _ ->
       error s.psig_loc Cannot_parse_sigitem
+
+and push_module_attributes module_name module_attributes global_attrs =
+  let rec rev_append acc = function
+    | ({attr_name = {txt = "js.scope"; _}; attr_payload = PStr [];  _}) as attribute :: tl ->
+        rev_append ({ attribute with attr_payload = PStr [Str.eval (Exp.constant (Pconst_string (module_name, None)))] } :: acc) tl
+    |  hd :: tl -> rev_append (hd :: acc) tl
+    | [] -> acc
+  in
+  rev_append global_attrs (List.rev module_attributes)
 
 and parse_sig ~global_attrs = function
   | [] -> []
@@ -701,7 +712,6 @@ let split sep s =
 
 let ojs_global = ojs_var "global"
 
-
 let select_path o s =
   let rec select_path o = function
     | [] -> assert false
@@ -816,8 +826,8 @@ let rec js2ml ctx ty exp =
       let formal_args, concrete_args = prepare_args ctx ty_args ty_vararg in
       let res = ojs_apply_arr exp concrete_args in
       func formal_args unit_arg (js2ml_unit ctx ty_res res)
-  | Unit loc ->
-      error loc (Not_supported_here "Unit")
+  | Unit _ ->
+      app (var "Ojs.unit_of_js") (nolabel [exp]) false
   | Variant {location; global_attrs; attributes; constrs} ->
       js2ml_of_variant ctx ~variant:true location ~global_attrs attributes constrs exp
   | Tuple typs ->
@@ -989,8 +999,7 @@ and ml2js ctx ty exp =
       let res = app exp concrete_args unit_arg in
       let f = func [Nolabel, arguments] false (ml2js_unit ctx ty_res res) in
       ojs "fun_to_js_args" [f]
-  | Unit loc ->
-      error loc (Not_supported_here "Unit")
+  | Unit _ -> app (var "Ojs.unit_to_js") (nolabel [exp]) false
   | Variant {location; global_attrs; attributes; constrs} ->
       ml2js_of_variant ctx ~variant:true location ~global_attrs attributes constrs exp
   | Tuple typs ->
