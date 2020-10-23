@@ -18,7 +18,7 @@ val set: t -> int -> int -> unit[@@js.custom
   let set buf index value =
     Ojs.array_set buf index ([%js.of:int] value)
   ]
-val write: t -> string -> unit
+val write: t -> string -> int
 val slice: t -> int -> int -> t
 val to_string: t -> string
 val copy: t -> dst:t -> start:int -> dst_start:int -> dst_end:int -> int

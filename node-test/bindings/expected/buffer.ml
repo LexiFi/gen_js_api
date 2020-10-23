@@ -22,10 +22,11 @@ let (length : t -> int) =
 let get buf index =
   (fun x8 -> Ojs.option_of_js Ojs.int_of_js x8) (Ojs.array_get buf index)
 let set buf index value = Ojs.array_set buf index (Ojs.int_to_js value)
-let (write : t -> string -> unit) =
+let (write : t -> string -> int) =
   fun x12 ->
     fun x11 ->
-      ignore (Ojs.call (t_to_js x12) "write" [|(Ojs.string_to_js x11)|])
+      Ojs.int_of_js
+        (Ojs.call (t_to_js x12) "write" [|(Ojs.string_to_js x11)|])
 let (slice : t -> int -> int -> t) =
   fun x15 ->
     fun x13 ->

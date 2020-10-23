@@ -41,8 +41,6 @@ end
 
 [@@@js.static]
 val readdir: string -> string list Promise.t
-
-
 val open_: string -> flag:string -> FileHandle.t Promise.t
 val rmdir: string -> unit Promise.t
 val rename: string -> string -> unit Promise.t
