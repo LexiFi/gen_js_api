@@ -1579,13 +1579,13 @@ and module_expr_rewriter ~loc ~attrs sg =
 
 and js_to_rewriter ~loc ty =
   let e' = with_default_loc {loc with loc_ghost = true }
-      (fun () -> js2ml_fun (parse_typ ~global_attrs:[] ty))
+      (fun () -> js2ml_fun [] (parse_typ ~global_attrs:[] ty))
   in
   { e' with pexp_loc = loc }
 
 and js_of_rewriter ~loc ty =
   let e' = with_default_loc {loc with loc_ghost = true}
-      (fun () -> ml2js_fun (parse_typ ~global_attrs:[] ty))
+      (fun () -> ml2js_fun [] (parse_typ ~global_attrs:[] ty))
   in
   { e' with pexp_loc = loc  }
 

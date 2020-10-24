@@ -292,8 +292,9 @@ let () =
   test_flatten (`B 42);
   test_flatten (`C "hello");
   test_flatten (`D (42, "foo"))
-
+include [%js:
 val make_string : 'a -> string [@@js.global "String"]
+]
 
 let () =
   Console3.log (make_string 1234);
@@ -301,8 +302,10 @@ let () =
   Console3.log (make_string ["list"]);
   Console3.log (make_string [|"array"|])
 
+include [%js:
 val test_typvars: 'a -> 'a * 'a
     [@@js.global "test_typvars"]
+]
 
 let () =
   Console3.log (test_typvars `A);
