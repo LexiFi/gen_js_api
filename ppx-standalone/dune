@@ -2,7 +2,7 @@
   (names gen_js_api)
   (public_names gen_js_api)
   (package gen_js_api)
-  (libraries compiler-libs.common ocaml-migrate-parsetree gen_js_api.ppx-lib))
+  (libraries compiler-libs.common ocaml-migrate-parsetree gen_js_api.lib))
 
 (install
   (section libexec)

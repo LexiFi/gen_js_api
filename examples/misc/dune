@@ -2,7 +2,7 @@
   (names test_jquery)
   (libraries ojs)
   (link_flags -no-check-prims)
-  (preprocess (pps gen_js_api.ppx))
+  (preprocess (pps gen_js_api))
   (modes js)
 )
 

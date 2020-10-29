@@ -22,11 +22,11 @@
  (action
   (diff expected/issues.ml issues.ml.result)))
 
-
 (rule
  (targets binding_automatic.ml)
  (deps binding_automatic.mli)
- (action (run %{bin:gen_js_api} %{deps} -o %{targets})))
+ (package gen_js_api)
+ (action (run gen_js_api %{deps} -o %{targets})))
 
 (rule
  (alias runtest)
@@ -37,7 +37,8 @@
 (rule
  (targets binding_explicitly_automatic.ml)
  (deps binding_explicitly_automatic.mli)
- (action (run %{bin:gen_js_api} %{deps} -o %{targets})))
+ (package gen_js_api)
+ (action (run gen_js_api %{deps} -o %{targets})))
 
 (rule
  (alias runtest)
@@ -48,7 +49,8 @@
 (rule
  (targets binding_manual.ml)
  (deps binding_manual.mli)
- (action (run %{bin:gen_js_api} %{deps} -o %{targets})))
+ (package gen_js_api)
+ (action (run gen_js_api %{deps} -o %{targets})))
 
 (rule
  (alias runtest)
@@ -59,7 +61,7 @@
 (rule
  (targets binding.ml)
  (deps binding.mli)
- (action (run %{bin:gen_js_api} %{deps} -o %{targets})))
+ (action (run gen_js_api %{deps} -o %{targets})))
 
 (rule
  (alias runtest)
@@ -70,6 +72,6 @@
 (library
  (name test_library)
  (libraries ojs)
- (preprocess (pps gen_js_api.ppx))
+ (preprocess (pps gen_js_api))
  (modes byte)
  (modules binding_automatic binding_manual extension issues))
