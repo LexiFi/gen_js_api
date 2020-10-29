@@ -25,7 +25,6 @@
 (rule
  (targets binding_automatic.ml)
  (deps binding_automatic.mli)
- (package gen_js_api)
  (action (run gen_js_api %{deps} -o %{targets})))
 
 (rule
@@ -37,7 +36,6 @@
 (rule
  (targets binding_explicitly_automatic.ml)
  (deps binding_explicitly_automatic.mli)
- (package gen_js_api)
  (action (run gen_js_api %{deps} -o %{targets})))
 
 (rule
@@ -49,7 +47,6 @@
 (rule
  (targets binding_manual.ml)
  (deps binding_manual.mli)
- (package gen_js_api)
  (action (run gen_js_api %{deps} -o %{targets})))
 
 (rule
@@ -75,3 +72,10 @@
  (preprocess (pps gen_js_api))
  (modes byte)
  (modules binding_automatic binding_manual extension issues))
+
+(rule
+ (alias runtest)
+ (package gen_js_api)
+ (deps test_library.cma)
+ (action (echo "Successfully compile test_library"))
+)

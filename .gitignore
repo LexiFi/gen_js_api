@@ -1,4 +1,5 @@
+gen_js_api.install
+ojs.install
 *.merlin
 _build
-gen_js_api.install
 _opam
