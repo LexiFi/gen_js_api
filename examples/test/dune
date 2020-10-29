@@ -1,15 +1,14 @@
 (executables
   (names main)
-  (libraries gen_js_api)
+  (libraries ojs)
   (link_flags -no-check-prims)
-  (preprocess (pps gen_js_api.ppx))
-  (modes js)
-)
+  (preprocess (pps gen_js_api))
+  (modes js))
 
 (rule
   (targets test_bindings.ml)
   (deps test_bindings.mli)
-  (action (run %{bin:gen_js_api} %{deps})))
+  (action (run gen_js_api %{deps})))
 
 (rule
   (targets main.js)

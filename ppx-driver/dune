@@ -1,7 +1,7 @@
 (library
   (name gen_js_api_ppx_driver)
-  (public_name gen_js_api.ppx)
+  (public_name gen_js_api)
   (synopsis "Syntactic support for gen_js_api")
-  (libraries ocaml-migrate-parsetree gen_js_api.ppx-lib ppxlib.ast ppxlib)
+  (libraries ocaml-migrate-parsetree gen_js_api.lib ppxlib.ast ppxlib)
   (kind ppx_rewriter)
   (preprocess no_preprocessing))
