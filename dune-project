@@ -34,5 +34,5 @@ gen_js_api is to be used with the js_of_ocaml compiler.
  (depends
   (ocaml (>= 4.08))
   (ppxlib (>= 0.9))
-  (ocaml-migrate-parsetree (and (>= 1.6.0) (<= 2.0.0)))
+  (ocaml-migrate-parsetree (and (>= 1.6.0) (< 2.0.0)))
   ojs))
