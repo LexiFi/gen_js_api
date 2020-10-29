@@ -22,11 +22,12 @@ depends: [
   "dune" {>= "2.0"}
   "ocaml" {>= "4.08"}
   "ppxlib" {>= "0.9"}
-  "ocaml-migrate-parsetree" {>= "1.6.0" & <= "2.0.0"}
+  "ocaml-migrate-parsetree" {>= "1.6.0" & < "2.0.0"}
+  "js_of_ocaml-compiler" {with-test}
   "ojs"
 ]
 conflicts: [
-  "js_of_compiler-compiler" {< "3.0.0"}
+  "js_of_ocaml-compiler" {< "3.0.0"}
 ]
 build: [
   ["dune" "subst"] {pinned}
