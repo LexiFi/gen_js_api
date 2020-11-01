@@ -266,15 +266,6 @@ Some conventions, based on the declared value names and their types,
 allow to inter implicitly the `[@@js.xxx]` attributes on value
 declarations in most cases.
 
-There are three modes that controls the heuristic:
-  1. The *default* mode,
-  2. The *static* mode,
-  3. And the *prototype* mode.
-
-The signature attributes [@@@js.auto], [@@@js.prototype] and
-[@@@js.prototype] are used to switch mode inside a module.
-All toplevel modules start in the *default* mode.
-
 Note that in all modes the declaration of conversion functions generated
 from types are ignored in order to expose the generated functions.
 
@@ -286,8 +277,6 @@ or the form
 ```ocaml
 val τ_of_js: ... -> τ
 ```
-
-### Rules for the *default* mode
 
 The rules are applied in order:
 
@@ -327,56 +316,3 @@ The rules are applied in order:
 
 - Otherwise, the declaration is assumed to be a `[@@js.global]` value.
   This applies in particular for any non-functional type.
-
-### Rules for the *static* mode
-
-This mode is used to generate bindings depending on the "current"
-global object (see the Scope section).
-
-- If the value is a function whose result is a named type `... -> τ`
-  and the name is `create`, then the declaration is assumed to
-  be a `[@@js.create]` object creation.
-
-- If the value is a function whose result is a named type `... -> τ`
-  and its name starts with `new_`, then the declaration is assumed to
-  be a `[@@js.new]` object creation (on the class whose name is
-  obtained by dropping the `new_`prefix).
-
-- If the value is a function with a single argument `τ1 -> unit` and
-  its name starts with `set_`, then the declaration is assumed to be a
-  `[@@js.set]` global setter (whose name is obtained by dropping the
-  `set_` prefix).
-
-- Otherwise, the declaration is assumed to be a `[@@js.global]` value.
-
-### Rules for the *prototype* mode
-
-In a *prototype* section, the generated code is not allowed to depend
-on the current global object (or an error will be emitted). Therefore
-such sections are guaranteed not to depend on the current scope.
-
-The rule in this mode are:
-
-- If the value is a function whose result is a named type `... -> τ`
-  and its name starts with `new_`, then the declaration is assumed to
-  be a `[@@js.new]` object creation (on the class whose name is
-  obtained by dropping the `new_`prefix).
-
-- If the value is a function with two arguments `τ1 -> τ2 -> unit` and
-  its name starts with `set_`, then the declaration is assumed to be a
-  `[@@js.set]` property setter (on the property whose name is obtained
-  by dropping the `set_` prefix).
-
-- If the value is a function with a single argument (named type) `τ ->
-  unit`, then the declaration is assumed to be a `[@@js.call]` method
-  call.
-
-- If the value is a function with a single argument (named type) `τ ->
-  τ2` (and `τ2` is not `unit`), then the declaration is assumed to be
-  a `[@@js.get]` property getter.
-
-- If the value is a function whose first argument is a named type `τ
-  -> ...`, then the definition is assumed to be a `[@@js.call]` method
-  call.
-
-- Otherwise, an error will be emitted.
