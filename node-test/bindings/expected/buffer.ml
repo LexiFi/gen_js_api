@@ -35,7 +35,7 @@ let (slice : t -> int -> int -> t) =
           (Ojs.call (t_to_js x15) "slice"
              [|(Ojs.int_to_js x13);(Ojs.int_to_js x14)|])
 let (to_string : t -> string) =
-  fun x16 -> Ojs.string_of_js (Ojs.get (t_to_js x16) "toString")
+  fun x16 -> Ojs.string_of_js (Ojs.call (t_to_js x16) "toString" [||])
 let (copy : t -> dst:t -> start:int -> dst_start:int -> dst_end:int -> int) =
   fun x21 ->
     fun ~dst:x17 ->

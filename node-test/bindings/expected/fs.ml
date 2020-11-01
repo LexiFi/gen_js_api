@@ -8,9 +8,9 @@ module Dirent =
     let (name : t -> string) =
       fun x3 -> Ojs.string_of_js (Ojs.get (t_to_js x3) "name")
     let (is_file : t -> bool) =
-      fun x4 -> Ojs.bool_of_js (Ojs.get (t_to_js x4) "isFile")
+      fun x4 -> Ojs.bool_of_js (Ojs.call (t_to_js x4) "isFile" [||])
     let (is_directory : t -> bool) =
-      fun x5 -> Ojs.bool_of_js (Ojs.get (t_to_js x5) "isDirectory")
+      fun x5 -> Ojs.bool_of_js (Ojs.call (t_to_js x5) "isDirectory" [||])
   end
 module Dir =
   struct
@@ -20,11 +20,12 @@ module Dir =
     let (path : t -> string) =
       fun x8 -> Ojs.string_of_js (Ojs.get (t_to_js x8) "path")
     let (close : t -> unit Promise.t) =
-      fun x9 -> Promise.t_of_js Ojs.unit_of_js (Ojs.get (t_to_js x9) "close")
+      fun x9 ->
+        Promise.t_of_js Ojs.unit_of_js (Ojs.call (t_to_js x9) "close" [||])
     let (read : t -> Dirent.t option Promise.t) =
       fun x11 ->
         Promise.t_of_js (fun x12 -> Ojs.option_of_js Dirent.t_of_js x12)
-          (Ojs.get (t_to_js x11) "read")
+          (Ojs.call (t_to_js x11) "read" [||])
   end
 module FileHandle =
   struct
@@ -76,10 +77,11 @@ module FileHandle =
                  [|(Ojs.int_to_js x30);(Ojs.int_to_js x31)|])
     let (close : t -> unit Promise.t) =
       fun x34 ->
-        Promise.t_of_js Ojs.unit_of_js (Ojs.get (t_to_js x34) "close")
+        Promise.t_of_js Ojs.unit_of_js (Ojs.call (t_to_js x34) "close" [||])
     let (datasync : t -> unit Promise.t) =
       fun x36 ->
-        Promise.t_of_js Ojs.unit_of_js (Ojs.get (t_to_js x36) "datasync")
+        Promise.t_of_js Ojs.unit_of_js
+          (Ojs.call (t_to_js x36) "datasync" [||])
     let (fd : t -> int) =
       fun x38 -> Ojs.int_of_js (Ojs.get (t_to_js x38) "fd")
   end
