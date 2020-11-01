@@ -15,7 +15,7 @@ to gen_js_api to enable the ppx mode:
 or with findlib:
 
 ```
-  $ ocamlfind ocamlc -c -package gen_js_api.ppx my_prog.ml
+  $ ocamlfind ocamlc -c -package gen_js_api my_prog.ml
 ```
 
 

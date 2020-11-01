@@ -2,7 +2,7 @@
   (name test)
   (libraries gen_js_api node)
   (link_flags -no-check-prims)
-  (preprocess (pps gen_js_api.ppx))
+  (preprocess (pps gen_js_api))
   (modes js)
 )
 
