@@ -227,10 +227,12 @@ Supported forms
 Scope
 -----
 
-The signature attribute `[@@@js.scope "property"]` change the reference to the current global
-object by following the property provided as payload. They can be nested.
+The signature attribute `[@@@js.scope "property"]` changes the reference to the current global
+object by following the property provided as payload. Nested scopes work as if the
+access path were composed by concatenation of all the names indicated by [@js.scope]
+attribute, separated by a '.'.
 
-The simple use case is to binds values packed in singleton objects or classes.
+A simple use case is to bind to Javascript values packed in singleton objects or classes.
 
 For instance,
 
@@ -252,7 +254,7 @@ When attached directly to a module, the payload of `[@@js.scope]`
 may be omitted, it will be implicitly filled with the module name
 (preserving the capitalization !).
 
-Before version 1.0.7, the presence of `[@@js.scope]` change
+Before version 1.0.7, the presence of `[@@js.scope]` used to change
 the behavior of automatic bindings. It is no longer the case.
 
 An experimental feature also allows to pass an expression of type `Ojs.t` as
@@ -263,7 +265,7 @@ Automatic binding
 -----------------
 
 Some conventions, based on the declared value names and their types,
-allow to inter implicitly the `[@@js.xxx]` attributes on value
+allow to infer implicitly the `[@@js.xxx]` attributes on value
 declarations in most cases.
 
 Note that in all modes the declaration of conversion functions generated
