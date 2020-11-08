@@ -2,7 +2,7 @@
 (* See the attached LICENSE file.                                         *)
 (* Copyright 2015 by LexiFi.                                              *)
 
-open Migrate_parsetree.Ast_408
+open Migrate_parsetree.Ast_411
 
 let () =
   try

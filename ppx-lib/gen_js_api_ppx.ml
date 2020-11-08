@@ -2,7 +2,7 @@
 (* See the attached LICENSE file.                                         *)
 (* Copyright 2015 by LexiFi.                                              *)
 
-open Migrate_parsetree.Ast_408
+open Migrate_parsetree.Ast_411
 
 open Location
 open Asttypes
@@ -94,7 +94,7 @@ let str_of_payload loc = function
   | _ -> error loc Structure_expected
 
 let id_of_expr = function
-  | {pexp_desc=Pexp_constant (Pconst_string (s, _)); _} -> s
+  | {pexp_desc=Pexp_constant (Pconst_string (s, _, _)); _} -> s
   | e -> error e.pexp_loc Identifier_expected
 
 let get_expr_attribute key attrs =
@@ -199,7 +199,7 @@ let get_js_constr ~global_attrs name attributes =
   | None -> `String (js_name ~global_attrs name)
   | Some (k, v) ->
       begin match (expr_of_payload k.loc v).pexp_desc with
-      | Pexp_constant (Pconst_string (s, _)) -> `String s
+      | Pexp_constant (Pconst_string (s, _, _)) -> `String s
       | Pexp_constant (Pconst_integer (n, _)) -> `Int (int_of_string n)
       | _ -> error k.loc Invalid_expression
       end
@@ -482,12 +482,12 @@ let rec parse_sig_item ~global_attrs rest s =
       parse_valdecl ~global_attrs ~in_sig:true vd :: rest ~global_attrs
   | Psig_type (rec_flag, decls) ->
       Type (rec_flag, decls, global_attrs) :: rest ~global_attrs
-  | Psig_module {pmd_name; pmd_type = {pmty_desc = Pmty_signature si; pmty_attributes; pmty_loc = _}; pmd_loc = _; pmd_attributes} ->
+  | Psig_module {pmd_name = { txt = Some name; _}; pmd_type = {pmty_desc = Pmty_signature si; pmty_attributes; pmty_loc = _}; pmd_loc = _; pmd_attributes} ->
       (let global_attrs =
-         push_module_attributes pmd_name.txt pmty_attributes
-           (push_module_attributes pmd_name.txt pmd_attributes global_attrs)
+         push_module_attributes name pmty_attributes
+           (push_module_attributes name pmd_attributes global_attrs)
        in
-       Module (pmd_name.txt, parse_sig ~global_attrs si)) :: rest ~global_attrs
+       Module (name, parse_sig ~global_attrs si)) :: rest ~global_attrs
   | Psig_class cs -> Class (List.map (parse_class_decl ~global_attrs) cs) :: rest ~global_attrs
   | Psig_attribute ({attr_payload = PStr str; _} as attribute) when filter_attr_name "js.implem" attribute -> Implem str :: rest ~global_attrs
   | Psig_attribute attribute ->
@@ -500,7 +500,7 @@ let rec parse_sig_item ~global_attrs rest s =
 and push_module_attributes module_name module_attributes global_attrs =
   let rec rev_append acc = function
     | ({attr_name = {txt = "js.scope"; _}; attr_payload = PStr [];  _}) as attribute :: tl ->
-        rev_append ({ attribute with attr_payload = PStr [Str.eval (Exp.constant (Pconst_string (module_name, None)))] } :: acc) tl
+        rev_append ({ attribute with attr_payload = PStr [Str.eval (Exp.constant (Pconst_string (module_name, Location.none, None)))] } :: acc) tl
     |  hd :: tl -> rev_append (hd :: acc) tl
     | [] -> acc
   in
@@ -583,11 +583,13 @@ and parse_class_field ~global_attrs = function
 
 (** Code generation *)
 
-let var x = Exp.ident (mknoloc (Longident.parse x))
-let str s = Exp.constant (Pconst_string (s, None))
+let longident_parse x = Longident.parse x [@@ocaml.warning "-deprecated"]
+
+let var x = Exp.ident (mknoloc (longident_parse x))
+let str s = Exp.constant (Pconst_string (s, Location.none, None))
 let int n = Exp.constant (Pconst_integer (string_of_int n, None))
 let pat_int n = Pat.constant (Pconst_integer (string_of_int n, None))
-let pat_str s = Pat.constant (Pconst_string (s, None))
+let pat_str s = Pat.constant (Pconst_string (s, Location.none, None))
 
 let attr s e = (Attr.mk (mknoloc s) (PStr [Str.eval e]))
 
@@ -604,7 +606,7 @@ let incl = function
 
 let nolabel args = List.map (function x -> Nolabel, x) args
 
-let ojs_typ = Typ.constr (mknoloc (Longident.parse "Ojs.t")) []
+let ojs_typ = Typ.constr (mknoloc (longident_parse "Ojs.t")) []
 
 let ojs_var s = Exp.ident (mknoloc (Ldot (Lident "Ojs", s)))
 
@@ -613,7 +615,7 @@ let ojs s args = Exp.apply (ojs_var s) (nolabel args)
 let ojs_null = ojs_var "null"
 
 let list_iter f x =
-  Exp.apply (Exp.ident (mknoloc (Longident.parse "List.iter"))) (nolabel [f; x])
+  Exp.apply (Exp.ident (mknoloc (longident_parse "List.iter"))) (nolabel [f; x])
 
 let fun_ (label, s) e =
   match e.pexp_desc with
@@ -650,10 +652,10 @@ let unit_expr = Exp.construct unit_lid None
 let unit_pat = Pat.construct unit_lid None
 
 let some_pat arg =
-  Pat.construct (mknoloc (Longident.parse "Some")) (Some arg)
+  Pat.construct (mknoloc (longident_parse "Some")) (Some arg)
 
 let none_pat () =
-  Pat.construct (mknoloc (Longident.parse "None")) None
+  Pat.construct (mknoloc (longident_parse "None")) None
 
 let match_some_none ~some ~none exp =
   let s = fresh () in
@@ -733,7 +735,7 @@ let ojs_new_obj_arr cl = function
   | `Simple arr -> ojs "new_obj" [cl; arr]
   | `Push arr -> ojs "new_obj_arr" [cl; arr]
 
-let assert_false = Exp.assert_ (Exp.construct (mknoloc (Longident.parse "false")) None)
+let assert_false = Exp.assert_ (Exp.construct (mknoloc (longident_parse "false")) None)
 
 let rewrite_typ_decl t =
   let t = {t with ptype_private = Public} in
@@ -769,7 +771,7 @@ let get_variant_kind loc attrs =
         | PStr [] -> `Union No_discriminator
         | _ ->
             begin match expr_of_payload k.loc v with
-            | {pexp_desc = Pexp_apply ({pexp_desc = Pexp_ident {txt = Lident "on_field";_}; _}, [Nolabel, {pexp_desc = Pexp_constant (Pconst_string (s, _)); _}]); _} -> `Union (On_field s)
+            | {pexp_desc = Pexp_apply ({pexp_desc = Pexp_ident {txt = Lident "on_field";_}; _}, [Nolabel, {pexp_desc = Pexp_constant (Pconst_string (s, _, _)); _}]); _} -> `Union (On_field s)
             | _ -> error k.loc Unknown_union_method
             end
         end
@@ -962,7 +964,7 @@ and ml2js ctx ty exp =
       let extra_arg =
         match label_variadic with
         | Arg | Lab _ -> extra_arg
-        | Opt _ -> Exp.construct (mknoloc (Longident.parse "Some")) (Some extra_arg)
+        | Opt _ -> Exp.construct (mknoloc (longident_parse "Some")) (Some extra_arg)
       in
       let concrete_args = concrete_args @ [arg_label label_variadic, extra_arg] in
       let res = app exp concrete_args unit_arg in
@@ -1178,7 +1180,7 @@ and js2ml_unit ctx ty_res res =
 
 and gen_typ = function
   | Name (s, tyl) ->
-      Typ.constr (mknoloc (Longident.parse s)) (List.map gen_typ tyl)
+      Typ.constr (mknoloc (longident_parse s)) (List.map gen_typ tyl)
   | Js -> ojs_typ
   | Unit _ ->
       Typ.constr (mknoloc (Lident "unit")) []
@@ -1260,7 +1262,7 @@ let global_object ~global_attrs =
     | hd :: tl ->
         begin match get_expr_attribute "js.scope" [hd] with
         | None -> traverse tl
-        | Some {pexp_desc=Pexp_constant (Pconst_string (prop, _)); _} -> ojs "get" [(traverse tl); str prop]
+        | Some {pexp_desc=Pexp_constant (Pconst_string (prop, _, _)); _} -> ojs "get" [(traverse tl); str prop]
         | Some global_object -> global_object
         end
   in
@@ -1370,7 +1372,7 @@ and gen_decl = function
       [ Str.type_ rec_flag decls; Str.value rec_flag funs ]
 
   | Module (s, decls) ->
-      [ Str.module_ (Mb.mk (mknoloc s) (Mod.structure (gen_decls decls))) ]
+      [ Str.module_ (Mb.mk (mknoloc (Some s)) (Mod.structure (gen_decls decls))) ]
 
   | Val (_, _, Ignore, _, _) -> []
 
@@ -1416,7 +1418,7 @@ and gen_classdecl cast_funcs = function
         | Name (super_class, []) -> super_class
         | _ -> assert false
       in
-      let e = Cl.apply (Cl.constr (mknoloc (Longident.parse super_class)) []) [Nolabel, obj] in
+      let e = Cl.apply (Cl.constr (mknoloc (longident_parse super_class)) []) [Nolabel, obj] in
       let e = if unit_arg then Cl.fun_ Nolabel None unit_pat e else e in
       let f e (label, x) = Cl.fun_ label None (Pat.var (mknoloc x)) e in
       Ci.mk (mknoloc class_name) (List.fold_left f e (List.rev formal_args))
@@ -1443,7 +1445,7 @@ and gen_class_field x = function
 
 and gen_class_cast = function
   | Declaration { class_name; class_fields = _ } ->
-      let class_typ = Typ.constr (mknoloc (Longident.parse class_name)) [] in
+      let class_typ = Typ.constr (mknoloc (longident_parse class_name)) [] in
       let to_js =
         let arg = fresh() in
         Vb.mk (Pat.var (mknoloc (class_name ^ "_to_js")))
@@ -1684,11 +1686,11 @@ let usage = "gen_js_api [-o mymodule.ml] mymodule.mli"
 
 let from_current =
   let open Migrate_parsetree in
-  Versions.migrate Versions.ocaml_current Versions.ocaml_408
+  Versions.migrate Versions.ocaml_current Versions.ocaml_411
 
 let to_current =
   let open Migrate_parsetree in
-  Versions.migrate Versions.ocaml_408 Versions.ocaml_current
+  Versions.migrate Versions.ocaml_411 Versions.ocaml_current
 
 let standalone () =
   let files = ref [] in
