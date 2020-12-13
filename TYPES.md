@@ -204,6 +204,25 @@ implementation).  Mutually recursive type declarations are supported.
 
 - Sum type declaration with non constant constructors, mapped to records with a discriminator field (see Sum types section).
 
+- Arbitrary type with custom mappings
+
+  If you want to use a type that is not supported by gen_js_api, you can make it JS-able by providing
+  your own `*_of_js` and `*_to_js` functions (custom mappings) with a `[@@js.custom ...]` attribute.
+
+  ```ocaml
+  type t = ... [@@js.custom
+    let t_of_js (x: Ojs.t) : t =
+      ...
+    let t_to_js (x: t) : Ojs.t =
+      ...
+  ]
+  ```
+
+  This is particularly useful when the type is mutually recursive with other types which can be processed by gen_js_api.
+  See the [section on manually created bindings](LOW_LEVEL_BINDING.md) for more information on writing custom mappings by hand.
+
+  Not to be confused with [the `[@@js.custom]` attribute for `val` declarations](IMPLGEN.md#verbatim-sections).
+
 Enums mapped to polymorphic variants or sum types
 -------------------------------------------------
 
