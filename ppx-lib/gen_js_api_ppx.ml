@@ -37,6 +37,7 @@ type error =
   | Sum_kind_args
   | Union_without_discriminator
   | Contravariant_type_parameter of string
+  | Missing_requried_definitions of string
 
 exception Error of Location.t * error
 
@@ -161,6 +162,8 @@ let print_error ppf = function
       Format.fprintf ppf "js.union without way to discriminate values."
   | Contravariant_type_parameter label ->
       Format.fprintf ppf "Contravariant type parameter '%s is not allowed." label
+  | Missing_requried_definitions label ->
+      Format.fprintf ppf "'%s' must be manually declared here" label
 
 let () =
   Location.register_error_of_exn
@@ -1314,8 +1317,43 @@ and gen_funs ~global_attrs p =
       ) p.ptype_params
   in
   let loc = p.ptype_loc in
-  let typvar_used, of_js, to_js =
+  let typvar_used, of_js, to_js, custom_funs =
     match p.ptype_kind with
+    | _ when has_attribute "js.custom" global_attrs ->
+        let result =
+          match get_attribute "js.custom" global_attrs with
+          | Some (k, PStr structure) ->
+              let assert_function label (vbs: value_binding list) =
+                let check vb =
+                  match vb.pvb_pat.ppat_desc with
+                  | Ppat_var nameloc when nameloc.txt = label -> true
+                  | _ -> false
+                in
+                if List.exists check vbs then ()
+                else raise (Error (k.loc, Missing_requried_definitions label))
+              in
+              let rec get_value_bindings (s: structure) =
+                List.concat_map (fun (si: structure_item) ->
+                  match si.pstr_desc with
+                  | Pstr_value (_, vbs) -> vbs
+                  | Pstr_include incdec ->
+                    let result =
+                      match incdec.pincl_mod.pmod_desc with
+                      | Pmod_structure s' -> get_value_bindings s'
+                      | _ -> []
+                    in result
+                  | _ -> []
+                ) s
+              in
+              let vbs = get_value_bindings structure in
+              assert_function (name ^ "_of_js") vbs;
+              assert_function (name ^ "_to_js") vbs;
+              (fun _ -> true),
+              lazy (raise (Error (loc, Union_without_discriminator))),
+              lazy (raise (Error (loc, Union_without_discriminator))),
+              vbs
+          | _ -> error loc Structure_expected
+        in result
     | Ptype_abstract ->
         let ty =
           match p.ptype_manifest with
@@ -1324,7 +1362,8 @@ and gen_funs ~global_attrs p =
         in
         (fun label -> typvar_occurs loc 0 label ty),
         lazy (js2ml_fun ctx ty),
-        lazy (ml2js_fun ctx ty)
+        lazy (ml2js_fun ctx ty),
+        []
     | Ptype_variant cstrs ->
         let prepare_constructor c =
           let mlconstr = c.pcd_name.txt in
@@ -1346,7 +1385,8 @@ and gen_funs ~global_attrs p =
         let params = List.map prepare_constructor cstrs in
         (fun label -> typvar_occurs_constructors loc 0 label params),
         lazy (mkfun (js2ml_of_variant ctx ~variant:false loc ~global_attrs attrs params)),
-        lazy (mkfun (ml2js_of_variant ctx ~variant:false loc ~global_attrs attrs params))
+        lazy (mkfun (ml2js_of_variant ctx ~variant:false loc ~global_attrs attrs params)),
+        []
     | Ptype_record lbls ->
         let global_attrs = p.ptype_attributes @ global_attrs in
         let lbls = List.map (process_fields ~global_attrs) lbls in
@@ -1354,7 +1394,8 @@ and gen_funs ~global_attrs p =
         let to_js x (_loc, ml, js, ty) = Exp.tuple [str js; ml2js ctx ty (Exp.field x ml)] in
         (fun label -> List.exists (fun (_, _, _, ty) -> typvar_occurs loc 0 label ty) lbls),
         lazy (mkfun (fun x -> Exp.record (List.map (of_js x) lbls) None)),
-        lazy (mkfun (fun x -> ojs "obj" [Exp.array (List.map (to_js x) lbls)]))
+        lazy (mkfun (fun x -> ojs "obj" [Exp.array (List.map (to_js x) lbls)])),
+        []
     | _ ->
         error p.ptype_loc Cannot_parse_type
   in
@@ -1392,8 +1433,11 @@ and gen_funs ~global_attrs p =
                 (gen_typ (Arrow {ty_args = (List.map (fun typ -> {lab=Arg; att=[]; typ}) input_typs); ty_vararg = None; unit_arg = false; ty_res = ret_typ})))
              code)
   in
-  choose f [ name ^ "_of_js", push_typ alpha_of_js [Js], Name (name, List.map (fun x -> Typ_var x) ctx), push_fun "_of_js" of_js;
-             name ^ "_to_js", push_typ alpha_to_js [Name (name, List.map (fun x -> Typ_var x) ctx)], Js, push_fun "_to_js" to_js ]
+  let funs =
+    choose f [ name ^ "_of_js", push_typ alpha_of_js [Js], Name (name, List.map (fun x -> Typ_var x) ctx), push_fun "_of_js" of_js;
+               name ^ "_to_js", push_typ alpha_to_js [Name (name, List.map (fun x -> Typ_var x) ctx)], Js, push_fun "_to_js" to_js ]
+  in
+  funs @ custom_funs
 
 and gen_decl = function
   | Type (rec_flag, decls, global_attrs) ->
