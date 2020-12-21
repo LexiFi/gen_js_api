@@ -70,6 +70,6 @@ module Issue124 :
           | _ -> Unknown x12
       and (u_to_js : u -> Ojs.t) =
         fun x8 -> match x8 with | Unknown x9 -> x9 | T x10 -> t_to_js x10
-      and t_to_js x = Obj.magic x
       and t_of_js x = Obj.magic x
+      and t_to_js x = Obj.magic x
     end)[@merlin.hide ]) 

@@ -1323,31 +1323,35 @@ and gen_funs ~global_attrs p =
         let result =
           match get_attribute "js.custom" global_attrs with
           | Some (k, PStr structure) ->
-              let assert_function label (vbs: value_binding list) =
-                let check vb =
+              let expected_names = [ name ^ "_of_js"; name ^ "_to_js" ] in
+              let unexpected_error_txt =
+                Printf.sprintf "any definitions other than '%s_of_js' or '%s_to_js'" name name
+              in
+
+              let get_value_bindings (state: value_binding list) (si: structure_item) =
+                match si.pstr_desc with
+                | Pstr_value (_, vbs) -> vbs @ state
+                | _ ->
+                  raise (Error (si.pstr_loc, Not_supported_here unexpected_error_txt))
+              in
+
+              let assert_functions (vbs: value_binding list) =
+                let check req_labels vb =
                   match vb.pvb_pat.ppat_desc with
-                  | Ppat_var nameloc when nameloc.txt = label -> true
-                  | _ -> false
+                  | Ppat_var nameloc ->
+                    if not (List.mem nameloc.txt req_labels) then
+                      raise (Error (nameloc.loc, Not_supported_here unexpected_error_txt))
+                    else
+                      List.filter (fun label -> label <> nameloc.txt) req_labels
+                  | _ ->
+                    raise (Error (vb.pvb_loc, Not_supported_here unexpected_error_txt))
                 in
-                if List.exists check vbs then ()
-                else raise (Error (k.loc, Missing_requried_definitions label))
+                let missing_functions = List.fold_left check expected_names vbs in
+                List.iter (fun label -> raise (Error (k.loc, Missing_requried_definitions label))) missing_functions
               in
-              let rec get_value_bindings (s: structure) =
-                List.concat_map (fun (si: structure_item) ->
-                  match si.pstr_desc with
-                  | Pstr_value (_, vbs) -> vbs
-                  | Pstr_include incdec ->
-                    let result =
-                      match incdec.pincl_mod.pmod_desc with
-                      | Pmod_structure s' -> get_value_bindings s'
-                      | _ -> []
-                    in result
-                  | _ -> []
-                ) s
-              in
-              let vbs = get_value_bindings structure in
-              assert_function (name ^ "_of_js") vbs;
-              assert_function (name ^ "_to_js") vbs;
+
+              let vbs = List.fold_left get_value_bindings [] structure in
+              assert_functions vbs;
               (fun _ -> true),
               lazy (raise (Error (loc, Union_without_discriminator))),
               lazy (raise (Error (loc, Union_without_discriminator))),
