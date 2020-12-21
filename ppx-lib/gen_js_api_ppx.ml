@@ -1327,29 +1327,25 @@ and gen_funs ~global_attrs p =
               let unexpected_error_txt =
                 Printf.sprintf "any definitions other than '%s_of_js' or '%s_to_js'" name name
               in
-
               let get_value_bindings (state: value_binding list) (si: structure_item) =
                 match si.pstr_desc with
                 | Pstr_value (_, vbs) -> vbs @ state
-                | _ ->
-                  raise (Error (si.pstr_loc, Not_supported_here unexpected_error_txt))
+                | _ -> raise (Error (si.pstr_loc, Not_supported_here unexpected_error_txt))
               in
-
               let assert_functions (vbs: value_binding list) =
                 let check req_labels vb =
                   match vb.pvb_pat.ppat_desc with
                   | Ppat_var nameloc ->
-                    if not (List.mem nameloc.txt req_labels) then
-                      raise (Error (nameloc.loc, Not_supported_here unexpected_error_txt))
-                    else
-                      List.filter (fun label -> label <> nameloc.txt) req_labels
+                      if not (List.mem nameloc.txt req_labels) then
+                        raise (Error (nameloc.loc, Not_supported_here unexpected_error_txt))
+                      else
+                        List.filter (fun label -> label <> nameloc.txt) req_labels
                   | _ ->
-                    raise (Error (vb.pvb_loc, Not_supported_here unexpected_error_txt))
+                      raise (Error (vb.pvb_loc, Not_supported_here unexpected_error_txt))
                 in
                 let missing_functions = List.fold_left check expected_names vbs in
                 List.iter (fun label -> raise (Error (k.loc, Missing_requried_definitions label))) missing_functions
               in
-
               let vbs = List.fold_left get_value_bindings [] structure in
               assert_functions vbs;
               (fun _ -> true),
