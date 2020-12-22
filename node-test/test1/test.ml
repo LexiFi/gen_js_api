@@ -64,7 +64,7 @@ let uncaught_handler p =
       exit 1
     )
 
-(*** FileSystem **)
+(** FileSystem **)
 
 let root : unit Promise.t =
   let open Promise in
@@ -76,3 +76,15 @@ let root : unit Promise.t =
           assert (x = y)) contents contents';
       return ()
     end
+
+(** Arrays **)
+let () =
+    let open Arrays.StringArray in
+    let a = create () in
+    for k = 0 to 10 do
+      push a (string_of_int k);
+    done;
+    let s = join a "," in
+    List.iteri (fun k x ->
+      assert (string_of_int k = x)
+    ) (String.split_on_char ',' s)
