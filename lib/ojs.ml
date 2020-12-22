@@ -89,6 +89,9 @@ let option_to_js f = function
   | Some x -> f x
   | None -> null
 
+let unit_to_js () = undefined
+let unit_of_js _ = ()
+
 class obj (x:t) =
   object
     method to_js = x

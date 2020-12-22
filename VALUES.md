@@ -53,6 +53,22 @@ Supported forms
   As for global values, it is possible to indicate the access path by
   using `[@js.scope]` attributes on englobing modules (see below).
 
+  When the global object is itself an object constructor, the `[@@js.create]`
+  attribute may be used to instantiate it.
+
+  For instance,
+  ```ocaml
+    module[@js.scope "JavascriptClassName"] C : sig
+      val create: T1 -> ... -> Tn -> t [@js.create]
+    end
+  ```
+  is the same as
+  ```ocaml
+    module C : sig
+      val create: T1 -> ... -> Tn -> t [@js.new "JavascriptClassName"]
+    end
+  ```
+
 - Global value or function:
 
   ```ocaml
@@ -78,25 +94,7 @@ Supported forms
 
   By default, a global value or function is taken from the global
   object. However, it is possible to specify an access path by using
-  `[@js.scope]` attribute on englobing modules. The access path is
-  then composed by concatenation of all the names indicated by
-  `[@js.scope]` attribute, separated by a '.'.
-
-  For instance,
-
-  ```ocaml
-  module Console: sig
-    val log: string -> unit [@@js.global]
-  end [@js.scope "console"]
-  ```
-
-  is equivalent to
-
-  ```ocaml
-  module Console: sig
-    val log: string -> unit [@@js.global "console.log"]
-  end
-  ```
+  `[@js.scope]` attribute on englobing modules (see the Scope section).
 
 - Property getter
 
@@ -226,35 +224,86 @@ Supported forms
 
   See [Verbatim section](IMPLGEN.md) for more details and examples.
 
+Scope
+-----
+
+The signature attribute `[@@@js.scope "property"]` changes the reference to the current global
+object by following the property provided as payload. Nested scopes work as if the
+access path were composed by concatenation of all the names indicated by [@js.scope]
+attribute, separated by a '.'.
+
+A simple use case is to bind to Javascript values packed in singleton objects or classes.
+
+For instance,
+
+```ocaml
+  module[@js.scope "console"] Console: sig
+    val log: string -> unit [@@js.global]
+  end
+```
+
+is equivalent to
+
+```ocaml
+  module Console: sig
+    val log: string -> unit [@@js.global "console.log"]
+  end
+```
+
+When attached directly to a module, the payload of `[@@js.scope]`
+may be omitted, it will be implicitly filled with the module name
+(preserving the capitalization !).
+
+Before version 1.0.7, the presence of `[@@js.scope]` used to change
+the behavior of automatic bindings. It is no longer the case.
+
+An experimental feature also allows to pass an expression of type `Ojs.t` as
+a payload to replace the global object. The intended use case is to allow
+dynamic loading of modules.
 
 Automatic binding
 -----------------
 
 Some conventions, based on the declared value names and their types,
-allow to get rid of the explicit `[@@js.xxx]` attributes on value
-declarations in most cases.  Here are the rules, applied in order:
+allow to infer implicitly the `[@@js.xxx]` attributes on value
+declarations in most cases.
 
-- If the type has the form `τ -> Ojs.t` (for a local named type `τ`) and
-  the value name is `τ_to_js` (i.e. the type name followed by `_to_js`),
-  then the function is assumed to be a `[@@js.cast]`.  This is used
-  to expose the `_to_js` function generated automatically by the tool
-  for a type declaration.
+Note that in all modes the declaration of conversion functions generated
+from types are ignored in order to expose the generated functions.
 
-- Similarly, if the type has the form `Ojs.t -> τ` (for a local named
-  type `τ`) and the value name is `τ_of_js` (i.e. the type name
-  followed by `_of_js`), then the function is assumed to be a
-  `[@@js.cast]`.
+This means all value of declarations of the form:
+```ocaml
+val τ_to_js: ... -> Ojs.t
+```
+or the form
+```ocaml
+val τ_of_js: ... -> τ
+```
+
+The rules are applied in order:
+
+- If the value is a function whose result is a named type `... -> τ`
+  and the name is `create`, then the declaration is assumed to
+  be a `[@@js.create]` object creation.
+
+- If the value is a function whose result is a named type `... -> τ`
+  and its name starts with `new_`, then the declaration is assumed to
+  be a `[@@js.new]` object creation (on the class whose name is
+  obtained by dropping the `new_`prefix).
 
 - If the value is a function with a single argument `τ1 -> unit` and
   its name starts with `set_`, then the declaration is assumed to be a
   `[@@js.set]` global setter (whose name is obtained by dropping the
   `set_` prefix).
 
+- If the value is a function with two arguments `τ1 -> τ2 -> unit` and
+  its name starts with `set_`, then the declaration is assumed to be a
+  `[@@js.set]` property setter (on the property whose name is obtained
+  by dropping the `set_` prefix).
+
 - If the value is a function with a single argument (named type) `τ ->
   unit`, then the declaration is assumed to be a `[@@js.call]` method
-  call, unless a `[@js.scope]` attribute has been defined in an
-  englobing module. In this latter case, the value is assumed to be a
-  `[@@js.global]` value.
+  call.
 
 - If the value is a function with a single argument (named type) `τ ->
   τ2` (and `τ2` is not `unit`), then the declaration is assumed to be
@@ -263,21 +312,9 @@ declarations in most cases.  Here are the rules, applied in order:
 - If the value is a function with a single argument `unit -> τ2`, then
   the declaration is assumed to be a `[@@js.get]` global getter.
 
-- If the value is a function with two arguments `τ1 -> τ2 -> unit` and
-  its name starts with `set_`, then the declaration is assumed to be a
-  `[@@js.set]` property setter (on the property whose name is obtained
-  by dropping the `set_` prefix).
-
-- If the value is a function whose result is a named type `... -> τ`
-  and its name starts with `new_`, then the declaration is assumed to
-  be a `[@@js.new]` object creation (on the class whose name is
-  obtained by dropping the `new_`prefix).
-
 - If the value is a function whose first argument is a named type `τ
   -> ...`, then the definition is assumed to be a `[@@js.call]` method
-  call, unless a `[@js.scope]` attribute has been defined in an
-  englobing module. In this latter case, the value is assumed to be a
-  `[@@js.global]` value.
+  call.
 
 - Otherwise, the declaration is assumed to be a `[@@js.global]` value.
   This applies in particular for any non-functional type.

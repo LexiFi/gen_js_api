@@ -66,6 +66,17 @@
  (action
   (diff expected/binding.ml binding.ml)))
 
+(rule
+ (targets scoped.ml)
+ (deps scoped.mli)
+ (action (run %{bin:gen_js_api} %{deps} -o %{targets})))
+
+(rule
+ (alias runtest)
+ (action
+  (diff expected/scoped.ml scoped.ml)))
+
+
 (library
  (name test_library)
  (libraries ojs)

@@ -29,3 +29,6 @@ install:
 
 uninstall:
 	opam-installer -u --prefix $(PREFIX) gen_js_api.install
+
+reindent:
+	git ls-files *.ml *.mli | grep -v expected | xargs ocp-indent -i

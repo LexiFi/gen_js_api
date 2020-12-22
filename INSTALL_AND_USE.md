@@ -53,7 +53,7 @@ Usage (with dune)
      (names test_jquery)
      (js_of_ocaml)
      (libraries ojs js_of_ocaml)
-     (preprocess (pps gen_js_api.ppx))
+     (preprocess (pps gen_js_api))
      (modes byte)
    )
    ```
@@ -81,7 +81,7 @@ Usage (with ocamlfind)
  - Compiling with the [ppx processor](PPX.md):
 
    ```
-   ocamlfind ocamlc -c -package gen_js_api.ppx my_prog.ml
+   ocamlfind ocamlc -c -package gen_js_api my_prog.ml
    ```
 
  - Linking the bytecode program:

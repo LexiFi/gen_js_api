@@ -39,6 +39,9 @@ val option_of_js: (t -> 'a) -> t -> 'a option
 val option_to_js: ('a -> t) -> 'a option -> t
 (** [None] is mapped to [null]. *)
 
+val unit_of_js: t -> unit
+val unit_to_js: unit -> t
+
 
 (** {2 Wrap OCaml functions as JS functions} *)
 
@@ -115,11 +118,11 @@ external delete: t -> string -> unit = "caml_js_delete"
 val is_null: t -> bool
 
 val obj_type: t -> string
-  (** Returns:
-      "[object Array]"
-      "[object Object]"
-      "[object Number]"
-      "[object String]"
-      "[object Null]"
-      "[object Boolean]"
-  *)
+(** Returns:
+    "[object Array]"
+    "[object Object]"
+    "[object Number]"
+    "[object String]"
+    "[object Null]"
+    "[object Boolean]"
+*)
