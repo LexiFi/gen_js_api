@@ -2,7 +2,6 @@
   (public_name ojs)
   (synopsis "Runtime support for gen_js_api")
   (libraries)
-  (wrapped false)
   (foreign_stubs (language c) (names ojs_runtime_stubs))
   (modes byte)
   (js_of_ocaml (javascript_files ojs_runtime.js)))

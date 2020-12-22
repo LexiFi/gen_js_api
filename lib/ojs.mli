@@ -126,3 +126,17 @@ val obj_type: t -> string
     "[object Null]"
     "[object Boolean]"
 *)
+
+module Exn : sig
+  (** OCaml view on JS exceptions *)
+
+  type t
+
+  val name: t -> string
+  val message: t -> string
+  val stack: t -> string option
+  val to_string: t -> string
+
+  exception Error of t
+
+end

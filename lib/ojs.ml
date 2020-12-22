@@ -116,3 +116,26 @@ let is_null x =
 
 let obj_type x =
   string_of_js (call (pure_js_expr "Object.prototype.toString") "call" [|x|])
+
+module Exn = struct
+  type nonrec t = t
+
+  let name x = string_of_js (get x "name")
+  let message x = string_of_js (get x "message")
+  let stack x = option_of_js string_of_js (get x "stack")
+  let to_string x = string_of_js (call x "toString" [||])
+
+  exception Error of t
+
+  let () = Callback.register_exception "jsError" (Error (obj [||]))
+
+  (* The js_of_ocaml runtime expects to have this registered.
+     So it's probably a bad idea to use both this Ojs.Exn module
+     and the js_of_ocaml standard library. *)
+
+  let () =
+    Printexc.register_printer (function
+        | Error x -> Some (to_string x)
+        | _ -> None
+      )
+end
