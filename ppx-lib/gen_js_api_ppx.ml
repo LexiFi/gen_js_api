@@ -38,6 +38,7 @@ type error =
   | Union_without_discriminator
   | Contravariant_type_parameter of string
   | Missing_requried_definitions of string
+  | Skip_mapping_generation
 
 exception Error of Location.t * error
 
@@ -164,6 +165,8 @@ let print_error ppf = function
       Format.fprintf ppf "Contravariant type parameter '%s is not allowed." label
   | Missing_requried_definitions label ->
       Format.fprintf ppf "'%s' must be manually declared here" label
+  | Skip_mapping_generation ->
+      failwith "Skip_mapping_generation should not be printed"
 
 let () =
   Location.register_error_of_exn
@@ -1349,8 +1352,8 @@ and gen_funs ~global_attrs p =
               let vbs = List.fold_left get_value_bindings [] structure in
               assert_functions vbs;
               (fun _ -> true),
-              lazy (raise (Error (loc, Union_without_discriminator))),
-              lazy (raise (Error (loc, Union_without_discriminator))),
+              lazy (raise (Error (loc, Skip_mapping_generation))),
+              lazy (raise (Error (loc, Skip_mapping_generation))),
               vbs
           | _ -> error loc Structure_expected
         in result
@@ -1399,7 +1402,7 @@ and gen_funs ~global_attrs p =
     | _ ->
         error p.ptype_loc Cannot_parse_type
   in
-  let force_opt x = try (Some (Lazy.force x)) with Error (_, Union_without_discriminator) -> None in
+  let force_opt x = try (Some (Lazy.force x)) with Error (_, (Union_without_discriminator | Skip_mapping_generation)) -> None in
   let of_js, to_js = force_opt of_js, force_opt to_js in
   let alpha_of_js label =
     Arrow {ty_args = [{lab=Arg; att=[]; typ = Js}]; ty_vararg = None; unit_arg = false; ty_res = Typ_var label}
