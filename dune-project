@@ -21,11 +21,11 @@
 
 (package
  (name gen_js_api)
- (synopsis "Easy OCaml bindings for Javascript libraries")
+ (synopsis "Easy OCaml bindings for JavaScript libraries")
  (description "
 gen_js_api aims at simplifying the creation of OCaml bindings for
-Javascript libraries.  Authors of bindings write OCaml signatures for
-Javascript libraries and the tool generates the actual binding code
+JavaScript libraries.  Authors of bindings write OCaml signatures for
+JavaScript libraries and the tool generates the actual binding code
 with a combination of implicit conventions and explicit annotations.
 
 gen_js_api is to be used with the js_of_ocaml compiler.
