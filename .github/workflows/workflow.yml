@@ -1,0 +1,51 @@
+name: Main workflow
+
+on:
+  - pull_request
+  - push
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - macos-latest
+          - ubuntu-latest
+          - windows-latest
+        node-version:
+          - 14.x
+        ocaml-version:
+          - 4.11.1
+          - 4.10.2
+          - 4.09.1
+          - 4.08.1
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v2
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Use OCaml ${{ matrix.ocaml-version }}
+        uses: avsm/setup-ocaml@v1
+        with:
+          ocaml-version: ${{ matrix.ocaml-version }}
+
+      - run: opam pin add gen_js_api.dev . --no-action
+
+      - run: opam pin add ojs.dev . --no-action
+
+      - run: opam depext gen_js_api ojs --yes --with-doc --with-test
+
+      - run: opam install . --deps-only --with-doc --with-test
+
+      - run: opam exec -- make
+
+      - run: opam exec -- make test
+        continue-on-error: ${{ runner.os == 'Windows' }}
