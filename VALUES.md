@@ -26,7 +26,7 @@ Supported forms
 
   ```ocaml
   val my_method: t -> T1 -> ... -> Tn -> T
-  [@@js.call "JavascriptMethodName"]
+  [@@js.call "JavaScriptMethodName"]
   ```
 
 
@@ -48,7 +48,7 @@ Supported forms
 
   ```ocaml
   val f: T1 -> ... -> Tn -> t
-  [@@js.new "JavascriptClassName"]
+  [@@js.new "JavaScriptClassName"]
   ```
   As for global values, it is possible to indicate the access path by
   using `[@js.scope]` attributes on englobing modules (see below).
@@ -58,14 +58,14 @@ Supported forms
 
   For instance,
   ```ocaml
-    module[@js.scope "JavascriptClassName"] C : sig
+    module[@js.scope "JavaScriptClassName"] C : sig
       val create: T1 -> ... -> Tn -> t [@js.create]
     end
   ```
   is the same as
   ```ocaml
     module C : sig
-      val create: T1 -> ... -> Tn -> t [@js.new "JavascriptClassName"]
+      val create: T1 -> ... -> Tn -> t [@js.new "JavaScriptClassName"]
     end
   ```
 
@@ -77,13 +77,13 @@ Supported forms
   ```
 
   This creates an OCaml value that corresponds to a globally accessible
-  Javascript value.  This is used to access both global objects (e.g.
+  JavaScript value.  This is used to access both global objects (e.g.
   the `window` object) and global functions (e.g. `alert`).  It is also
-  possible to specify a custom name for the Javascript variable:
+  possible to specify a custom name for the JavaScript variable:
 
   ```ocaml
   val x: t
-  [@@js.global "JavascriptValueName"]
+  [@@js.global "JavaScriptValueName"]
   ```
 
   Example:
@@ -173,7 +173,7 @@ Supported forms
   ```
 
   Calling this function performs an unchecked cast from type `t1` to
-  type `t2`, going through the Javascript representation (i.e.
+  type `t2`, going through the JavaScript representation (i.e.
   applying mapper from `t1` to the underlying JS object, and back
   using the mapper for `t2`).
 
@@ -232,7 +232,7 @@ object by following the property provided as payload. Nested scopes work as if t
 access path were composed by concatenation of all the names indicated by [@js.scope]
 attribute, separated by a '.'.
 
-A simple use case is to bind to Javascript values packed in singleton objects or classes.
+A simple use case is to bind to JavaScript values packed in singleton objects or classes.
 
 For instance,
 
