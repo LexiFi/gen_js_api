@@ -9,13 +9,8 @@ val from: string -> t[@@js.global]
 val concat: t list -> t[@@js.global]
 
 val length: t -> int [@@js.get]
-val get: t -> int -> int option[@@js.custom
-  let get buf index = [%js.to:int option](Ojs.array_get buf index)
-    ]
-val set: t -> int -> int -> unit[@@js.custom
-  let set buf index value =
-    Ojs.array_set buf index ([%js.of:int] value)
-  ]
+val get: t -> int -> int option [@@js.index_get]
+val set: t -> int -> int -> unit[@@js.index_set]
 val write: t -> string -> int[@@js.call]
 val slice: t -> int -> int -> t[@@js.call]
 val to_string: t -> string[@@js.call]

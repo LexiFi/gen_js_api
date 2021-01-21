@@ -16,11 +16,18 @@ let (is_absolute : string -> bool) =
 let (join : string list -> string) =
   fun x4 ->
     Ojs.string_of_js
-      (Ojs.call Imports.path "join" [|(Ojs.list_to_js Ojs.string_to_js x4)|])
+      (let x7 = Imports.path in
+       Ojs.call (Ojs.get x7 "join") "apply"
+         [|x7;((let x5 = Ojs.new_obj (Ojs.get Ojs.global "Array") [||] in
+                List.iter
+                  (fun x6 ->
+                     ignore (Ojs.call x5 "push" [|(Ojs.string_to_js x6)|]))
+                  x4;
+                x5))|])
 let (normalize : string -> string) =
-  fun x6 ->
+  fun x8 ->
     Ojs.string_of_js
-      (Ojs.call Imports.path "normalize" [|(Ojs.string_to_js x6)|])
+      (Ojs.call Imports.path "normalize" [|(Ojs.string_to_js x8)|])
 type parse_result =
   {
   dir: string ;
@@ -29,23 +36,23 @@ type parse_result =
   name: string ;
   ext: string }
 let rec (parse_result_of_js : Ojs.t -> parse_result) =
-  fun x8 ->
+  fun x10 ->
     {
-      dir = (Ojs.string_of_js (Ojs.get x8 "dir"));
-      root = (Ojs.string_of_js (Ojs.get x8 "root"));
-      base = (Ojs.string_of_js (Ojs.get x8 "base"));
-      name = (Ojs.string_of_js (Ojs.get x8 "name"));
-      ext = (Ojs.string_of_js (Ojs.get x8 "ext"))
+      dir = (Ojs.string_of_js (Ojs.get x10 "dir"));
+      root = (Ojs.string_of_js (Ojs.get x10 "root"));
+      base = (Ojs.string_of_js (Ojs.get x10 "base"));
+      name = (Ojs.string_of_js (Ojs.get x10 "name"));
+      ext = (Ojs.string_of_js (Ojs.get x10 "ext"))
     }
 and (parse_result_to_js : parse_result -> Ojs.t) =
-  fun x7 ->
-    Ojs.obj
-      [|("dir", (Ojs.string_to_js x7.dir));("root",
-                                             (Ojs.string_to_js x7.root));
-        ("base", (Ojs.string_to_js x7.base));("name",
-                                               (Ojs.string_to_js x7.name));
-        ("ext", (Ojs.string_to_js x7.ext))|]
-let (parse : string -> parse_result) =
   fun x9 ->
+    Ojs.obj
+      [|("dir", (Ojs.string_to_js x9.dir));("root",
+                                             (Ojs.string_to_js x9.root));
+        ("base", (Ojs.string_to_js x9.base));("name",
+                                               (Ojs.string_to_js x9.name));
+        ("ext", (Ojs.string_to_js x9.ext))|]
+let (parse : string -> parse_result) =
+  fun x11 ->
     parse_result_of_js
-      (Ojs.call Imports.path "parse" [|(Ojs.string_to_js x9)|])
+      (Ojs.call Imports.path "parse" [|(Ojs.string_to_js x11)|])

@@ -19,30 +19,33 @@ let (concat : t list -> t) =
          [|(Ojs.list_to_js t_to_js x5)|])
 let (length : t -> int) =
   fun x7 -> Ojs.int_of_js (Ojs.get (t_to_js x7) "length")
-let get buf index =
-  (fun x8 -> Ojs.option_of_js Ojs.int_of_js x8) (Ojs.array_get buf index)
-let set buf index value = Ojs.array_set buf index (Ojs.int_to_js value)
+let (get : t -> int -> int option) =
+  fun x8 ->
+    fun x9 -> Ojs.option_of_js Ojs.int_of_js (Ojs.array_get (t_to_js x8) x9)
+let (set : t -> int -> int -> unit) =
+  fun x11 ->
+    fun x12 -> fun x13 -> Ojs.array_set (t_to_js x11) x12 (Ojs.int_to_js x13)
 let (write : t -> string -> int) =
-  fun x12 ->
-    fun x11 ->
-      Ojs.int_of_js
-        (Ojs.call (t_to_js x12) "write" [|(Ojs.string_to_js x11)|])
-let (slice : t -> int -> int -> t) =
   fun x15 ->
-    fun x13 ->
-      fun x14 ->
+    fun x14 ->
+      Ojs.int_of_js
+        (Ojs.call (t_to_js x15) "write" [|(Ojs.string_to_js x14)|])
+let (slice : t -> int -> int -> t) =
+  fun x18 ->
+    fun x16 ->
+      fun x17 ->
         t_of_js
-          (Ojs.call (t_to_js x15) "slice"
-             [|(Ojs.int_to_js x13);(Ojs.int_to_js x14)|])
+          (Ojs.call (t_to_js x18) "slice"
+             [|(Ojs.int_to_js x16);(Ojs.int_to_js x17)|])
 let (to_string : t -> string) =
-  fun x16 -> Ojs.string_of_js (Ojs.call (t_to_js x16) "toString" [||])
+  fun x19 -> Ojs.string_of_js (Ojs.call (t_to_js x19) "toString" [||])
 let (copy : t -> dst:t -> start:int -> dst_start:int -> dst_end:int -> int) =
-  fun x21 ->
-    fun ~dst:x17 ->
-      fun ~start:x18 ->
-        fun ~dst_start:x19 ->
-          fun ~dst_end:x20 ->
+  fun x24 ->
+    fun ~dst:x20 ->
+      fun ~start:x21 ->
+        fun ~dst_start:x22 ->
+          fun ~dst_end:x23 ->
             Ojs.int_of_js
-              (Ojs.call (t_to_js x21) "copy"
-                 [|(t_to_js x17);(Ojs.int_to_js x18);(Ojs.int_to_js x19);(
-                   Ojs.int_to_js x20)|])
+              (Ojs.call (t_to_js x24) "copy"
+                 [|(t_to_js x20);(Ojs.int_to_js x21);(Ojs.int_to_js x22);(
+                   Ojs.int_to_js x23)|])

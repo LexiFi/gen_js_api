@@ -61,6 +61,16 @@ external get: t -> string -> t = "caml_js_get"
 
 external set: t -> string -> t -> unit = "caml_js_set"
 
+val get_with: ('a -> t) -> t -> 'a -> t
+(** Variant of [Ojs.get] where the key can have an arbitrary type.
+    For example, [Ojs.get_with Ojs.string_to_js t i] is equivalent to [Ojs.get t i].
+    The key must be converted to a JS string or a JS number through the mapping function. *)
+
+val set_with: ('a -> t) -> t -> 'a -> t -> unit
+(** Variant of [Ojs.set] where the key can have an arbitrary type.
+    For example, [Ojs.set_with Ojs.string_to_js t i x] is equivalent to [Ojs.set t i x].
+    The key must be converted to a JS string or a JS number through the mapping function. *)
+
 external obj: (string * t) array -> t = "caml_js_object"
 
 val empty_obj: unit -> t

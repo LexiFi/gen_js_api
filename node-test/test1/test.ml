@@ -76,3 +76,60 @@ let root : unit Promise.t =
           assert (x = y)) contents contents';
       return ()
     end
+
+(*** Index signature **)
+
+include [%js:
+  module MapLike : sig
+    type 'a t = private Ojs.t
+
+    val t_to_js: ('a -> Ojs.t) -> 'a t -> Ojs.t
+    val t_of_js: (Ojs.t -> 'a) -> Ojs.t -> 'a t
+
+    val get: 'a t -> string -> 'a option [@@js.index_get]
+    val set: 'a t -> string -> 'a -> unit [@@js.index_set]
+  end
+
+  type js_string = private Ojs.t
+  val js_string_of_js: Ojs.t -> js_string
+  val js_string_to_js: js_string -> Ojs.t
+
+  [@@@js.stop]
+  val js_string: string -> js_string
+  [@@@js.start]
+  [@@@js.implem
+    let js_string = Ojs.string_to_js
+  ]
+]
+
+let () =
+  let test_obj = Ojs.obj [| ("foo", Ojs.string_to_js "bar") |] in
+  let map_str = MapLike.t_of_js (js_string_of_js) test_obj in
+  assert (MapLike.get map_str "foo" = Some (js_string "bar"));
+  MapLike.set map_str "baz" (js_string "boo");
+  assert (MapLike.get map_str "baz" = Some (js_string "boo"));
+  ()
+
+(*** Function signature **)
+
+include [%js:
+  module Concat : sig
+    type t = private Ojs.t
+
+    val t_to_js: t -> Ojs.t
+    val t_of_js: Ojs.t -> t
+
+    val apply: t -> (string list [@js.variadic]) -> string [@@js.apply]
+  end
+
+  module [@js.scope Imports.path] Path2 : sig
+    val join: Concat.t [@@js.global "join"]
+  end
+]
+
+let () =
+  let args = ["foo"; "bar"; "baz"] in
+  let res1 = Path.join args in
+  let res2 = Concat.apply Path2.join args in
+  assert (res1 = res2);
+  ()
