@@ -751,15 +751,19 @@ let rewrite_typ_decl t =
   | None, Ptype_abstract -> {t with ptype_manifest = Some ojs_typ}
   | _ -> t
 
+let string_typ = Name ("string", [])
+let int_typ = Name ("int", [])
+let bool_typ = Name ("bool", [])
+
+let is_discriminator_type = function
+  | Name (("string"|"int"|"bool"), []) -> true
+  | _ -> false
+
 let is_simple_enum params =
-  let string_typ = Name ("string", []) in
-  let int_typ = Name ("int", []) in
-  let bool_typ = Name ("bool", []) in
   let p {mlconstr = _; arg; attributes; location = _} =
     match arg with
     | Constant -> true
-    | Unary arg_typ when arg_typ = string_typ || arg_typ = int_typ || arg_typ = bool_typ ->
-        has_attribute "js.default" attributes
+    | Unary arg_typ when is_discriminator_type arg_typ -> has_attribute "js.default" attributes
     | Unary _
     | Nary _
     | Record _ -> false
@@ -823,9 +827,6 @@ let rec js2ml ctx ty exp =
 
 and js2ml_of_variant ctx ~variant loc ~global_attrs attrs constrs exp =
   let variant_kind = get_variant_kind loc attrs in
-  let string_typ = Name ("string", []) in
-  let int_typ = Name ("int", []) in
-  let bool_typ = Name ("bool", []) in
   let check_label =
     match variant_kind with
     | `Sum kind -> (fun loc label -> if label = kind then error loc Sum_kind_args)
@@ -938,25 +939,18 @@ and js2ml_of_variant ctx ~variant loc ~global_attrs attrs constrs exp =
     | None, Some string_match, None -> string_match
     | None, None, Some bool_match -> bool_match
     | _ ->
-        let case_int = Option.map (fun int_match -> Exp.case (pat_str "number") int_match) int_match in
-        let case_string = Option.map (fun string_match -> Exp.case (pat_str "string") string_match) string_match in
-        let case_bool = Option.map (fun bool_match -> Exp.case (pat_str "boolean") bool_match) bool_match in
+        let case_int = Option.map (Exp.case (pat_str "number")) int_match in
+        let case_string = Option.map (Exp.case (pat_str "string")) string_match in
+        let case_bool = Option.map (Exp.case (pat_str "boolean")) bool_match in
         let case_default =
           match variant_kind, int_default, string_default, bool_default with
           | `Enum, _, _, _
           | _, None, None, None -> Exp.case (Pat.any ()) assert_false
           | (`Sum _ | `Union _), _, _, _ ->
-              let defaults =
-                List.fold_left
-                  (fun state -> function Some x -> x :: state | None -> state)
-                  []
-                  [int_default; string_default; bool_default]
-              in
+              let defaults = List.filter_map Fun.id [int_default; string_default; bool_default] in
               match defaults with
-              | [] -> assert false
-              | def :: rest ->
-                  assert (List.for_all (fun x -> def = x) rest);
-                  def
+              | def :: rest when List.for_all ((=) def) rest -> def
+              | _ -> assert false
         in
         let cases =
           List.fold_left
@@ -1035,11 +1029,14 @@ and ml2js ctx ty exp =
       else
         app (var ("Obj.magic")) (nolabel ([exp])) false
 
+and ml2js_discriminator ctx ~global_attrs mlconstr attributes =
+  match get_js_constr ~global_attrs mlconstr attributes with
+  | `Int n -> ml2js ctx int_typ (int n)
+  | `String s -> ml2js ctx string_typ (str s)
+  | `Bool b -> ml2js ctx bool_typ (bool b)
+
 and ml2js_of_variant ctx ~variant loc ~global_attrs attrs constrs exp =
   let variant_kind = get_variant_kind loc attrs in
-  let string_typ = Name ("string", []) in
-  let int_typ = Name ("int", []) in
-  let bool_typ = Name ("bool", []) in
   let check_label =
     match variant_kind with
     | `Sum kind -> (fun loc label -> if label = kind then error loc Sum_kind_args)
@@ -1052,12 +1049,7 @@ and ml2js_of_variant ctx ~variant loc ~global_attrs attrs constrs exp =
   let pair key typ value = Exp.tuple [str key; ml2js ctx typ value] in
   let case {mlconstr; arg; attributes; location} =
     let mkobj args =
-      let discriminator =
-        match get_js_constr ~global_attrs mlconstr attributes with
-        | `Int n -> ml2js ctx int_typ (int n)
-        | `String s -> ml2js ctx string_typ (str s)
-        | `Bool b -> ml2js ctx bool_typ (bool b)
-      in
+      let discriminator = ml2js_discriminator ctx ~global_attrs mlconstr attributes in
       match variant_kind, args with
       | `Enum, [] -> discriminator
       | `Enum, _ :: _ -> error location Non_constant_constructor_in_enum
@@ -1072,7 +1064,7 @@ and ml2js_of_variant ctx ~variant loc ~global_attrs attrs constrs exp =
         let value =
           match variant_kind with
           | `Enum when
-              (arg_typ = int_typ || arg_typ = string_typ || arg_typ = bool_typ) &&
+              is_discriminator_type arg_typ &&
               has_attribute "js.default" attributes -> ml2js ctx arg_typ (var x)
           | `Enum | `Sum _ ->
               let loc, arg_field = get_string_attribute_default "js.arg" (location, "arg") attributes in
@@ -1149,28 +1141,20 @@ and prepare_args_push ctx ty_args ty_vararg =
     | Variant {location = _; global_attrs; attributes; constrs} when
         (has_attribute "js.enum" attributes && not (is_simple_enum constrs)) ->
         let f {mlconstr; arg; attributes; location = _} =
-          let string_typ = Name ("string", []) in
-          let int_typ = Name ("int", []) in
-          let bool_typ = Name ("bool", []) in
-          let mkargs args =
-            match get_js_constr ~global_attrs mlconstr attributes with
-            | `Int n -> (ml2js ctx int_typ (int n)) :: args
-            | `String s -> (ml2js ctx string_typ (str s)) :: args
-            | `Bool b -> (ml2js ctx bool_typ (bool b)) :: args
-          in
           let gen_tuple typs =
             let xis = List.map (fun typ -> typ, fresh ()) typs in
-            let pat =
+            let cargs =
               match xis with
-              | [] -> Pat.variant mlconstr None
-              | [_, x] -> Pat.variant mlconstr (Some (Pat.var (mknoloc x)))
-              | _ :: _ :: _ -> Pat.variant mlconstr (Some (Pat.tuple (List.map (fun (_, xi) -> Pat.var (mknoloc xi)) xis)))
+              | [] -> None
+              | [_, x] -> Some (Pat.var (mknoloc x))
+              | _ :: _ :: _ -> Some (Pat.tuple (List.map (fun (_, xi) -> Pat.var (mknoloc xi)) xis))
             in
-            Exp.case pat
-              (let args = mkargs (List.map (fun (typi, xi) -> ml2js ctx typi (var xi)) xis) in
-               match args with
-               | [] -> unit_expr
-               | _ :: _ -> exp_ignore (ojs "call" [arr; str "push"; Exp.array args]))
+            let args =
+              ml2js_discriminator ctx ~global_attrs mlconstr attributes ::
+              List.map (fun (typi, xi) -> ml2js ctx typi (var xi)) xis
+            in
+            let e = exp_ignore (ojs "call" [arr; str "push"; Exp.array args]) in
+            Exp.case (Pat.variant mlconstr cargs) e
           in
           match arg with
           | Constant -> gen_tuple []
