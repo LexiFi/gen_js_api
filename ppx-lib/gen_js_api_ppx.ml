@@ -910,7 +910,7 @@ and js2ml_of_variant ctx ~variant loc ~global_attrs attrs constrs exp =
       else bool_default, true
     in
 
-    let gen_match ?(generate_fail_pattern=true) e default other_cases =
+    let gen_match ~fail_pattern e default other_cases =
       match default, other_cases with
       | None, [] -> None
       | Some default, _ ->
@@ -918,12 +918,9 @@ and js2ml_of_variant ctx ~variant loc ~global_attrs attrs constrs exp =
           Some (Exp.match_ e cases)
       | None, _ :: _ ->
           let cases =
-            if generate_fail_pattern then
-              List.rev ((Exp.case (Pat.any()) assert_false) :: other_cases)
-            else
-              List.rev other_cases
+            if fail_pattern then (Exp.case (Pat.any()) assert_false) :: other_cases else other_cases
           in
-          Some (Exp.match_ e cases)
+          Some (Exp.match_ e (List.rev cases))
     in
     let discriminator =
       match variant_kind with
@@ -932,9 +929,9 @@ and js2ml_of_variant ctx ~variant loc ~global_attrs attrs constrs exp =
       | `Union No_discriminator -> error loc Union_without_discriminator
       | `Union (On_field kind) -> ojs "get" [exp; str kind]
     in
-    let int_match = gen_match (js2ml ctx int_typ discriminator) int_default int_cases in
-    let string_match = gen_match (js2ml ctx string_typ discriminator) string_default string_cases in
-    let bool_match = gen_match ~generate_fail_pattern:generate_fail_pattern_for_bool (js2ml ctx bool_typ discriminator) bool_default bool_cases in
+    let int_match = gen_match ~fail_pattern:true (js2ml ctx int_typ discriminator) int_default int_cases in
+    let string_match = gen_match ~fail_pattern:true (js2ml ctx string_typ discriminator) string_default string_cases in
+    let bool_match = gen_match ~fail_pattern:generate_fail_pattern_for_bool (js2ml ctx bool_typ discriminator) bool_default bool_cases in
     match int_match, string_match, bool_match with
     | None, None, None -> assert false
     | Some int_match, None, None -> int_match
