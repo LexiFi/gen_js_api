@@ -902,16 +902,12 @@ and js2ml_of_variant ctx ~variant loc ~global_attrs attrs constrs exp =
 
     (* if both `true` and `false` are present, there is no need to generate the default cases for bool values *)
     let bool_default, generate_fail_pattern_for_bool =
-      if (List.length bool_cases < 2) then bool_default, true
-      else
-        let check b (c: case) =
-          if c.pc_guard <> None then false
-          else match c.pc_lhs.ppat_desc with
-            | Ppat_construct (ident_loc, _) -> ident_loc.txt = longident_parse b
-            | _ -> false
-        in
-        if List.exists (check "true") bool_cases && List.exists (check "false") bool_cases then None, false
-        else bool_default, true
+      let check b = function
+        | {pc_guard = None; pc_lhs={ppat_desc=Ppat_construct ({txt=Lident s;_}, None); _}; _} -> s = b
+        | _ -> false
+      in
+      if List.exists (check "true") bool_cases && List.exists (check "false") bool_cases then None, false
+      else bool_default, true
     in
 
     let gen_match ?(generate_fail_pattern=true) e default other_cases =
