@@ -509,8 +509,14 @@ let rec parse_sig_item ~global_attrs rest s =
       let global_attrs = attribute :: global_attrs in
       rest ~global_attrs
   | Psig_open descr -> Open descr :: rest ~global_attrs
-  | Psig_include ({pincl_mod = {pmty_desc = Pmty_typeof module_expr; _}; _} as info) ->
-    Include {info with pincl_mod = module_expr} :: rest ~global_attrs
+  | Psig_include ({pincl_mod; _} as info) ->
+    let rec module_expr mod_typ =
+      match mod_typ.pmty_desc with
+      | Pmty_typeof module_expr -> module_expr
+      | Pmty_with (t, _) -> module_expr t
+      | _ -> error s.psig_loc Cannot_parse_sigitem
+    in
+    Include {info with pincl_mod = module_expr pincl_mod} :: rest ~global_attrs
   | _ ->
       error s.psig_loc Cannot_parse_sigitem
 
