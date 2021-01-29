@@ -1,8 +1,6 @@
 [@@@js.scope "Buffer"]
 
-type t = private Ojs.t
-val t_of_js: Ojs.t -> t
-val t_to_js: t -> Ojs.t
+type t = private Ojs.t [@@js]
 
 val alloc: int -> t[@@js.global]
 val from: string -> t[@@js.global]
