@@ -1,11 +1,11 @@
 Class wrapping in gen_js_api
 ============================
 
-gen_js_api can bind Javascript objects into OCaml abstract types with
+gen_js_api can bind JavaScript objects into OCaml abstract types with
 associated functions (to get/set property and to call methods).  This
 form of binding is quite efficient, since the opaque OCaml values are
-just the underlying Javascript objects, with no mapping or wrapping.
-In addition to that, gen_js_api provides ways to **wrap Javascript
+just the underlying JavaScript objects, with no mapping or wrapping.
+In addition to that, gen_js_api provides ways to **wrap JavaScript
 objects into OCaml objects**.  This adds some runtime overhead, but
 allows users to use standard OO syntax in OCaml and to rely on
 inheritance (to mimic similar hierarchy on the JS side).
@@ -24,7 +24,7 @@ Class wrapping
 --------------
 
 An interface processed by js_of_ocaml can define an OCaml class used
-to wrap some Javascript objects:
+to wrap some JavaScript objects:
 
     ````
     class my_class: Ojs.t ->
@@ -103,7 +103,7 @@ It is possible to bind to actual JS constructors declarations such as:
   class foo: string -> my_class
  ````
 
-Calling this constructor is then implemented by calling the Javascript
+Calling this constructor is then implemented by calling the JavaScript
 constructor of the same name, and wrapping the resulting object with
 the `my_class` wrapper.  This is similar to defining:
 

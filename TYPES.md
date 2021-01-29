@@ -5,7 +5,7 @@ JS-able types
 -------------
 
 A JS-able type is an OCaml type whose values can be mapped to and from
-Javascript objects.
+JavaScript objects.
 
 The following types are supported out-of-the-box:
 
@@ -208,7 +208,7 @@ Enums mapped to polymorphic variants or sum types
 -------------------------------------------------
 
 Either polymorphic variants or normal sum types (all with constant
-constructors) can be used to bind to "enums" in Javascript.  By
+constructors) can be used to bind to "enums" in JavaScript.  By
 default, constructors are mapped to the JS string equal to their OCaml
 name, but a custom translation can be provided with a `[@js]`
 attribute.  This custom translation can be a string or an integer
@@ -368,7 +368,7 @@ val f: t -> ([`Str of string | `Obj of t | `Nothing] [@js.enum]) -> ...
 
 This generalisation of the `[@js.enum]` attribute can only be used on
 polymorphic variant used in contravariant context (i.e. to describe
-mapping from OCaml to Javascript, not the other way around).  With
+mapping from OCaml to JavaScript, not the other way around).  With
 this calling convention, first the representation of the constructor
 (which can be either an integer or a string, which is derived
 automatically if not specified with a `[@js]` attribute) is passed,
@@ -406,7 +406,7 @@ function:
 ```ocaml
 val join: string JsArray.t -> string -> string
 ```
-Indeed, the objects contained in the JsArray.t are not javascript strings but
+Indeed, the objects contained in the JsArray.t are not JavaScript strings but
 representation of caml strings.
 To properly do this, we would want the strings contained in the data structure
 to be converted /to JS types, this would require conversion functions not
