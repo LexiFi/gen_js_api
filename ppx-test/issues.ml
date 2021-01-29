@@ -1,4 +1,8 @@
-module Issue116 = [%js: type t]
+module Issue116 = struct 
+  type t
+  type s = int [@@js]
+  module M = [%js: type t type s[@@js]]
+end
 module Issue117 = [%js:
   module T: sig
     val log: 'a -> unit [@@js.global]
