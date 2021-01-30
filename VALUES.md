@@ -341,7 +341,7 @@ The rules are applied in order:
 
 - If the value is a function returning `unit` with three arguments
   whose first argument is a named type `τ -> τ2 -> τ3 -> unit`, then
-  the declaration is assumed to be a `[@@js.set_index]` index setter.
+  the declaration is assumed to be a `[@@js.index_set]` index setter.
 
 - If the value is a function with two arguments `τ1 -> τ2 -> unit` and
   its name starts with `set_`, then the declaration is assumed to be a
@@ -354,7 +354,7 @@ The rules are applied in order:
 
 - If the value is a function with two arguments whose first argument is
   a named type `τ -> τ2 -> τ3` (and `τ3` is not `unit`) and the name is
-  `get`, then the declaration is assumed to be a `[@@js.get_index]`
+  `get`, then the declaration is assumed to be a `[@@js.index_get]`
   index getter.
 
 - If the value is a function with a single argument (named type) `τ ->
