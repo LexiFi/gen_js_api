@@ -1225,6 +1225,7 @@ and gen_typ = function
   | Tuple typs ->
       Typ.tuple (List.map gen_typ typs)
   | Typ_var label -> Typ.var label
+
 let process_fields ~global_attrs l =
   let loc = l.pld_name.loc in
   let mlname = l.pld_name.txt in
@@ -1440,6 +1441,7 @@ and gen_classdecl cast_funcs = function
       let e = if unit_arg then Cl.fun_ Nolabel None unit_pat e else e in
       let f e (label, x) = Cl.fun_ label None (Pat.var (mknoloc x)) e in
       Ci.mk (mknoloc class_name) (List.fold_left f e (List.rev formal_args))
+
 and gen_class_field x = function
   | Method {method_name; method_typ; method_def; method_loc} ->
       let body =
