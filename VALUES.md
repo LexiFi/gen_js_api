@@ -340,8 +340,9 @@ The rules are applied in order:
   `set_` prefix).
 
 - If the value is a function returning `unit` with three arguments
-  whose first argument is a named type `τ -> τ2 -> τ3 -> unit`, then
-  the declaration is assumed to be a `[@@js.index_set]` index setter.
+  whose first argument is a named type `τ -> τ2 -> τ3 -> unit` and the
+  name is `set`, then the declaration is assumed to be a
+  `[@@js.set_index]` index setter.
 
 - If the value is a function with two arguments `τ1 -> τ2 -> unit` and
   its name starts with `set_`, then the declaration is assumed to be a
