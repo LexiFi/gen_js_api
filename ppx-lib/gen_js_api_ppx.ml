@@ -1323,39 +1323,60 @@ and gen_funs ~global_attrs p =
   let typvar_used, of_js, to_js, custom_funs =
     match p.ptype_kind with
     | _ when has_attribute "js.custom" global_attrs ->
+        let expected_record_txt = "the expected payload here is { to_js = ...; of_js = ... }" in
         let result =
           match get_attribute "js.custom" global_attrs with
-          | Some (k, PStr structure) ->
-              let expected_names = [ name ^ "_of_js"; name ^ "_to_js" ] in
-              let unexpected_error_txt =
-                Printf.sprintf "any definitions other than '%s_of_js' or '%s_to_js'" name name
-              in
-              let get_value_bindings (state: value_binding list) (si: structure_item) =
-                match si.pstr_desc with
-                | Pstr_value (_, vbs) -> vbs @ state
-                | _ -> raise (Error (si.pstr_loc, Not_supported_here unexpected_error_txt))
-              in
-              let assert_functions (vbs: value_binding list) =
-                let check req_labels vb =
-                  match vb.pvb_pat.ppat_desc with
-                  | Ppat_var nameloc ->
-                      if not (List.mem nameloc.txt req_labels) then
-                        raise (Error (nameloc.loc, Not_supported_here unexpected_error_txt))
-                      else
-                        List.filter (fun label -> label <> nameloc.txt) req_labels
-                  | _ ->
-                      raise (Error (vb.pvb_loc, Not_supported_here unexpected_error_txt))
-                in
-                let missing_functions = List.fold_left check expected_names vbs in
-                List.iter (fun label -> raise (Error (k.loc, Missing_requried_definitions label))) missing_functions
-              in
-              let vbs = List.fold_left get_value_bindings [] structure in
-              assert_functions vbs;
-              (fun _ -> true),
-              lazy (raise (Error (loc, Skip_mapping_generation))),
-              lazy (raise (Error (loc, Skip_mapping_generation))),
-              vbs
-          | _ -> error loc Structure_expected
+          | Some (k, PStr [item]) ->
+              let expected_name_txt = "the field name must be 'to_js' or 'of_js'" in
+              let res =
+                match item.pstr_desc with
+                | Pstr_eval (expr, _) ->
+                    let fields =
+                      match expr.pexp_desc with
+                      | Pexp_record (fields, None) -> fields
+                      | _ -> error expr.pexp_loc (Not_supported_here expected_record_txt)
+                    in
+                    let expected_names = [ "of_js"; "to_js" ] in
+                    let field_to_value_binding
+                      (nameloc: Longident.t with_loc)
+                      (body: expression)
+                      (remaining_names: label list) : value_binding * label list =
+                      match nameloc.txt with
+                      | Lident label ->
+                        let nameloc = { txt = Printf.sprintf "%s_%s" name label; loc = nameloc.loc } in
+                        let pat =
+                          {
+                            ppat_desc = Ppat_var nameloc;
+                            ppat_loc  = nameloc.loc;
+                            ppat_loc_stack  = [];
+                            ppat_attributes = []
+                          }
+                        in
+                        let vb =
+                          {
+                            pvb_pat = pat;
+                            pvb_expr = body;
+                            pvb_attributes = [];
+                            pvb_loc = nameloc.loc
+                          }
+                        in
+                        vb, List.filter ((<>) label) remaining_names
+                      | _ -> error nameloc.loc (Not_supported_here expected_name_txt)
+                    in
+                    let vbs, missing_functions =
+                      List.fold_left (fun (vbs, rns) (nameloc, body) ->
+                        let vb, rns = field_to_value_binding nameloc body rns in
+                        (vb :: vbs, rns)
+                      ) ([], expected_names) fields
+                    in
+                    List.iter (fun label -> error k.loc (Missing_requried_definitions label)) missing_functions;
+                    (fun _ -> true),
+                    lazy (error loc Skip_mapping_generation),
+                    lazy (error loc Skip_mapping_generation),
+                    vbs
+                | _ -> error item.pstr_loc (Not_supported_here expected_record_txt)
+              in res
+          | _ -> error loc (Not_supported_here expected_record_txt)
         in result
     | Ptype_abstract ->
         let ty =
