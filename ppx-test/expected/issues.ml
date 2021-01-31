@@ -67,6 +67,9 @@ module Issue124 :
               (match Ojs.string_of_js (Ojs.get x12 "type") with
                | "t" -> T (t_of_js x12)
                | _ -> Unknown x12)
+          | "boolean" ->
+              (match Ojs.bool_of_js (Ojs.get x12 "type") with
+               | _ -> Unknown x12)
           | _ -> Unknown x12
       and (u_to_js : u -> Ojs.t) =
         fun x8 -> match x8 with | Unknown x9 -> x9 | T x10 -> t_to_js x10
