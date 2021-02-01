@@ -51,4 +51,29 @@ module M =
             Ojs.set x21 "y" (Ojs.int_to_js x19);
             Ojs.set x21 "z" (Ojs.int_to_js x20);
             t_of_js x21
+    let (index_get_int : t -> int -> string option) =
+      fun x23 ->
+        fun x24 ->
+          Ojs.option_of_js Ojs.string_of_js (Ojs.array_get (t_to_js x23) x24)
+    let (index_get_string : t -> string -> string option) =
+      fun x26 ->
+        fun x27 ->
+          Ojs.option_of_js Ojs.string_of_js (Ojs.get (t_to_js x26) x27)
+    let (index_get_generic : t -> Ojs.t -> string option) =
+      fun x29 ->
+        fun x30 ->
+          Ojs.option_of_js Ojs.string_of_js
+            (Ojs.generic_get (t_to_js x29) x30)
+    let (index_set_int : t -> int -> string -> unit) =
+      fun x32 ->
+        fun x33 ->
+          fun x34 -> Ojs.array_set (t_to_js x32) x33 (Ojs.string_to_js x34)
+    let (index_set_string : t -> string -> string -> unit) =
+      fun x35 ->
+        fun x36 ->
+          fun x37 -> Ojs.set (t_to_js x35) x36 (Ojs.string_to_js x37)
+    let (index_set_generic : t -> Ojs.t -> string -> unit) =
+      fun x38 ->
+        fun x39 ->
+          fun x40 -> Ojs.generic_set (t_to_js x38) x39 (Ojs.string_to_js x40)
   end

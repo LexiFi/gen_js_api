@@ -80,35 +80,73 @@ let root : unit Promise.t =
 (*** Index signature **)
 
 include [%js:
-  module MapLike : sig
-    type 'a t = private Ojs.t
+  module ArrayLike (K : Ojs.T) : sig
+    type t = private Ojs.t
+    val t_to_js: t -> Ojs.t
+    val t_of_js: Ojs.t -> t
 
-    val t_to_js: ('a -> Ojs.t) -> 'a t -> Ojs.t
-    val t_of_js: (Ojs.t -> 'a) -> Ojs.t -> 'a t
-
-    val get: 'a t -> string -> 'a option [@@js.index_get]
-    val set: 'a t -> string -> 'a -> unit [@@js.index_set]
+    val create: unit -> t [@@js.builder]
+    val get: t -> int -> K.t option [@@js.index_get]
+    val set: t -> int -> K.t -> unit [@@js.index_set]
   end
 
-  type js_string = private Ojs.t
-  val js_string_of_js: Ojs.t -> js_string
-  val js_string_to_js: js_string -> Ojs.t
+  module MapLike (K : Ojs.T) : sig
+    type t = private Ojs.t
+    val t_to_js: t -> Ojs.t
+    val t_of_js: Ojs.t -> t
 
-  [@@@js.stop]
-  val js_string: string -> js_string
-  [@@@js.start]
-  [@@@js.implem
-    let js_string = Ojs.string_to_js
-  ]
+    val create: unit -> t [@@js.builder]
+    val get: t -> string -> K.t option [@@js.index_get]
+    val set: t -> string -> K.t -> unit [@@js.index_set]
+  end
+
+  module Symbol : sig
+    type t = private Ojs.t
+    val t_to_js: t -> Ojs.t
+    val t_of_js: Ojs.t -> t
+
+    val fresh: unit -> t [@@js.global "Symbol"]
+  end
+
+  module SymbolMap (K : Ojs.T) : sig
+    type t = private Ojs.t
+    val t_to_js: t -> Ojs.t
+    val t_of_js: Ojs.t -> t
+
+    val create: unit -> t [@@js.builder]
+    val get: t -> Symbol.t -> K.t option [@@js.index_get]
+    val set: t -> Symbol.t -> K.t -> unit [@@js.index_set]
+  end
+
 ]
 
 let () =
-  let test_obj = Ojs.obj [| ("foo", Ojs.string_to_js "bar") |] in
-  let map_str = MapLike.t_of_js (js_string_of_js) test_obj in
-  assert (MapLike.get map_str "foo" = Some (js_string "bar"));
-  MapLike.set map_str "baz" (js_string "boo");
-  assert (MapLike.get map_str "baz" = Some (js_string "boo"));
-  ()
+  let module M = MapLike([%js: type t = string val t_to_js: t -> Ojs.t val t_of_js: Ojs.t -> t]) in
+  let map_str = M.create () in
+  M.set map_str "foo" "bar";
+  assert (M.get map_str "foo" = Some "bar");
+  M.set map_str "baz" "boo";
+  assert (M.get map_str "baz" = Some "boo");
+
+  let module A = ArrayLike([%js: type t = int val t_to_js: t -> Ojs.t val t_of_js: Ojs.t -> t]) in
+  let map_int = A.create () in
+  let len = 10 in
+  for k = 0 to len - 1 do
+    A.set map_int k k;
+    assert (A.get map_int k = Some k);
+    A.set map_int k (k * k);
+    assert (A.get map_int k = Some (k * k));
+  done;
+
+  let module M = SymbolMap([%js: type t = string val t_to_js: t -> Ojs.t val t_of_js: Ojs.t -> t]) in
+  let a = Symbol.fresh () in
+  let b = Symbol.fresh () in
+  let map_str = M.create () in
+  M.set map_str a "bar";
+  assert (M.get map_str a = Some "bar");
+  M.set map_str b "boo";
+  assert (M.get map_str b = Some "boo")
+
 
 (*** Function signature **)
 

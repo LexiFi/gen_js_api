@@ -18,4 +18,13 @@ module M : sig
   val method_call_unit_unit: t -> unit -> unit [@@js]
   val method_call_args_unit: t -> int -> unit [@@js]
   val global: t [@@js]
+
+  [@@@warning "-32"]
+  val get: t -> int -> string option [@@js]
+  val set: t -> int -> string -> unit [@@js]
+  val get: t -> string -> string option [@@js]
+  val set: t -> string -> string -> unit [@@js]
+  [@@@warning "+32"]
+  val get: t -> Ojs.t -> string option [@@js]
+  val set: t -> Ojs.t -> string -> unit [@@js]
 end
