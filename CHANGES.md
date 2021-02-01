@@ -4,7 +4,22 @@ Changelog
 Next version
 ------------
 
+- GPR#132: Add support for indexers and "callable" objects (@cannorin)
+- GPR#131: type [@@js] to derive conversions signatures (@@)
+- GPR#130: Javascript -> JavaScript (@smorimoto)
+- GPR#129: Add GitHub Actions workflow (@smorimoto)
+- GPR#128: Bucklescript -> ReScript (also add genType ppx as a resource) (@ryyppy)
 - GPR#127: Support boolean "enum"s and boolean union discriminators (@cannorin)
+- GPR#126: Put Ojs_exn inside Ojs module (breaking change !) (@mlasson)
+- GPR#125: js.custom attribute for type declaration to support custom mapping #125 (@cannorin)
+- GPR#123: Upgrade ppx to the ocaml 4.11 ast (@hhugo)
+- GPR#120: Split runtime library to own package (@rgrinberg)
+- GPR#118: Add ppx tests setup (@jchavarri, @mlasson)
+- GPR#115: Support for functors and module inclusion (@mlasson)
+- GPR#114: Dependency tweaks (@rgrinberg)
+- GPR#113: Add support for type variables (@jchavarri, @mlasson)
+- GPR#111: Better ppxlib integration (@hhugo)
+- GPR#110: Include payload in extension node (@nojb)
 
 Version 1.0.6
 -------------
