@@ -37,7 +37,7 @@ type error =
   | Sum_kind_args
   | Union_without_discriminator
   | Contravariant_type_parameter of string
-  | Missing_requried_definitions of string
+  | Missing_required_definitions of string
   | Skip_mapping_generation
 
 exception Error of Location.t * error
@@ -163,7 +163,7 @@ let print_error ppf = function
       Format.fprintf ppf "js.union without way to discriminate values."
   | Contravariant_type_parameter label ->
       Format.fprintf ppf "Contravariant type parameter '%s is not allowed." label
-  | Missing_requried_definitions label ->
+  | Missing_required_definitions label ->
       Format.fprintf ppf "'%s' must be manually declared here" label
   | Skip_mapping_generation ->
       failwith "Skip_mapping_generation should not be printed"
@@ -1369,7 +1369,7 @@ and gen_funs ~global_attrs p =
                         (vb :: vbs, rns)
                       ) ([], expected_names) fields
                     in
-                    List.iter (fun label -> error k.loc (Missing_requried_definitions label)) missing_functions;
+                    List.iter (fun label -> error k.loc (Missing_required_definitions label)) missing_functions;
                     (fun _ -> true),
                     lazy (error loc Skip_mapping_generation),
                     lazy (error loc Skip_mapping_generation),
