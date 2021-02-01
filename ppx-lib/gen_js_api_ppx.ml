@@ -1594,13 +1594,7 @@ and gen_def ~global_object loc decl ty =
     Arrow {ty_args = {lab=Arg; att=_; typ} :: ty_args; ty_vararg; unit_arg; ty_res} ->
       let formal_args, concrete_args = prepare_args [] ty_args ty_vararg in
       let res this = ojs_call_arr (ml2js [] typ this) (str s) concrete_args in
-      mkfun
-        (fun this ->
-           match ty_args, ty_vararg, unit_arg with
-           | [], None, false -> js2ml_unit [] ty_res (res this)
-           | [], _, _
-           | _ :: _, _, _ -> func formal_args unit_arg (js2ml_unit [] ty_res (res this))
-        )
+      mkfun (fun this -> func formal_args unit_arg (js2ml_unit [] ty_res (res this)))
 
   | New name, Arrow {ty_args; ty_vararg; unit_arg; ty_res} ->
       let formal_args, concrete_args = prepare_args [] ty_args ty_vararg in
@@ -1650,19 +1644,13 @@ and gen_def ~global_object loc decl ty =
     Arrow {ty_args = {lab=Arg; att=_; typ} :: ty_args; ty_vararg; unit_arg; ty_res} ->
       let formal_args, concrete_args = prepare_args [] ty_args ty_vararg in
       let res this = ojs_apply_arr (ml2js [] typ this) concrete_args in
-      mkfun
-        (fun this ->
-           match ty_args, ty_vararg, unit_arg with
-           | [], None, false -> js2ml_unit [] ty_res (res this)
-           | [], _, _
-           | _ :: _, _, _ -> func formal_args unit_arg (js2ml_unit [] ty_res (res this))
-        )
+      mkfun (fun this -> func formal_args unit_arg (js2ml_unit [] ty_res (res this)))
 
   | IndexGet,
     Arrow {ty_args = [{lab=Arg; att=_; typ=(Name _ as ty_this)}; {lab=Arg; att=_; typ=ty_index}];
            ty_vararg = None; unit_arg = false; ty_res} ->
       mkfun (fun this -> gen_index_get ty_index (ml2js [] ty_this this) ty_res)
-  
+
   | IndexSet,
     Arrow {ty_args = [{lab=Arg; att=_; typ=(Name _ as ty_this)};
                       {lab=Arg; att=_; typ=ty_index};
@@ -1672,7 +1660,7 @@ and gen_def ~global_object loc decl ty =
 
   | _ ->
       error loc Binding_type_mismatch
-  
+
 and gen_index_get ty_index this ty_res =
   let res index =
     match ty_index with
