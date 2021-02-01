@@ -1,4 +1,4 @@
-gen_js_api: easy OCaml bindings for Javascript libraries
+gen_js_api: easy OCaml bindings for JavaScript libraries
 ========================================================
 
 [![Build Status](https://travis-ci.com/LexiFi/gen_js_api.svg?branch=master)](https://travis-ci.com/LexiFi/gen_js_api)
@@ -7,21 +7,21 @@ Overview
 --------
 
 gen_js_api aims at simplifying the creation of OCaml bindings for
-Javascript libraries.  It must currently be used with the [js_of_ocaml
+JavaScript libraries.  It must currently be used with the [js_of_ocaml
 compiler](https://github.com/ocsigen/js_of_ocaml), although other ways
-to run OCaml code "against" Javascript might be supported later with
+to run OCaml code "against" JavaScript might be supported later with
 the same binding definitions (for instance,
 [Bucklescript](https://github.com/bloomberg/bucklescript),
 or direct embedding of a JS engine in a native OCaml application).
 
 gen_js_api is based on the following ideas:
 
- - Authors of bindings write OCaml signatures for Javascript libraries
+ - Authors of bindings write OCaml signatures for JavaScript libraries
    and the tool generates the actual binding code with a combination
    of implicit conventions and explicit annotations.
 
  - The generated binding code takes care of translating values between
-   OCaml and Javascript and of dealing with Javascript calling
+   OCaml and JavaScript and of dealing with JavaScript calling
    conventions.
 
  - All syntactic processing is done by authors of bindings: the client
@@ -42,14 +42,14 @@ gen_js_api can be used in two complementary ways:
 Examples
 --------
 
-The repository contains some examples of OCaml bindings to Javascript
+The repository contains some examples of OCaml bindings to JavaScript
 libraries created with gen_js_api:
 
  - Very partial [bindings to jQuery](examples/misc/jquery.mli), with
    some [example client code](examples/misc/test_jquery.ml).
 
- - Partial bindings to Javascript [strings and
-   regexps](examples/misc/js_str.mli) and Javascript
+ - Partial bindings to JavaScript [strings and
+   regexps](examples/misc/js_str.mli) and JavaScript
    [dates](examples/js_date.mli).
 
  - Some [ad hoc test](examples/test) to exercise various features.
@@ -61,7 +61,7 @@ Documentation
 -------------
 
   - [Install and use](INSTALL_AND_USE.md)
-  - [Low-level binding to Javascript](LOW_LEVEL_BINDING.md)
+  - [Low-level binding to JavaScript](LOW_LEVEL_BINDING.md)
   - [Using gen_js_api to generate .ml from .mli](IMPLGEN.md)
   - [Using gen_js_api as a ppx processor](PPX.md)
   - [Default naming convention](NAMING.md)
@@ -87,15 +87,14 @@ Related projects
     [DefinitelyTyped](https://github.com/borisyankov/DefinitelyTyped)
     interfaces and produce OCaml interfaces.
 
-  - [Bucklescript](https://github.com/bloomberg/bucklescript):
-    Another compiler from OCaml to Javascript.
-
+  - [ReScript](https://github.com/rescript-lang/rescript-compiler):
+    Another compiler from OCaml to JavaScript, featuring the [genType](https://github.com/reason-association/genType) ppx for generating TS / Flow types and runtime converters.
 
 About
 -----
 
 gen_js_api has been created by LexiFi for porting a web application
-from Javascript to OCaml.  The tool has been used in production since
+from JavaScript to OCaml.  The tool has been used in production since
 2015.
 
 This gen_js_api package is licensed by LexiFi under the terms of the

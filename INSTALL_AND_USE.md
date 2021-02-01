@@ -58,7 +58,7 @@ Usage (with dune)
    )
    ```
 
- - Compiling into Javascript: Just ask dune to build the `*.bc.js`
+ - Compiling into JavaScript: Just ask dune to build the `*.bc.js`
    target. (e.g. `dune build test_jquery.bc.js`)
 
 Usage (with ocamlfind)
@@ -90,7 +90,7 @@ Usage (with ocamlfind)
    ocamlfind ocamlc -o my_prog -no-check-prims -package gen_js_api -linkpkg ...
    ```
 
- - Compiling into Javascript:
+ - Compiling into JavaScript:
 
    ```
    js_of_ocaml -o my_prog.js +gen_js_api/ojs_runtime.js my_prog

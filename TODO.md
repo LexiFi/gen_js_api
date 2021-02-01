@@ -1,7 +1,7 @@
 TODO list for gen_js_api
 ========================
 
-- Create reasonably complete bindings for Javascript's stdlib
+- Create reasonably complete bindings for JavaScript's stdlib
   (string, regexp), for the DOM, for jQuery, etc.
 
 - Add a safe mode, where the generated code is augmented with explicit

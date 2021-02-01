@@ -3,7 +3,7 @@ gen_js_api: generate implementations from interfaces
 
 The primary operating mode for gen_js_api is to generate .ml
 implementation from annotated .mli interfaces.  These interfaces must
-follow a certain shape.  They describe both the Javascript components
+follow a certain shape.  They describe both the JavaScript components
 to be imported and how they should be reflected within OCaml.
 
 Usage

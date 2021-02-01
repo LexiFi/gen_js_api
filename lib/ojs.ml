@@ -100,7 +100,10 @@ class obj (x:t) =
 external fun_to_js: int -> (t -> 'a) -> t = "caml_js_wrap_callback_strict"
 external fun_to_js_args: (t -> 'a) -> t = "caml_ojs_wrap_fun_arguments"
 
-let has_property o x = not (get o x == undefined)
+let has_property o x =
+  type_of o = "object" && o != null
+  && get o x != undefined
+
 external iter_properties: t -> (string -> unit) -> unit = "caml_ojs_iterate_properties"
 
 let empty_obj () = new_obj (get global "Object") [||]
@@ -116,6 +119,13 @@ let is_null x =
 
 let obj_type x =
   string_of_js (call (pure_js_expr "Object.prototype.toString") "call" [|x|])
+  
+module type T = sig
+  type js := t
+  type t
+  val t_to_js : t -> js
+  val t_of_js : js -> t
+end
 
 module Exn = struct
   type nonrec t = t
