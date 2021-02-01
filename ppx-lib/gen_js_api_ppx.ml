@@ -1666,7 +1666,7 @@ and gen_index_get ty_index this ty_res =
     match ty_index with
     | Name ("string", []) -> ojs "get" [this; index]
     | Name ("int", []) -> ojs "array_get" [this; index]
-    | _ -> ojs "internal_get" [this; ml2js [] ty_index index]
+    | _ -> ojs "generic_get" [this; ml2js [] ty_index index]
   in
   mkfun (fun index -> js2ml [] ty_res (res index))
 
@@ -1676,7 +1676,7 @@ and gen_index_set ty_index this ty_value =
     match ty_index with
     | Name ("string", []) -> ojs "set" [this; index; value_js]
     | Name ("int", []) -> ojs "array_set" [this; index; value_js]
-    | _ -> ojs "internal_set" [this; ml2js [] ty_index index; value_js]
+    | _ -> ojs "generic_set" [this; ml2js [] ty_index index; value_js]
   in
   mkfun (fun index -> mkfun (fun value -> res index value))
 
