@@ -34,8 +34,8 @@ external obj: (string * t) array -> t = "caml_js_object"
 
 external variable: string -> t = "caml_js_var"
 
-external internal_get: t -> t -> t = "caml_js_get"
-external internal_set: t -> t -> t -> unit = "caml_js_set"
+external generic_get: t -> t -> t = "caml_js_get"
+external generic_set: t -> t -> t -> unit = "caml_js_set"
 
 external get: t -> string -> t = "caml_js_get"
 external set: t -> string -> t -> unit = "caml_js_set"
@@ -57,8 +57,8 @@ external call: t -> string -> t array -> t = "caml_js_meth_call"
 external apply: t -> t array -> t = "caml_js_fun_call"
 
 let array_make n = new_obj (get global "Array") [|int_to_js n|]
-let array_get t i = internal_get t (int_to_js i)
-let array_set t i x = internal_set t (int_to_js i) x
+let array_get t i = generic_get t (int_to_js i)
+let array_set t i x = generic_set t (int_to_js i) x
 
 let array_of_js_from f objs start =
   let n = int_of_js (get objs "length") in

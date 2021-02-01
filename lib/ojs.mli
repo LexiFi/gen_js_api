@@ -57,6 +57,10 @@ external fun_to_js_args: (t -> 'a) -> t = "caml_ojs_wrap_fun_arguments"
 
 (** {2 JS objects} *)
 
+external generic_get: t -> t -> t = "caml_js_get"
+
+external generic_set: t -> t -> t -> unit = "caml_js_set"
+
 external get: t -> string -> t = "caml_js_get"
 
 external set: t -> string -> t -> unit = "caml_js_set"

@@ -40,4 +40,29 @@ module M =
             (Ojs.call (t_to_js x14) "methodCallArgsUnit"
                [|(Ojs.int_to_js x13)|])
     let (global : t) = t_of_js (Ojs.get Ojs.global "global")
+    let (get : t -> int -> string option) =
+      fun x15 ->
+        fun x16 ->
+          Ojs.option_of_js Ojs.string_of_js (Ojs.array_get (t_to_js x15) x16)
+    let (set : t -> int -> string -> unit) =
+      fun x18 ->
+        fun x19 ->
+          fun x20 -> Ojs.array_set (t_to_js x18) x19 (Ojs.string_to_js x20)
+    let (get : t -> string -> string option) =
+      fun x21 ->
+        fun x22 ->
+          Ojs.option_of_js Ojs.string_of_js (Ojs.get (t_to_js x21) x22)
+    let (set : t -> string -> string -> unit) =
+      fun x24 ->
+        fun x25 ->
+          fun x26 -> Ojs.set (t_to_js x24) x25 (Ojs.string_to_js x26)
+    let (get : t -> Ojs.t -> string option) =
+      fun x27 ->
+        fun x28 ->
+          Ojs.option_of_js Ojs.string_of_js
+            (Ojs.generic_get (t_to_js x27) x28)
+    let (set : t -> Ojs.t -> string -> unit) =
+      fun x30 ->
+        fun x31 ->
+          fun x32 -> Ojs.generic_set (t_to_js x30) x31 (Ojs.string_to_js x32)
   end

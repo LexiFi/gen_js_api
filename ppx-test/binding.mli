@@ -27,4 +27,12 @@ module M : sig
   val new_thing: int -> t [@@js.new]
 
   val builder: ?x:int -> (int [@js "y"]) -> z:int -> t [@@js.builder]
+
+  val index_get_int: t -> int -> string option [@@js.index_get]
+  val index_get_string: t -> string -> string option [@@js.index_get]
+  val index_get_generic: t -> Ojs.t -> string option [@@js.index_get]
+
+  val index_set_int: t -> int -> string -> unit [@@js.index_set]
+  val index_set_string: t -> string -> string -> unit [@@js.index_set]
+  val index_set_generic: t -> Ojs.t -> string -> unit [@@js.index_set]
 end

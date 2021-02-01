@@ -268,7 +268,10 @@ type valdef =
   | Ignore
   | PropGet of string
   | PropSet of string
+  | IndexGet
+  | IndexSet
   | MethCall of string
+  | Apply
   | Global of string
   | New of string option
   | Builder of attributes
@@ -276,7 +279,11 @@ type valdef =
 type methoddef =
   | Getter of string
   | Setter of string
+  | IndexGetter
+  | IndexSetter
   | MethodCall of string
+  | ApplyAsFunction
+
 
 type method_decl =
   {
@@ -426,15 +433,21 @@ let auto ~global_attrs s ty =
     | Arrow {ty_args = _; ty_vararg = None; unit_arg = _; ty_res = Name _} when s = "create" -> New None
     | Arrow {ty_args = _; ty_vararg = None; unit_arg = _; ty_res = Name _} when has_prefix ~prefix:"new_" s -> New (Some (js_name ~capitalize:true ~global_attrs (drop_prefix ~prefix:"new_" s)))
     | Arrow {ty_args = [_]; ty_vararg = None; unit_arg = false; ty_res = Unit _} when has_prefix ~prefix:"set_" s -> PropSet (js_name ~global_attrs (drop_prefix ~prefix:"set_" s))
+    | Arrow {ty_args = [{lab=Arg; att=_; typ=Name _}; _; _]; ty_vararg = None; unit_arg = false; ty_res = Unit _} when s = "set" -> IndexSet
     | Arrow {ty_args = [{lab=Arg; att=_; typ=Name _}; _]; ty_vararg = None; unit_arg = false; ty_res = Unit _} when has_prefix ~prefix:"set_" s -> PropSet (js_name ~global_attrs (drop_prefix ~prefix:"set_" s))
     | Arrow {ty_args = [{lab=Arg; att=_; typ=Name _}]; ty_vararg = None; unit_arg = false; ty_res = Unit _} -> MethCall (js_name ~global_attrs s)
+    | Arrow {ty_args = [{lab=Arg; att=_; typ=Name _}; _]; ty_vararg = None; unit_arg = false; ty_res = _} when s = "get" -> IndexGet
     | Arrow {ty_args = [{lab=Arg; att=_; typ=Name _}]; ty_vararg = None; unit_arg = false; ty_res = _} -> PropGet (js_name ~global_attrs s)
     | Arrow {ty_args = []; ty_vararg = None; unit_arg = true; ty_res = _} -> PropGet (js_name ~global_attrs s)
+    | Arrow {ty_args = {lab=Arg; att=_; typ=Name _} :: _; ty_vararg = _; unit_arg = _; ty_res = _} when s = "apply" -> Apply
     | Arrow {ty_args = {lab=Arg; att=_; typ=Name _} :: _; ty_vararg = _; unit_arg = _; ty_res = _} -> MethCall (js_name ~global_attrs s)
     | _ -> Global (js_name ~global_attrs s)
 
 let auto_in_object ~global_attrs s = function
   | Arrow {ty_args = [{lab=Arg; att=_; typ=_}]; ty_vararg = None; unit_arg = false; ty_res = Unit _} when has_prefix ~prefix:"set_" s -> PropSet (js_name ~global_attrs (drop_prefix ~prefix:"set_" s))
+  | Arrow {ty_args = [_]; ty_vararg = None; unit_arg = _; ty_res = _} when s = "get" -> IndexGet
+  | Arrow {ty_args = [_; _]; ty_vararg = None; unit_arg = false; ty_res = Unit _} when s = "set" -> IndexSet
+  | Arrow _ when s = "apply" -> Apply
   | Arrow _ -> MethCall (js_name ~global_attrs s)
   | Unit _ -> MethCall (js_name ~global_attrs s)
   | _ -> PropGet (js_name ~global_attrs s)
@@ -454,7 +467,10 @@ let parse_attr ~global_attrs (s, loc, auto) attribute =
     [ "js.cast", (fun () -> Cast);
       "js.get", (fun () -> PropGet (opt_name ()));
       "js.set", (fun () -> PropSet (opt_name ~prefix:"set_" ()));
+      "js.index_get", (fun () -> IndexGet);
+      "js.index_set", (fun () -> IndexSet);
       "js.call", (fun () -> MethCall (opt_name ()));
+      "js.apply", (fun () -> Apply);
       "js.global", (fun () -> Global (opt_name ()));
       "js", (fun () -> auto ());
       "js.create", (fun () -> New None);
@@ -596,7 +612,10 @@ and parse_class_field ~global_attrs = function
         match kind with
         | PropGet s -> Getter s
         | PropSet s -> Setter s
+        | IndexGet -> IndexGetter
+        | IndexSet -> IndexSetter
         | MethCall s -> MethodCall s
+        | Apply -> ApplyAsFunction
         | _ -> error pctf_loc Cannot_parse_classfield
       in
       Method
@@ -1498,6 +1517,14 @@ and gen_class_field x = function
             func formal_args unit_arg (js2ml_unit [] ty_res res)
         | MethodCall s, ty_res ->
             js2ml_unit [] ty_res (ojs "call" [var x; str s; Exp.array []])
+        | IndexGetter, Arrow {ty_args = [{lab=Arg; att=_; typ=ty_index}]; ty_vararg = None; unit_arg = false; ty_res } ->
+            gen_index_get ty_index (var x) ty_res
+        | IndexSetter, Arrow {ty_args = [{lab=Arg; att=_; typ=ty_index}; {lab=Arg; att=_; typ=ty_value}]; ty_vararg = None; unit_arg = false; ty_res = Unit _ } ->
+            gen_index_set ty_index (var x) ty_value
+        | ApplyAsFunction, Arrow {ty_args; ty_vararg; unit_arg; ty_res} ->
+            let formal_args, concrete_args = prepare_args [] ty_args ty_vararg in
+            let res = ojs_apply_arr (var x) concrete_args in
+            func formal_args unit_arg (js2ml_unit [] ty_res res)
         | _ -> error method_loc Binding_type_mismatch
       in
       Cf.method_ (mknoloc method_name) Public (Cf.concrete Fresh (Exp.constraint_ body (gen_typ method_typ)))
@@ -1567,13 +1594,7 @@ and gen_def ~global_object loc decl ty =
     Arrow {ty_args = {lab=Arg; att=_; typ} :: ty_args; ty_vararg; unit_arg; ty_res} ->
       let formal_args, concrete_args = prepare_args [] ty_args ty_vararg in
       let res this = ojs_call_arr (ml2js [] typ this) (str s) concrete_args in
-      mkfun
-        (fun this ->
-           match ty_args, ty_vararg, unit_arg with
-           | [], None, false -> js2ml_unit [] ty_res (res this)
-           | [], _, _
-           | _ :: _, _, _ -> func formal_args unit_arg (js2ml_unit [] ty_res (res this))
-        )
+      mkfun (fun this -> func formal_args unit_arg (js2ml_unit [] ty_res (res this)))
 
   | New name, Arrow {ty_args; ty_vararg; unit_arg; ty_res} ->
       let formal_args, concrete_args = prepare_args [] ty_args ty_vararg in
@@ -1619,8 +1640,45 @@ and gen_def ~global_object loc decl ty =
       let body = let_exp_in (ojs "empty_obj" [unit_expr]) init in
       func formal_args unit_arg body
 
+  | Apply,
+    Arrow {ty_args = {lab=Arg; att=_; typ} :: ty_args; ty_vararg; unit_arg; ty_res} ->
+      let formal_args, concrete_args = prepare_args [] ty_args ty_vararg in
+      let res this = ojs_apply_arr (ml2js [] typ this) concrete_args in
+      mkfun (fun this -> func formal_args unit_arg (js2ml_unit [] ty_res (res this)))
+
+  | IndexGet,
+    Arrow {ty_args = [{lab=Arg; att=_; typ=(Name _ as ty_this)}; {lab=Arg; att=_; typ=ty_index}];
+           ty_vararg = None; unit_arg = false; ty_res} ->
+      mkfun (fun this -> gen_index_get ty_index (ml2js [] ty_this this) ty_res)
+
+  | IndexSet,
+    Arrow {ty_args = [{lab=Arg; att=_; typ=(Name _ as ty_this)};
+                      {lab=Arg; att=_; typ=ty_index};
+                      {lab=Arg; att=_; typ=ty_value}];
+           ty_vararg = None; unit_arg = false; ty_res = Unit _} ->
+      mkfun (fun this -> gen_index_set ty_index (ml2js [] ty_this this) ty_value)
+
   | _ ->
       error loc Binding_type_mismatch
+
+and gen_index_get ty_index this ty_res =
+  let res index =
+    match ty_index with
+    | Name ("string", []) -> ojs "get" [this; index]
+    | Name ("int", []) -> ojs "array_get" [this; index]
+    | _ -> ojs "generic_get" [this; ml2js [] ty_index index]
+  in
+  mkfun (fun index -> js2ml [] ty_res (res index))
+
+and gen_index_set ty_index this ty_value =
+  let res index value =
+    let value_js = ml2js [] ty_value value in
+    match ty_index with
+    | Name ("string", []) -> ojs "set" [this; index; value_js]
+    | Name ("int", []) -> ojs "array_set" [this; index; value_js]
+    | _ -> ojs "generic_set" [this; ml2js [] ty_index index; value_js]
+  in
+  mkfun (fun index -> mkfun (fun value -> res index value))
 
 
 (** ppx mapper *)

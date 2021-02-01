@@ -29,6 +29,21 @@ Supported forms
   [@@js.call "JavaScriptMethodName"]
   ```
 
+- Function Application
+
+  ```ocaml
+  val apply: t -> T1 -> ... -> Tn
+  [@@js.apply]
+  ```
+
+  Calling the function on a first argument `f` of type `t` corresponds
+  to calling the underlying JS function object directly, with
+  other arguments passed to it.
+
+  This is particularly useful when binding to a "callable" JS object (an object that is also a function), or [a function type in a TypeScript interface](https://www.typescriptlang.org/docs/handbook/interfaces.html#function-types).
+
+  The name of the function need not necessarily be `apply` as long as the `[@@js.apply]` attribute is present.
+
 
 - Object constructor:
 
@@ -132,6 +147,34 @@ Supported forms
   val modify_prop: t -> T -> unit
   [@@js.set "prop"]
   ```
+
+- Index getter
+
+  ```ocaml
+  val get: t -> index -> T option
+  [@@js.index_get]
+  ```
+
+  Corresponds to getting from an index accessor or [an index signature in a TypeScript interface](https://www.typescriptlang.org/docs/handbook/interfaces.html#indexable-types).
+
+  The return type may be `T` or `T option`, depending on whether the property is optional or not.
+
+  The name of the function need not necessarily be `get` as long as the `[@@js.index_get]` attribute is present.
+
+  `index` must be `int`, `string`, or abstract types holding a JavaScript `number` or `string` value.
+
+- Index setter
+
+  ```ocaml
+  val set: t -> index -> T -> unit
+  [@@js.index_set]
+  ```
+  Corresponds to setting to an index accessor or [an index signature in a TypeScript interface](https://www.typescriptlang.org/docs/handbook/interfaces.html#indexable-types).
+
+  The name of the function need not necessarily be `set` as long as the `[@@js.index_set]` attribute is present.
+  
+  `index` must be `int`, `string`, or abstract types holding a JavaScript `number` or `string` value.
+
 
 - Global getter
 
@@ -296,6 +339,11 @@ The rules are applied in order:
   `[@@js.set]` global setter (whose name is obtained by dropping the
   `set_` prefix).
 
+- If the value is a function returning `unit` with three arguments
+  whose first argument is a named type `τ -> τ2 -> τ3 -> unit` and the
+  name is `set`, then the declaration is assumed to be a
+  `[@@js.set_index]` index setter.
+
 - If the value is a function with two arguments `τ1 -> τ2 -> unit` and
   its name starts with `set_`, then the declaration is assumed to be a
   `[@@js.set]` property setter (on the property whose name is obtained
@@ -305,6 +353,11 @@ The rules are applied in order:
   unit`, then the declaration is assumed to be a `[@@js.call]` method
   call.
 
+- If the value is a function with two arguments whose first argument is
+  a named type `τ -> τ2 -> τ3` (and `τ3` is not `unit`) and the name is
+  `get`, then the declaration is assumed to be a `[@@js.index_get]`
+  index getter.
+
 - If the value is a function with a single argument (named type) `τ ->
   τ2` (and `τ2` is not `unit`), then the declaration is assumed to be
   a `[@@js.get]` property getter.
@@ -313,8 +366,12 @@ The rules are applied in order:
   the declaration is assumed to be a `[@@js.get]` global getter.
 
 - If the value is a function whose first argument is a named type `τ
-  -> ...`, then the definition is assumed to be a `[@@js.call]` method
-  call.
+  -> ...` and the name is `apply`, then the definition is assumed to
+  be a `[@@js.apply]` function object application.
+
+- If the value is a function whose first argument is a named type `τ
+  -> ...` (and the name is not `apply`), then the definition is assumed
+  to be a `[@@js.call]` method call.
 
 - Otherwise, the declaration is assumed to be a `[@@js.global]` value.
   This applies in particular for any non-functional type.
