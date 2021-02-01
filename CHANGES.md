@@ -1,6 +1,11 @@
 Changelog
 =========
 
+Next version
+------------
+
+- GPR#127: Support boolean "enum"s and boolean union discriminators (@cannorin)
+
 Version 1.0.6
 -------------
 

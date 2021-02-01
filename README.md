@@ -87,9 +87,8 @@ Related projects
     [DefinitelyTyped](https://github.com/borisyankov/DefinitelyTyped)
     interfaces and produce OCaml interfaces.
 
-  - [Bucklescript](https://github.com/bloomberg/bucklescript):
-    Another compiler from OCaml to JavaScript.
-
+  - [ReScript](https://github.com/rescript-lang/rescript-compiler):
+    Another compiler from OCaml to JavaScript, featuring the [genType](https://github.com/reason-association/genType) ppx for generating TS / Flow types and runtime converters.
 
 About
 -----

@@ -201,6 +201,12 @@ let get_js_constr ~global_attrs name attributes =
       begin match (expr_of_payload k.loc v).pexp_desc with
       | Pexp_constant (Pconst_string (s, _, _)) -> `String s
       | Pexp_constant (Pconst_integer (n, _)) -> `Int (int_of_string n)
+      | Pexp_construct (ident_loc, _) ->
+          begin match ident_loc.txt with
+            | Lident "true"  -> `Bool true
+            | Lident "false" -> `Bool false
+            | _ -> error ident_loc.loc Invalid_expression
+          end
       | _ -> error k.loc Invalid_expression
       end
 
@@ -296,12 +302,13 @@ type classdecl =
   | Constructor of { class_name: string; js_class_name: string; class_arrow: arrow_params }
 
 type decl =
-  | Module of string * decl list
+  | Module of functor_parameter list * string * decl list
   | Type of rec_flag * Parsetree.type_declaration list * attributes
   | Val of string * typ * valdef * Location.t * attributes
   | Class of classdecl list
   | Implem of Parsetree.structure
   | Open of Parsetree.open_description
+  | Include of Parsetree.module_expr Parsetree.include_infos
 
 (** Parsing *)
 
@@ -492,24 +499,46 @@ let parse_valdecl ~global_attrs ~in_sig vd =
   in
   Val (s, ty, r, loc, global_attrs)
 
+let rec functor_of_module_type = function
+   | {pmty_desc = Pmty_signature si; pmty_attributes; _} -> Some ([], si, pmty_attributes)
+   | {pmty_desc = Pmty_functor (params, body); _} ->
+    begin match functor_of_module_type body with
+    | Some (parameters, si, attrs) ->
+      Some (params :: parameters, si, attrs)
+    | None -> None
+    end
+  | _ -> None
+
 let rec parse_sig_item ~global_attrs rest s =
   match s.psig_desc with
   | Psig_value vd when vd.pval_prim = [] ->
       parse_valdecl ~global_attrs ~in_sig:true vd :: rest ~global_attrs
   | Psig_type (rec_flag, decls) ->
       Type (rec_flag, decls, global_attrs) :: rest ~global_attrs
-  | Psig_module {pmd_name = { txt = Some name; _}; pmd_type = {pmty_desc = Pmty_signature si; pmty_attributes; pmty_loc = _}; pmd_loc = _; pmd_attributes} ->
+  | Psig_module {pmd_name = { txt = Some name; _}; pmd_type; pmd_loc = _; pmd_attributes} ->
+    begin match functor_of_module_type pmd_type with
+    | None -> error s.psig_loc Cannot_parse_sigitem
+    | Some (functor_parameters, si, attrs) ->
       (let global_attrs =
-         push_module_attributes name pmty_attributes
+         push_module_attributes name attrs
            (push_module_attributes name pmd_attributes global_attrs)
        in
-       Module (name, parse_sig ~global_attrs si)) :: rest ~global_attrs
+       Module (functor_parameters, name, parse_sig ~global_attrs si)) :: rest ~global_attrs
+    end
   | Psig_class cs -> Class (List.map (parse_class_decl ~global_attrs) cs) :: rest ~global_attrs
   | Psig_attribute ({attr_payload = PStr str; _} as attribute) when filter_attr_name "js.implem" attribute -> Implem str :: rest ~global_attrs
   | Psig_attribute attribute ->
       let global_attrs = attribute :: global_attrs in
       rest ~global_attrs
   | Psig_open descr -> Open descr :: rest ~global_attrs
+  | Psig_include ({pincl_mod; _} as info) ->
+    let rec module_expr mod_typ =
+      match mod_typ.pmty_desc with
+      | Pmty_typeof module_expr -> module_expr
+      | Pmty_with (t, _) -> module_expr t
+      | _ -> error s.psig_loc Cannot_parse_sigitem
+    in
+    Include {info with pincl_mod = module_expr pincl_mod} :: rest ~global_attrs
   | _ ->
       error s.psig_loc Cannot_parse_sigitem
 
@@ -607,8 +636,10 @@ let longident_parse x = Longident.parse x [@@ocaml.warning "-deprecated"]
 let var x = Exp.ident (mknoloc (longident_parse x))
 let str s = Exp.constant (Pconst_string (s, Location.none, None))
 let int n = Exp.constant (Pconst_integer (string_of_int n, None))
+let bool b = Exp.construct (mknoloc (longident_parse (if b then "true" else "false"))) None
 let pat_int n = Pat.constant (Pconst_integer (string_of_int n, None))
 let pat_str s = Pat.constant (Pconst_string (s, Location.none, None))
+let pat_bool b = Pat.construct (mknoloc (longident_parse (if b then "true" else "false"))) None
 
 let attr s e = (Attr.mk (mknoloc s) (PStr [Str.eval e]))
 
@@ -762,14 +793,19 @@ let rewrite_typ_decl t =
   | None, Ptype_abstract -> {t with ptype_manifest = Some ojs_typ}
   | _ -> t
 
+let string_typ = Name ("string", [])
+let int_typ = Name ("int", [])
+let bool_typ = Name ("bool", [])
+
+let is_discriminator_type = function
+  | Name (("string"|"int"|"bool"), []) -> true
+  | _ -> false
+
 let is_simple_enum params =
-  let string_typ = Name ("string", []) in
-  let int_typ = Name ("int", []) in
   let p {mlconstr = _; arg; attributes; location = _} =
     match arg with
     | Constant -> true
-    | Unary arg_typ when arg_typ = string_typ || arg_typ = int_typ ->
-        has_attribute "js.default" attributes
+    | Unary arg_typ when is_discriminator_type arg_typ -> has_attribute "js.default" attributes
     | Unary _
     | Nary _
     | Record _ -> false
@@ -833,8 +869,6 @@ let rec js2ml ctx ty exp =
 
 and js2ml_of_variant ctx ~variant loc ~global_attrs attrs constrs exp =
   let variant_kind = get_variant_kind loc attrs in
-  let string_typ = Name ("string", []) in
-  let int_typ = Name ("int", []) in
   let check_label =
     match variant_kind with
     | `Sum kind -> (fun loc label -> if label = kind then error loc Sum_kind_args)
@@ -845,11 +879,12 @@ and js2ml_of_variant ctx ~variant loc ~global_attrs attrs constrs exp =
     else fun x arg -> Exp.construct (mknoloc (Longident.Lident x)) arg
   in
   let f exp =
-    let gen_cases (int_default, int_cases, string_default, string_cases) {mlconstr; arg; attributes; location} =
+    let gen_cases (int_default, int_cases, string_default, string_cases, bool_default, bool_cases) {mlconstr; arg; attributes; location} =
       let case x =
         match get_js_constr ~global_attrs mlconstr attributes with
-        | `String s -> int_default, int_cases, string_default, Exp.case (pat_str s) x :: string_cases
-        | `Int n -> int_default, Exp.case (pat_int n) x :: int_cases, string_default, string_cases
+        | `String s -> int_default, int_cases, string_default, Exp.case (pat_str s) x :: string_cases, bool_default, bool_cases
+        | `Int n -> int_default, Exp.case (pat_int n) x :: int_cases, string_default, string_cases, bool_default, bool_cases
+        | `Bool b -> int_default, int_cases, string_default, string_cases, bool_default, Exp.case (pat_bool b) x :: bool_cases
       in
       let get_arg key typ = js2ml ctx typ (ojs "get" [exp; str key]) in
       match arg with
@@ -879,11 +914,13 @@ and js2ml_of_variant ctx ~variant loc ~global_attrs attrs constrs exp =
           in
           begin match variant_kind with
           | `Enum when arg_typ = int_typ ->
-              process_default [int_default] (fun int_default -> Some int_default, int_cases, string_default, string_cases)
+              process_default [int_default] (fun int_default -> Some int_default, int_cases, string_default, string_cases, bool_default, bool_cases)
           | `Enum when arg_typ = string_typ ->
-              process_default [string_default] (fun string_default -> int_default, int_cases, Some string_default, string_cases)
+              process_default [string_default] (fun string_default -> int_default, int_cases, Some string_default, string_cases, bool_default, bool_cases)
+          | `Enum when arg_typ = bool_typ ->
+              process_default [bool_default] (fun bool_default -> int_default, int_cases, string_default, string_cases, Some bool_default, bool_cases)
           | `Sum _ | `Union _ when arg_typ = Js ->
-              process_default [int_default; string_default] (fun default -> Some default, int_cases, Some default, string_cases)
+              process_default [int_default; string_default; bool_default] (fun default -> Some default, int_cases, Some default, string_cases, Some default, bool_cases)
           | _ -> otherwise()
           end
       | Nary args_typ ->
@@ -904,16 +941,29 @@ and js2ml_of_variant ctx ~variant loc ~global_attrs attrs constrs exp =
           | `Union _ -> error location Constructor_in_union
           end
     in
-    let (int_default, int_cases, string_default, string_cases) = List.fold_left gen_cases (None, [], None, []) constrs in
-    let gen_match e default other_cases =
+    let (int_default, int_cases, string_default, string_cases, bool_default, bool_cases) = List.fold_left gen_cases (None, [], None, [], None, []) constrs in
+
+    (* if both `true` and `false` are present, there is no need to generate the default cases for bool values *)
+    let bool_default, generate_fail_pattern_for_bool =
+      let check b = function
+        | {pc_guard = None; pc_lhs={ppat_desc=Ppat_construct ({txt=Lident s;_}, None); _}; _} -> s = b
+        | _ -> false
+      in
+      if List.exists (check "true") bool_cases && List.exists (check "false") bool_cases then None, false
+      else bool_default, true
+    in
+
+    let gen_match ~fail_pattern e default other_cases =
       match default, other_cases with
       | None, [] -> None
       | Some default, _ ->
           let cases = List.rev (default :: other_cases) in
           Some (Exp.match_ e cases)
       | None, _ :: _ ->
-          let cases = List.rev ((Exp.case (Pat.any()) assert_false) :: other_cases) in
-          Some (Exp.match_ e cases)
+          let cases =
+            if fail_pattern then (Exp.case (Pat.any()) assert_false) :: other_cases else other_cases
+          in
+          Some (Exp.match_ e (List.rev cases))
     in
     let discriminator =
       match variant_kind with
@@ -922,26 +972,35 @@ and js2ml_of_variant ctx ~variant loc ~global_attrs attrs constrs exp =
       | `Union No_discriminator -> error loc Union_without_discriminator
       | `Union (On_field kind) -> ojs "get" [exp; str kind]
     in
-    let int_match = gen_match (js2ml ctx int_typ discriminator) int_default int_cases in
-    let string_match = gen_match (js2ml ctx string_typ discriminator) string_default string_cases in
-    match int_match, string_match with
-    | None, None -> assert false
-    | Some int_match, None -> int_match
-    | None, Some string_match -> string_match
-    | Some int_match, Some string_match ->
-        let case_int = Exp.case (pat_str "number") int_match in
-        let case_string = Exp.case (pat_str "string") string_match in
+    let int_match = gen_match ~fail_pattern:true (js2ml ctx int_typ discriminator) int_default int_cases in
+    let string_match = gen_match ~fail_pattern:true (js2ml ctx string_typ discriminator) string_default string_cases in
+    let bool_match = gen_match ~fail_pattern:generate_fail_pattern_for_bool (js2ml ctx bool_typ discriminator) bool_default bool_cases in
+    match int_match, string_match, bool_match with
+    | None, None, None -> assert false
+    | Some int_match, None, None -> int_match
+    | None, Some string_match, None -> string_match
+    | None, None, Some bool_match -> bool_match
+    | _ ->
+        let case_int = Option.map (Exp.case (pat_str "number")) int_match in
+        let case_string = Option.map (Exp.case (pat_str "string")) string_match in
+        let case_bool = Option.map (Exp.case (pat_str "boolean")) bool_match in
         let case_default =
-          match variant_kind, int_default, string_default with
-          | `Enum, _, _
-          | _, None, None -> Exp.case (Pat.any ()) assert_false
-          | (`Sum _ | `Union _), Some def1, Some def2 ->
-              assert (def1 = def2);
-              def1
-          | (`Sum _ | `Union _), Some _, None
-          | (`Sum _ | `Union _), None, Some _ -> assert false
+          match variant_kind, int_default, string_default, bool_default with
+          | `Enum, _, _, _
+          | _, None, None, None -> Exp.case (Pat.any ()) assert_false
+          | (`Sum _ | `Union _), _, _, _ ->
+              let defaults = List.filter_map Fun.id [int_default; string_default; bool_default] in
+              match defaults with
+              | def :: rest when List.for_all ((=) def) rest -> def
+              | _ -> assert false
         in
-        Exp.match_ (ojs "type_of" [discriminator]) [case_int; case_string; case_default]
+        let cases =
+          List.fold_left
+            (fun state -> function Some x -> x :: state | None -> state)
+            [case_default]
+            [case_bool; case_string; case_int]
+        in
+        Exp.match_ (ojs "type_of" [discriminator]) cases
   in
   let_exp_in exp f
 
@@ -1012,10 +1071,14 @@ and ml2js ctx ty exp =
       else
         app (var ("Obj.magic")) (nolabel ([exp])) false
 
+and ml2js_discriminator ctx ~global_attrs mlconstr attributes =
+  match get_js_constr ~global_attrs mlconstr attributes with
+  | `Int n -> ml2js ctx int_typ (int n)
+  | `String s -> ml2js ctx string_typ (str s)
+  | `Bool b -> ml2js ctx bool_typ (bool b)
+
 and ml2js_of_variant ctx ~variant loc ~global_attrs attrs constrs exp =
   let variant_kind = get_variant_kind loc attrs in
-  let string_typ = Name ("string", []) in
-  let int_typ = Name ("int", []) in
   let check_label =
     match variant_kind with
     | `Sum kind -> (fun loc label -> if label = kind then error loc Sum_kind_args)
@@ -1028,11 +1091,7 @@ and ml2js_of_variant ctx ~variant loc ~global_attrs attrs constrs exp =
   let pair key typ value = Exp.tuple [str key; ml2js ctx typ value] in
   let case {mlconstr; arg; attributes; location} =
     let mkobj args =
-      let discriminator =
-        match get_js_constr ~global_attrs mlconstr attributes with
-        | `Int n -> ml2js ctx int_typ (int n)
-        | `String s -> ml2js ctx string_typ (str s)
-      in
+      let discriminator = ml2js_discriminator ctx ~global_attrs mlconstr attributes in
       match variant_kind, args with
       | `Enum, [] -> discriminator
       | `Enum, _ :: _ -> error location Non_constant_constructor_in_enum
@@ -1047,7 +1106,7 @@ and ml2js_of_variant ctx ~variant loc ~global_attrs attrs constrs exp =
         let value =
           match variant_kind with
           | `Enum when
-              (arg_typ = int_typ || arg_typ = string_typ) &&
+              is_discriminator_type arg_typ &&
               has_attribute "js.default" attributes -> ml2js ctx arg_typ (var x)
           | `Enum | `Sum _ ->
               let loc, arg_field = get_string_attribute_default "js.arg" (location, "arg") attributes in
@@ -1124,26 +1183,20 @@ and prepare_args_push ctx ty_args ty_vararg =
     | Variant {location = _; global_attrs; attributes; constrs} when
         (has_attribute "js.enum" attributes && not (is_simple_enum constrs)) ->
         let f {mlconstr; arg; attributes; location = _} =
-          let string_typ = Name ("string", []) in
-          let int_typ = Name ("int", []) in
-          let mkargs args =
-            match get_js_constr ~global_attrs mlconstr attributes with
-            | `Int n -> (ml2js ctx int_typ (int n)) :: args
-            | `String s -> (ml2js ctx string_typ (str s)) :: args
-          in
           let gen_tuple typs =
             let xis = List.map (fun typ -> typ, fresh ()) typs in
-            let pat =
+            let cargs =
               match xis with
-              | [] -> Pat.variant mlconstr None
-              | [_, x] -> Pat.variant mlconstr (Some (Pat.var (mknoloc x)))
-              | _ :: _ :: _ -> Pat.variant mlconstr (Some (Pat.tuple (List.map (fun (_, xi) -> Pat.var (mknoloc xi)) xis)))
+              | [] -> None
+              | [_, x] -> Some (Pat.var (mknoloc x))
+              | _ :: _ :: _ -> Some (Pat.tuple (List.map (fun (_, xi) -> Pat.var (mknoloc xi)) xis))
             in
-            Exp.case pat
-              (let args = mkargs (List.map (fun (typi, xi) -> ml2js ctx typi (var xi)) xis) in
-               match args with
-               | [] -> unit_expr
-               | _ :: _ -> exp_ignore (ojs "call" [arr; str "push"; Exp.array args]))
+            let args =
+              ml2js_discriminator ctx ~global_attrs mlconstr attributes ::
+              List.map (fun (typi, xi) -> ml2js ctx typi (var xi)) xis
+            in
+            let e = exp_ignore (ojs "call" [arr; str "push"; Exp.array args]) in
+            Exp.case (Pat.variant mlconstr cargs) e
           in
           match arg with
           | Constant -> gen_tuple []
@@ -1390,8 +1443,14 @@ and gen_decl = function
       let funs = List.concat (List.map (gen_funs ~global_attrs) decls) in
       [ Str.type_ rec_flag decls; Str.value rec_flag funs ]
 
-  | Module (s, decls) ->
-      [ Str.module_ (Mb.mk (mknoloc (Some s)) (Mod.structure (gen_decls decls))) ]
+  | Module (functor_parameters, s, decls) ->
+      let structure = Mod.structure (gen_decls decls) in
+      let functors =
+        List.fold_left (fun acc param ->
+          Mod.functor_ param acc
+        ) structure (List.rev functor_parameters)
+      in
+      [ Str.module_ (Mb.mk (mknoloc (Some s)) functors) ]
 
   | Val (_, _, Ignore, _, _) -> []
 
@@ -1411,6 +1470,9 @@ and gen_decl = function
   | Open descr ->
       let descr = {descr with popen_expr = Mod.ident descr.popen_expr} in
       [ Str.open_ descr ]
+
+  | Include descr ->
+      [ Str.include_ descr ]
 
 and gen_classdecl cast_funcs = function
   | Declaration { class_name; class_fields } ->

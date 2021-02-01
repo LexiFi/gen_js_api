@@ -76,6 +76,15 @@
  (action
   (diff expected/scoped.ml scoped.ml)))
 
+(rule
+ (targets union_and_enum.ml)
+ (deps union_and_enum.mli)
+ (action (run %{bin:gen_js_api} %{deps} -o %{targets})))
+
+(rule
+ (alias runtest)
+ (action
+  (diff expected/union_and_enum.ml union_and_enum.ml)))
 
 (library
  (name test_library)

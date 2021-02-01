@@ -130,3 +130,11 @@ val obj_type: t -> string
     "[object Null]"
     "[object Boolean]"
 *)
+
+module type T =
+  sig
+    type js := t
+    type t
+    val t_to_js : t -> js
+    val t_of_js : js -> t
+  end
