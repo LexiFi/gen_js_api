@@ -211,10 +211,10 @@ implementation).  Mutually recursive type declarations are supported.
 
   ```ocaml
   type t = ... [@@js.custom
-    let t_of_js (x: Ojs.t) : t =
-      ...
-    let t_to_js (x: t) : Ojs.t =
-      ...
+    {
+      of_js = (fun ... -> ...);
+      to_js = (fun ... -> ...)
+    }
   ]
   ```
 
