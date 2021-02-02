@@ -6,6 +6,14 @@ module Issue117 = [%js:
   end [@js.scope "console"]
 ]
 module Issue124 = [%js:
+  type a
+  and b =
+    { a : a }
+    [@@js.custom {
+      to_js = (fun { a } -> [%js.of: a] a);
+      of_js = (fun js -> { a = [%js.to: a] js})
+    }]
+
   type 'a dummy
 
   type 'a wrapped =
