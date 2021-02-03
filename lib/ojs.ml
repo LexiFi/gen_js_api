@@ -37,8 +37,8 @@ external variable: string -> t = "caml_js_var"
 external generic_get: t -> t -> t = "caml_js_get"
 external generic_set: t -> t -> t -> unit = "caml_js_set"
 
-external get: t -> string -> t = "caml_js_get"
-external set: t -> string -> t -> unit = "caml_js_set"
+external get: t -> string -> t = "caml_js_get_string_key"
+external set: t -> string -> t -> unit = "caml_js_set_string_key"
 
 external internal_type_of: t -> t = "caml_js_typeof"
 let type_of x = string_of_js (internal_type_of x)
