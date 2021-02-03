@@ -69,12 +69,10 @@ let filter_attr_name key attr =
 
 let filter_extension key name = name.txt = key
 
-let filter_attr key attribute  = filter_attr_name key attribute
-
-let has_attribute key attrs = List.exists (filter_attr key) attrs
+let has_attribute key attrs = List.exists (filter_attr_name key) attrs
 
 let get_attribute key attrs =
-  match List.find (filter_attr key) attrs with
+  match List.find (filter_attr_name key) attrs with
   | exception Not_found -> None
   | attr -> Some attr
 
@@ -1806,7 +1804,7 @@ and mapper =
         e
   in
   let attribute self a =
-    ignore (filter_attr "js.dummy" a : bool);
+    ignore (filter_attr_name "js.dummy" a : bool);
     super.attribute self a
   in
   {super with module_expr; structure_item; expr; attribute}
@@ -1887,7 +1885,7 @@ let mark_attributes_as_used mapper =
   let attribute : _ -> attribute -> _ =
     fun this ({attr_name = {txt; _}; _} as attr) ->
       if is_js_attribute txt then
-        ignore (filter_attr txt attr : bool);
+        ignore (filter_attr_name txt attr : bool);
       mapper.Ast_mapper.attribute this attr
   in
   { mapper with attribute }
