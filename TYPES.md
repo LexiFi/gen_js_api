@@ -175,7 +175,8 @@ implementation).  Mutually recursive type declarations are supported.
     ```
 
   This assumes that the type for all fields are JS-able.  Fields can
-  be mutabled, but polymorphic fields are not yet supported.
+  be mutable (but conversions still create copies).
+  Polymorphic fields are not yet supported.
 
   OCaml record values of this type are mapped to JS objects (one
   property per field).  By default, property names are equal to OCaml
@@ -240,7 +241,9 @@ type t =
   | Baz
     [@@js.enum]
 
-type t = [`foo | `bar [@js 42] | `Baz] [@@js.enum]
+type t = [`foo | `bar [@js 42] | `Baz] [@js.enum]
+  (* Note: one '@' because the enum attribute is attache to the
+     type and not the declaration ! *)
 ```
 
 
