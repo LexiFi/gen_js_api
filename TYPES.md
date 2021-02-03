@@ -241,9 +241,7 @@ type t =
   | Baz
     [@@js.enum]
 
-type t = [`foo | `bar [@js 42] | `Baz] [@js.enum]
-  (* Note: one '@' because the enum attribute is attached to the
-     type and not the declaration ! *)
+type t = [`foo | `bar [@js 42] | `Baz] [@@js.enum]
 ```
 
 
