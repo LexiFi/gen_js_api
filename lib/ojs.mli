@@ -61,9 +61,9 @@ external generic_get: t -> t -> t = "caml_js_get"
 
 external generic_set: t -> t -> t -> unit = "caml_js_set"
 
-external get: t -> string -> t = "caml_js_get"
+external get: t -> string -> t = "caml_js_get_string_key"
 
-external set: t -> string -> t -> unit = "caml_js_set"
+external set: t -> string -> t -> unit = "caml_js_set_string_key"
 
 external obj: (string * t) array -> t = "caml_js_object"
 
