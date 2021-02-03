@@ -40,6 +40,10 @@ module Issue124 = [%js:
   and t = [`U of u] dummy [@@js.custom {
     to_js = Obj.magic; of_js = Obj.magic
   }]
-
-
+]
+module Issue109 = [%js:
+  type t =
+    [ `S of string [@js.default]
+    | `I of int [@js.default]
+    ] [@@js.enum]
 ]

@@ -1356,7 +1356,8 @@ let rec gen_decls si =
 
 and gen_funs ~global_attrs p =
   let name = p.ptype_name.txt in
-  let global_attrs = p.ptype_attributes @ global_attrs in
+  let decl_attrs = p.ptype_attributes in
+  let global_attrs = global_attrs in
   let ctx =
     List.map (function
         | {ptyp_desc = Ptyp_any; ptyp_loc = _; ptyp_attributes = _; ptyp_loc_stack = _}, Invariant ->
@@ -1370,9 +1371,8 @@ and gen_funs ~global_attrs p =
   let exception Skip_mapping_generation in
   let typvar_used, of_js, to_js, custom_funs =
     match p.ptype_kind with
-    | _ when has_attribute "js.custom" global_attrs ->
-
-        begin match get_attribute "js.custom" global_attrs with
+    | _ when has_attribute "js.custom" decl_attrs ->
+        begin match get_attribute "js.custom" decl_attrs with
         | None -> assert false
         | Some attribute ->
             match expr_of_payload attribute with
@@ -1401,7 +1401,7 @@ and gen_funs ~global_attrs p =
         let ty =
           match p.ptype_manifest with
           | None -> Js
-          | Some ty -> parse_typ ~global_attrs ty
+          | Some ty -> parse_typ ~global_attrs { ty with ptyp_attributes = decl_attrs @ decl_attrs }
         in
         (fun label -> typvar_occurs loc 0 label ty),
         lazy (js2ml_fun ctx ty),
@@ -1424,14 +1424,13 @@ and gen_funs ~global_attrs p =
           in
           { mlconstr; arg; attributes = c.pcd_attributes; location = c.pcd_loc }
         in
-        let attrs = p.ptype_attributes in
         let params = List.map prepare_constructor cstrs in
         (fun label -> typvar_occurs_constructors loc 0 label params),
-        lazy (mkfun (js2ml_of_variant ctx ~variant:false loc ~global_attrs attrs params)),
-        lazy (mkfun (ml2js_of_variant ctx ~variant:false loc ~global_attrs attrs params)),
+        lazy (mkfun (js2ml_of_variant ctx ~variant:false loc ~global_attrs decl_attrs params)),
+        lazy (mkfun (ml2js_of_variant ctx ~variant:false loc ~global_attrs decl_attrs params)),
         []
     | Ptype_record lbls ->
-        let global_attrs = p.ptype_attributes @ global_attrs in
+        let global_attrs = decl_attrs @ global_attrs in
         let lbls = List.map (process_fields ~global_attrs) lbls in
         let of_js x (_loc, ml, js, ty) = ml, js2ml ctx ty (ojs "get" [x; str js]) in
         let to_js x (_loc, ml, js, ty) = Exp.tuple [str js; ml2js ctx ty (Exp.field x ml)] in
