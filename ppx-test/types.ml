@@ -38,8 +38,8 @@ let _ : [`foo | `bar | `Baz | `I of int | `S of string ] to_js = [%js.of: [`foo 
 
 let _ : (label:int -> ?opt:int -> unit -> unit) of_js = [%js.to: label:int -> ?opt:int -> unit -> unit]
 let _ : (label:int -> ?opt:int -> unit -> unit) to_js = [%js.of: label:int -> ?opt:int -> unit -> unit]
-let _ : (label:int -> ?opt:(int[@js.default 42]) -> unit -> unit) of_js =  [%js.to: label:int -> ?opt:int -> unit -> unit] (* js.default is ignored *)
-let _ : (label:int -> ?opt:(int[@js.default 42]) -> unit -> unit) to_js = [%js.of: label:int -> ?opt:int -> unit -> unit]  (* js.default is ignored *)
+let _ : (label:int -> ?opt:int -> unit -> unit) of_js =  [%js.to: label:int -> ?opt:int -> unit -> unit] (* js.default is ignored *)
+let _ : (label:int -> ?opt:int -> unit -> unit) to_js = [%js.of: label:int -> ?opt:int -> unit -> unit]  (* js.default is ignored *)
 
 (** Functions *)
 

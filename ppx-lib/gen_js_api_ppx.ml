@@ -790,8 +790,16 @@ let ojs_new_obj_arr cl = function
 
 let assert_false = Exp.assert_ (Exp.construct (mknoloc (longident_parse "false")) None)
 
+let clear_attr_mapper =
+  let mapper = Ast_mapper.default_mapper in
+  let attributes _this attrs =
+    let f {attr_name = {txt = _; loc}; _} = not (is_registered_loc loc) in
+    List.filter f attrs
+  in
+  { mapper with Ast_mapper.attributes }
+
 let rewrite_typ_decl t =
-  let t = {t with ptype_private = Public} in
+  let t = clear_attr_mapper.type_declaration clear_attr_mapper {t with ptype_private = Public} in
   match t.ptype_manifest, t.ptype_kind with
   | None, Ptype_abstract -> {t with ptype_manifest = Some ojs_typ}
   | _ -> t
@@ -1476,8 +1484,8 @@ and gen_funs ~global_attrs p =
 
 and gen_decl = function
   | Type (rec_flag, decls, global_attrs) ->
-      let decls = List.map rewrite_typ_decl decls in
       let funs = List.concat (List.map (gen_funs ~global_attrs) decls) in
+      let decls = List.map rewrite_typ_decl decls in
       [ Str.type_ rec_flag decls; Str.value rec_flag funs ]
 
   | Module (functor_parameters, s, decls) ->
@@ -1731,9 +1739,10 @@ and str_of_sg ~global_attrs sg =
   gen_decls decls
 
 and module_expr_rewriter ~loc ~attrs sg =
+  let str = str_of_sg ~global_attrs:(attrs) sg in
   Mod.constraint_
-    (Mod.structure ~attrs:[ merlin_hide ] (str_of_sg ~global_attrs:(attrs) sg))
-    (Mty.signature ~loc ~attrs sg)
+    (Mod.structure ~attrs:[ merlin_hide ] str)
+    (Mty.signature ~loc ~attrs (clear_attr_mapper.signature clear_attr_mapper sg))
 
 and js_to_rewriter ~loc ty =
   let e' = with_default_loc {loc with loc_ghost = true }
@@ -1821,14 +1830,6 @@ let check_loc_mapper =
     attr
   in
   { mapper with Ast_mapper.attribute }
-
-let clear_attr_mapper =
-  let mapper = Ast_mapper.default_mapper in
-  let attributes _this attrs =
-    let f {attr_name = {txt = _; loc}; _} = not (is_registered_loc loc) in
-    List.filter f attrs
-  in
-  { mapper with Ast_mapper.attributes }
 
 (** Main *)
 
