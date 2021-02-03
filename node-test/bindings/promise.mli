@@ -1,8 +1,6 @@
 module UntypedPromise : sig
 
-  type t = private Ojs.t
-  val t_to_js: t -> Ojs.t
-  val t_of_js: Ojs.t -> t
+  type t = private Ojs.t [@@js]
 
   [@@@js.stop]
   val return: Ojs.t -> t

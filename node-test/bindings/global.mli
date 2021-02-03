@@ -1,11 +1,5 @@
-type timeout_id
-val timeout_id_to_js: timeout_id -> Ojs.t
-val timeout_id_of_js: Ojs.t -> timeout_id
-
-type interval_id
-val interval_id_to_js: interval_id -> Ojs.t
-val interval_id_of_js: Ojs.t -> interval_id
-
+type timeout_id [@@js]
+type interval_id [@@js]
 
 val set_interval: (unit -> unit) -> int -> interval_id
 val set_timeout: (unit -> unit) -> int -> timeout_id

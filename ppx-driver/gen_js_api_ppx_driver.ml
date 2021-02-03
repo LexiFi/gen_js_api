@@ -21,12 +21,12 @@ module To_ppxlib = struct
     | _ -> assert false
 
   let copy_attribute (a : From_ppx.Ast.Parsetree.attribute)
-  : Ppxlib.Ast.attribute =
-  let pat : Migrate_parsetree.Ast_411.Parsetree.pattern =
-    Migrate_parsetree.Ast_411.Ast_helper.Pat.any ~attrs:[a] ()
-  in
-  let pat = copy_pattern pat in
-  List.hd pat.ppat_attributes
+    : Ppxlib.Ast.attribute =
+    let pat : Migrate_parsetree.Ast_411.Parsetree.pattern =
+      Migrate_parsetree.Ast_411.Ast_helper.Pat.any ~attrs:[a] ()
+    in
+    let pat = copy_pattern pat in
+    List.hd pat.ppat_attributes
 end
 
 
@@ -93,7 +93,12 @@ let () =
       rewriter
     |> Ppxlib.Context_free.Rule.extension
   in
-  let attr_typ =
+  let js =
+    Ppxlib.Attribute.declare "js"
+      Ppxlib.Attribute.Context.type_declaration
+      Ppxlib.(Ast_pattern.pstr Ast_pattern.nil) ()
+  in
+  let attr_str_type =
     let rewriter ~ctxt (rec_flag : Ppxlib.Asttypes.rec_flag) tdl _ =
       tdl
       |> List.map (Of_ppxlib.copy_type_declaration)
@@ -103,14 +108,24 @@ let () =
       |> To_ppxlib.copy_structure
     in
     Ppxlib.Context_free.Rule.attr_str_type_decl
-      (Ppxlib.Attribute.declare "js"
-         Ppxlib.Attribute.Context.type_declaration
-         Ppxlib.(Ast_pattern.pstr Ast_pattern.nil) ())
+      js
+      rewriter
+  in
+  let attr_sig_type =
+    let rewriter ~ctxt (_ : Ppxlib.Asttypes.rec_flag) tdl _ =
+      tdl
+      |> List.map (Of_ppxlib.copy_type_declaration)
+      |> Gen_js_api_ppx.type_decl_sig_rewriter
+        ~loc:(Ppxlib.Expansion_context.Deriver.derived_item_loc ctxt)
+      |> To_ppxlib.copy_signature
+    in
+    Ppxlib.Context_free.Rule.attr_sig_type_decl
+      js
       rewriter
   in
   Ppxlib.Driver.register_transformation
     "gen_js_api"
-    ~rules:[module_expr_ext; ext_of; ext_to; attr_typ ]
+    ~rules:[module_expr_ext; ext_of; ext_to; attr_str_type; attr_sig_type ]
     ~impl:(fun str_ ->
         mapper_for_str.structure mapper_for_str str_)
     ~intf:(fun sig_ ->

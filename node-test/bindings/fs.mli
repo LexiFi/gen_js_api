@@ -1,9 +1,7 @@
 [@@@js.scope Imports.fs_promises]
 
 module Dirent : sig
-  type t = Ojs.t
-  val t_of_js: Ojs.t -> t
-  val t_to_js: t -> Ojs.t
+  type t = Ojs.t [@@js]
 
   val name: t -> string [@@js.get]
   val is_file: t -> bool [@@js.call]
@@ -11,10 +9,7 @@ module Dirent : sig
 end
 
 module Dir : sig
-  type t = Ojs.t
-  val t_of_js: Ojs.t -> t
-  val t_to_js: t -> Ojs.t
-
+  type t = Ojs.t [@@js]
 
   val path: t -> string [@@js.get]
   val close: t -> unit Promise.t [@@js.call]
@@ -22,9 +17,7 @@ module Dir : sig
 end
 
 module FileHandle : sig
-  type t = Ojs.t
-  val t_of_js: Ojs.t -> t
-  val t_to_js: t -> Ojs.t
+  type t = Ojs.t [@@js]
 
   type read = {
     bytes_read: int;
