@@ -25,6 +25,7 @@ type error =
   | Cannot_parse_classfield
   | Implicit_name of string
   | Not_supported_here of string
+  | Record_expected of string
   | Constructor_in_union
   | Unknown_union_method
   | Non_constant_constructor_in_enum
@@ -75,7 +76,7 @@ let has_attribute key attrs = List.exists (filter_attr key) attrs
 let get_attribute key attrs =
   match List.find (filter_attr key) attrs with
   | exception Not_found -> None
-  | {attr_name; attr_payload; _} -> Some (attr_name, attr_payload)
+  | attr -> Some attr
 
 let unoption = function
   | Some x -> x
@@ -85,13 +86,15 @@ let expr_of_stritem = function
   | {pstr_desc=Pstr_eval (e, _); _} -> e
   | p -> error p.pstr_loc Expression_expected
 
-let expr_of_payload loc = function
+let expr_of_payload {attr_loc; attr_payload; _} =
+  match attr_payload with
   | PStr [x] -> expr_of_stritem x
-  | _ -> error loc Expression_expected
+  | _ -> error attr_loc Expression_expected
 
-let str_of_payload loc = function
+let str_of_payload {attr_loc; attr_payload; _} =
+  match attr_payload with
   | PStr x -> x
-  | _ -> error loc Structure_expected
+  | _ -> error attr_loc Structure_expected
 
 let id_of_expr = function
   | {pexp_desc=Pexp_constant (Pconst_string (s, _, _)); _} -> s
@@ -100,17 +103,17 @@ let id_of_expr = function
 let get_expr_attribute key attrs =
   match get_attribute key attrs with
   | None -> None
-  | Some (k, v) -> Some (expr_of_payload k.loc v)
+  | Some payload -> Some (expr_of_payload payload)
 
 let get_string_attribute key attrs =
   match get_attribute key attrs with
   | None -> None
-  | Some (k, v) -> Some (id_of_expr (expr_of_payload k.loc v))
+  | Some payload -> Some (id_of_expr (expr_of_payload payload))
 
 let get_string_attribute_default key default attrs =
   match get_attribute key attrs with
   | None -> default
-  | Some (k, v) -> k.loc, id_of_expr (expr_of_payload k.loc v)
+  | Some payload -> payload.attr_loc, id_of_expr (expr_of_payload payload)
 
 let print_error ppf = function
   | Expression_expected ->
@@ -161,6 +164,8 @@ let print_error ppf = function
       Format.fprintf ppf "js.union without way to discriminate values."
   | Contravariant_type_parameter label ->
       Format.fprintf ppf "Contravariant type parameter '%s is not allowed." label
+  | Record_expected shape ->
+      Format.fprintf ppf "Record %s expected." shape
 
 let () =
   Location.register_error_of_exn
@@ -197,17 +202,17 @@ let js_name ~global_attrs ?(capitalize = false) name =
 let get_js_constr ~global_attrs name attributes =
   match get_attribute "js" attributes with
   | None -> `String (js_name ~global_attrs name)
-  | Some (k, v) ->
-      begin match (expr_of_payload k.loc v).pexp_desc with
+  | Some payload ->
+      begin match (expr_of_payload payload).pexp_desc with
       | Pexp_constant (Pconst_string (s, _, _)) -> `String s
       | Pexp_constant (Pconst_integer (n, _)) -> `Int (int_of_string n)
       | Pexp_construct (ident_loc, _) ->
           begin match ident_loc.txt with
-            | Lident "true"  -> `Bool true
-            | Lident "false" -> `Bool false
-            | _ -> error ident_loc.loc Invalid_expression
+          | Lident "true"  -> `Bool true
+          | Lident "false" -> `Bool false
+          | _ -> error ident_loc.loc Invalid_expression
           end
-      | _ -> error k.loc Invalid_expression
+      | _ -> error payload.attr_loc Invalid_expression
       end
 
 (** AST *)
@@ -461,7 +466,7 @@ let parse_attr ~global_attrs (s, loc, auto) attribute =
         | Some s ->
             js_name ~global_attrs ~capitalize s
         end
-    | _ -> id_of_expr (expr_of_payload attribute.attr_name.loc attribute.attr_payload)
+    | _ -> id_of_expr (expr_of_payload attribute)
   in
   let actions =
     [ "js.cast", (fun () -> Cast);
@@ -557,8 +562,8 @@ and parse_sig ~global_attrs = function
       parse_sig_verbatim ~global_attrs rest
   | {psig_desc = Psig_value vd; _} :: rest when
       has_attribute "js.custom" vd.pval_attributes ->
-      let (k, v) = unoption (get_attribute "js.custom" vd.pval_attributes) in
-      let str = str_of_payload k.loc v in
+      let attribute = unoption (get_attribute "js.custom" vd.pval_attributes) in
+      let str = str_of_payload attribute in
       Implem str :: parse_sig ~global_attrs rest
   | s :: rest ->
       parse_sig_item ~global_attrs (parse_sig rest) s
@@ -821,22 +826,22 @@ let get_variant_kind loc attrs =
   else if has_attribute "js.union" attrs then begin
     match get_attribute "js.union" attrs with
     | None -> assert false
-    | Some (k, v) ->
-        begin match v with
+    | Some attribute ->
+        begin match attribute.attr_payload with
         | PStr [] -> `Union No_discriminator
         | _ ->
-            begin match expr_of_payload k.loc v with
+            begin match expr_of_payload attribute with
             | {pexp_desc = Pexp_apply ({pexp_desc = Pexp_ident {txt = Lident "on_field";_}; _}, [Nolabel, {pexp_desc = Pexp_constant (Pconst_string (s, _, _)); _}]); _} -> `Union (On_field s)
-            | _ -> error k.loc Unknown_union_method
+            | _ -> error attribute.attr_loc Unknown_union_method
             end
         end
   end else if has_attribute "js.sum" attrs then begin
     match get_attribute "js.sum" attrs with
     | None -> assert false
-    | Some (k, v) ->
-        begin match v with
+    | Some attribute ->
+        begin match attribute.attr_payload with
         | PStr [] -> `Sum "kind"
-        | _ -> `Sum (id_of_expr (expr_of_payload k.loc v))
+        | _ -> `Sum (id_of_expr (expr_of_payload attribute))
         end
   end else error loc (Not_supported_here "Sum types without js.* attribute")
 
@@ -902,7 +907,7 @@ and js2ml_of_variant ctx ~variant loc ~global_attrs attrs constrs exp =
           let process_default defs cont =
             match get_attribute "js.default" attributes with
             | None -> otherwise()
-            | Some (k, _) ->
+            | Some attribute ->
                 if List.for_all ((=) None) defs then begin
                   match variant_kind with
                   | `Enum ->
@@ -910,7 +915,7 @@ and js2ml_of_variant ctx ~variant loc ~global_attrs attrs constrs exp =
                       cont (Exp.case (Pat.var (mknoloc x)) (mkval mlconstr (Some (var x))))
                   | `Sum _ | `Union _ ->
                       cont (Exp.case (Pat.any ()) (mkval mlconstr (Some (js2ml ctx arg_typ exp))))
-                end else error k.loc Multiple_default_case
+                end else error attribute.attr_loc Multiple_default_case
           in
           begin match variant_kind with
           | `Enum when arg_typ = int_typ ->
@@ -1356,8 +1361,36 @@ and gen_funs ~global_attrs p =
       ) p.ptype_params
   in
   let loc = p.ptype_loc in
-  let typvar_used, of_js, to_js =
+  let exception Skip_mapping_generation in
+  let typvar_used, of_js, to_js, custom_funs =
     match p.ptype_kind with
+    | _ when has_attribute "js.custom" global_attrs ->
+
+        begin match get_attribute "js.custom" global_attrs with
+        | None -> assert false
+        | Some attribute ->
+            match expr_of_payload attribute with
+            | { pexp_desc = Pexp_record (
+                ( [ { txt = Lident "of_js"; loc = loc_of}, of_js;
+                    { txt = Lident "to_js"; loc = loc_to}, to_js ]
+                | [ { txt = Lident "to_js"; loc = loc_to}, to_js;
+                    { txt = Lident "of_js"; loc = loc_of}, of_js ] ), None); _} ->
+                let value_binding suffix loc (body: expression) =
+                  let name = { txt = Printf.sprintf "%s_%s" name suffix; loc} in
+                  Vb.mk ~loc (Pat.var name) body
+                in
+                let vbs =
+                  [
+                    value_binding "of_js" loc_of of_js;
+                    value_binding "to_js" loc_to to_js;
+                  ]
+                in
+                (fun _ -> true),
+                lazy (raise Skip_mapping_generation),
+                lazy (raise Skip_mapping_generation),
+                vbs
+            | { pexp_loc; _ } -> error pexp_loc (Record_expected "{ to_js = ...; of_js = ... }")
+        end
     | Ptype_abstract ->
         let ty =
           match p.ptype_manifest with
@@ -1366,7 +1399,8 @@ and gen_funs ~global_attrs p =
         in
         (fun label -> typvar_occurs loc 0 label ty),
         lazy (js2ml_fun ctx ty),
-        lazy (ml2js_fun ctx ty)
+        lazy (ml2js_fun ctx ty),
+        []
     | Ptype_variant cstrs ->
         let prepare_constructor c =
           let mlconstr = c.pcd_name.txt in
@@ -1388,7 +1422,8 @@ and gen_funs ~global_attrs p =
         let params = List.map prepare_constructor cstrs in
         (fun label -> typvar_occurs_constructors loc 0 label params),
         lazy (mkfun (js2ml_of_variant ctx ~variant:false loc ~global_attrs attrs params)),
-        lazy (mkfun (ml2js_of_variant ctx ~variant:false loc ~global_attrs attrs params))
+        lazy (mkfun (ml2js_of_variant ctx ~variant:false loc ~global_attrs attrs params)),
+        []
     | Ptype_record lbls ->
         let global_attrs = p.ptype_attributes @ global_attrs in
         let lbls = List.map (process_fields ~global_attrs) lbls in
@@ -1396,11 +1431,12 @@ and gen_funs ~global_attrs p =
         let to_js x (_loc, ml, js, ty) = Exp.tuple [str js; ml2js ctx ty (Exp.field x ml)] in
         (fun label -> List.exists (fun (_, _, _, ty) -> typvar_occurs loc 0 label ty) lbls),
         lazy (mkfun (fun x -> Exp.record (List.map (of_js x) lbls) None)),
-        lazy (mkfun (fun x -> ojs "obj" [Exp.array (List.map (to_js x) lbls)]))
+        lazy (mkfun (fun x -> ojs "obj" [Exp.array (List.map (to_js x) lbls)])),
+        []
     | _ ->
         error p.ptype_loc Cannot_parse_type
   in
-  let force_opt x = try (Some (Lazy.force x)) with Error (_, Union_without_discriminator) -> None in
+  let force_opt x = try (Some (Lazy.force x)) with Error (_, Union_without_discriminator) | Skip_mapping_generation -> None in
   let of_js, to_js = force_opt of_js, force_opt to_js in
   let alpha_of_js label =
     Arrow {ty_args = [{lab=Arg; att=[]; typ = Js}]; ty_vararg = None; unit_arg = false; ty_res = Typ_var label}
@@ -1434,8 +1470,11 @@ and gen_funs ~global_attrs p =
                 (gen_typ (Arrow {ty_args = (List.map (fun typ -> {lab=Arg; att=[]; typ}) input_typs); ty_vararg = None; unit_arg = false; ty_res = ret_typ})))
              code)
   in
-  choose f [ name ^ "_of_js", push_typ alpha_of_js [Js], Name (name, List.map (fun x -> Typ_var x) ctx), push_fun "_of_js" of_js;
-             name ^ "_to_js", push_typ alpha_to_js [Name (name, List.map (fun x -> Typ_var x) ctx)], Js, push_fun "_to_js" to_js ]
+  let funs =
+    choose f [ name ^ "_of_js", push_typ alpha_of_js [Js], Name (name, List.map (fun x -> Typ_var x) ctx), push_fun "_of_js" of_js;
+               name ^ "_to_js", push_typ alpha_to_js [Name (name, List.map (fun x -> Typ_var x) ctx)], Js, push_fun "_to_js" to_js ]
+  in
+  funs @ custom_funs
 
 and gen_decl = function
   | Type (rec_flag, decls, global_attrs) ->
