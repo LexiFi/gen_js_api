@@ -29,7 +29,7 @@ module UntypedPromise : sig
 
     let unwrap o =
       if Ojs.has_property o "content" then
-        Ojs.get o "content"
+        Ojs.get_prop_ascii o "content"
       else
         o
 

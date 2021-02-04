@@ -4,9 +4,9 @@
 
 type t = Ojs.t
 
-let name x = Ojs.string_of_js (Ojs.get x "name")
-let message x = Ojs.string_of_js (Ojs.get x "message")
-let stack x = Ojs.option_of_js Ojs.string_of_js (Ojs.get x "stack")
+let name x = Ojs.string_of_js (Ojs.get_prop_ascii x "name")
+let message x = Ojs.string_of_js (Ojs.get_prop_ascii x "message")
+let stack x = Ojs.option_of_js Ojs.string_of_js (Ojs.get_prop_ascii x "stack")
 let to_string x = Ojs.string_of_js (Ojs.call x "toString" [||])
 
 exception Error of t

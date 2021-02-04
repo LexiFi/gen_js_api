@@ -6,7 +6,7 @@ module Dirent =
     let rec (t_of_js : Ojs.t -> t) = fun x2 -> x2
     and (t_to_js : t -> Ojs.t) = fun x1 -> x1
     let (name : t -> string) =
-      fun x3 -> Ojs.string_of_js (Ojs.get (t_to_js x3) "name")
+      fun x3 -> Ojs.string_of_js (Ojs.get_prop_ascii (t_to_js x3) "name")
     let (is_file : t -> bool) =
       fun x4 -> Ojs.bool_of_js (Ojs.call (t_to_js x4) "isFile" [||])
     let (is_directory : t -> bool) =
@@ -18,7 +18,7 @@ module Dir =
     let rec (t_of_js : Ojs.t -> t) = fun x7 -> x7
     and (t_to_js : t -> Ojs.t) = fun x6 -> x6
     let (path : t -> string) =
-      fun x8 -> Ojs.string_of_js (Ojs.get (t_to_js x8) "path")
+      fun x8 -> Ojs.string_of_js (Ojs.get_prop_ascii (t_to_js x8) "path")
     let (close : t -> unit Promise.t) =
       fun x9 ->
         Promise.t_of_js Ojs.unit_of_js (Ojs.call (t_to_js x9) "close" [||])
@@ -38,8 +38,8 @@ module FileHandle =
     let rec (read_of_js : Ojs.t -> read) =
       fun x17 ->
         {
-          bytes_read = (Ojs.int_of_js (Ojs.get x17 "bytesRead"));
-          buffer = (Buffer.t_of_js (Ojs.get x17 "buffer"))
+          bytes_read = (Ojs.int_of_js (Ojs.get_prop_ascii x17 "bytesRead"));
+          buffer = (Buffer.t_of_js (Ojs.get_prop_ascii x17 "buffer"))
         }
     and (read_to_js : read -> Ojs.t) =
       fun x16 ->
@@ -83,7 +83,7 @@ module FileHandle =
         Promise.t_of_js Ojs.unit_of_js
           (Ojs.call (t_to_js x36) "datasync" [||])
     let (fd : t -> int) =
-      fun x38 -> Ojs.int_of_js (Ojs.get (t_to_js x38) "fd")
+      fun x38 -> Ojs.int_of_js (Ojs.get_prop_ascii (t_to_js x38) "fd")
   end
 let (readdir : string -> string list Promise.t) =
   fun x39 ->

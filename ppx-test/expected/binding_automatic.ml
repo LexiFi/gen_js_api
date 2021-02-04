@@ -6,19 +6,22 @@ module M =
     let rec (t_of_js : Ojs.t -> t) = fun x2 -> x2
     and (t_to_js : t -> Ojs.t) = fun x1 -> x1
     let (prop_get_arg : t -> int) =
-      fun x3 -> Ojs.int_of_js (Ojs.get (t_to_js x3) "propGetArg")
+      fun x3 -> Ojs.int_of_js (Ojs.get_prop_ascii (t_to_js x3) "propGetArg")
     let (prop_get : unit -> int) =
-      fun () -> Ojs.int_of_js (Ojs.get Ojs.global "propGet")
+      fun () -> Ojs.int_of_js (Ojs.get_prop_ascii Ojs.global "propGet")
     let (set_prop : t -> int -> unit) =
-      fun x4 -> fun x5 -> Ojs.set (t_to_js x4) "prop" (Ojs.int_to_js x5)
+      fun x4 ->
+        fun x5 -> Ojs.set_prop_ascii (t_to_js x4) "prop" (Ojs.int_to_js x5)
     let (set_global : int -> unit) =
-      fun x6 -> Ojs.set Ojs.global "global" (Ojs.int_to_js x6)
+      fun x6 -> Ojs.set_prop_ascii Ojs.global "global" (Ojs.int_to_js x6)
     let (new_thing_unit : unit -> t) =
-      fun () -> t_of_js (Ojs.new_obj (Ojs.get Ojs.global "ThingUnit") [||])
+      fun () ->
+        t_of_js
+          (Ojs.new_obj (Ojs.get_prop_ascii Ojs.global "ThingUnit") [||])
     let (new_thing_args : int -> t) =
       fun x7 ->
         t_of_js
-          (Ojs.new_obj (Ojs.get Ojs.global "ThingArgs")
+          (Ojs.new_obj (Ojs.get_prop_ascii Ojs.global "ThingArgs")
              [|(Ojs.int_to_js x7)|])
     let (method_call_global : t -> unit) =
       fun x8 -> ignore (Ojs.call (t_to_js x8) "methodCallGlobal" [||])
@@ -39,7 +42,7 @@ module M =
           ignore
             (Ojs.call (t_to_js x14) "methodCallArgsUnit"
                [|(Ojs.int_to_js x13)|])
-    let (global : t) = t_of_js (Ojs.get Ojs.global "global")
+    let (global : t) = t_of_js (Ojs.get_prop_ascii Ojs.global "global")
     let (get : t -> int -> string option) =
       fun x15 ->
         fun x16 ->
@@ -51,18 +54,20 @@ module M =
     let (get : t -> string -> string option) =
       fun x21 ->
         fun x22 ->
-          Ojs.option_of_js Ojs.string_of_js (Ojs.get (t_to_js x21) x22)
+          Ojs.option_of_js Ojs.string_of_js
+            (Ojs.get_prop (t_to_js x21) (Ojs.string_to_js x22))
     let (set : t -> string -> string -> unit) =
       fun x24 ->
         fun x25 ->
-          fun x26 -> Ojs.set (t_to_js x24) x25 (Ojs.string_to_js x26)
+          fun x26 ->
+            Ojs.set_prop (t_to_js x24) (Ojs.string_to_js x25)
+              (Ojs.string_to_js x26)
     let (get : t -> Ojs.t -> string option) =
       fun x27 ->
         fun x28 ->
-          Ojs.option_of_js Ojs.string_of_js
-            (Ojs.generic_get (t_to_js x27) x28)
+          Ojs.option_of_js Ojs.string_of_js (Ojs.get_prop (t_to_js x27) x28)
     let (set : t -> Ojs.t -> string -> unit) =
       fun x30 ->
         fun x31 ->
-          fun x32 -> Ojs.generic_set (t_to_js x30) x31 (Ojs.string_to_js x32)
+          fun x32 -> Ojs.set_prop (t_to_js x30) x31 (Ojs.string_to_js x32)
   end

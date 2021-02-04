@@ -41,6 +41,13 @@ type error =
 
 exception Error of Location.t * error
 
+let is_ascii s =
+  let exception Break in
+  try
+    String.iter (fun c -> if Char.code c > 127 then raise Break) s;
+    true
+  with Break -> false
+
 let check_attribute = ref true
 let mark_as_handled_manually = ref (fun (_ : Parsetree.attribute) -> ())
 let used_attributes_tbl = Hashtbl.create 16
@@ -736,24 +743,36 @@ let split sep s =
 
 let ojs_global = ojs_var "global"
 
+let ojs_get o s =
+  if is_ascii s then
+    ojs "get_prop_ascii" [o; str s]
+  else
+    ojs "get_prop" [o; ojs "string_to_js" [str s]]
+
+let ojs_set o s v =
+  if is_ascii s then
+    ojs "set_prop_ascii" [o; str s; v]
+  else
+    ojs "set_prop" [o; ojs "string_to_js" [str s]; v]
+
 let select_path o s =
   let rec select_path o = function
     | [] -> assert false
     | [x] -> o, x
-    | x :: xs -> select_path (ojs "get" [o; str x]) xs
+    | x :: xs -> select_path (ojs_get o x) xs
   in
   select_path o (split '.' s)
 
 let get_path global_object s =
   let o, x = select_path global_object s in
-  ojs "get" [o; str x]
+  ojs_get o x
 
 let ojs_variable s =
   get_path ojs_global s
 
 let set_path global_object s v =
   let o, x = select_path global_object s in
-  ojs "set" [o; str x; v]
+  ojs_set o x v
 
 let def s ty body =
   Str.value Nonrecursive [ Vb.mk (Pat.constraint_ (Pat.var (mknoloc s)) ty) body ]
@@ -771,16 +790,14 @@ let let_exp_in exp f =
 let ojs_apply_arr o = function
   | `Simple arr -> ojs "apply" [o; arr]
   | `Push arr ->
-      (* inline Ojs.apply_arr *)
       ojs "call" [o; str "apply"; Exp.array [ ojs_null; arr ]]
 
 let ojs_call_arr o s = function
-  | `Simple arr -> ojs "call" [o; s; arr]
+  | `Simple arr -> ojs "call" [o; str s; arr]
   | `Push arr ->
-      (* inline Ojs.call_arr *)
       let_exp_in o
         (fun o ->
-           ojs "call" [ojs "get" [o; s]; str "apply"; Exp.array [ o; arr ]]
+           ojs "call" [ojs_get o s; str "apply"; Exp.array [ o; arr ]]
         )
 
 let ojs_new_obj_arr cl = function
@@ -896,7 +913,7 @@ and js2ml_of_variant ctx ~variant loc ~global_attrs attrs constrs exp =
         | `Int n -> int_default, Exp.case (pat_int n) x :: int_cases, string_default, string_cases, bool_default, bool_cases
         | `Bool b -> int_default, int_cases, string_default, string_cases, bool_default, Exp.case (pat_bool b) x :: bool_cases
       in
-      let get_arg key typ = js2ml ctx typ (ojs "get" [exp; str key]) in
+      let get_arg key typ = js2ml ctx typ (ojs_get exp key) in
       match arg with
       | Constant -> case (mkval mlconstr None)
       | Unary arg_typ ->
@@ -939,7 +956,7 @@ and js2ml_of_variant ctx ~variant loc ~global_attrs attrs constrs exp =
           | `Sum _ ->
               let loc, args_field = get_string_attribute_default "js.arg" (location, "arg") attributes in
               check_label loc args_field;
-              let get_args key i typ = js2ml ctx typ (ojs "array_get" [ojs "get" [exp; str key]; int i]) in
+              let get_args key i typ = js2ml ctx typ (ojs "array_get" [ojs_get exp key; int i]) in
               case (mkval mlconstr (Some (Exp.tuple (List.mapi (get_args args_field) args_typ))))
           | `Union _ -> error location Constructor_in_union
           end
@@ -978,9 +995,9 @@ and js2ml_of_variant ctx ~variant loc ~global_attrs attrs constrs exp =
     let discriminator =
       match variant_kind with
       | `Enum -> exp
-      | `Sum kind -> ojs "get" [exp; str kind]
+      | `Sum kind -> ojs_get exp kind
       | `Union No_discriminator -> error loc Union_without_discriminator
-      | `Union (On_field kind) -> ojs "get" [exp; str kind]
+      | `Union (On_field kind) -> ojs_get exp kind
     in
     let int_match = gen_match ~fail_pattern:true (js2ml ctx int_typ discriminator) int_default int_cases in
     let string_match = gen_match ~fail_pattern:true (js2ml ctx string_typ discriminator) string_default string_cases in
@@ -1344,7 +1361,7 @@ let global_object ~global_attrs =
     | hd :: tl ->
         begin match get_expr_attribute "js.scope" [hd] with
         | None -> traverse tl
-        | Some {pexp_desc=Pexp_constant (Pconst_string (prop, _, _)); _} -> ojs "get" [(traverse tl); str prop]
+        | Some {pexp_desc=Pexp_constant (Pconst_string (prop, _, _)); _} -> ojs_get (traverse tl) prop
         | Some global_object -> global_object
         end
   in
@@ -1431,7 +1448,7 @@ and gen_funs ~global_attrs p =
     | Ptype_record lbls ->
         let global_attrs = decl_attrs @ global_attrs in
         let lbls = List.map (process_fields ~global_attrs) lbls in
-        let of_js x (_loc, ml, js, ty) = ml, js2ml ctx ty (ojs "get" [x; str js]) in
+        let of_js x (_loc, ml, js, ty) = ml, js2ml ctx ty (ojs_get x js) in
         let to_js x (_loc, ml, js, ty) = Exp.tuple [str js; ml2js ctx ty (Exp.field x ml)] in
         (fun label -> List.exists (fun (_, _, _, ty) -> typvar_occurs loc 0 label ty) lbls),
         lazy (mkfun (fun x -> Exp.record (List.map (of_js x) lbls) None)),
@@ -1551,12 +1568,12 @@ and gen_class_field x = function
   | Method {method_name; method_typ; method_def; method_loc} ->
       let body =
         match method_def, method_typ with
-        | Getter s, ty_res -> js2ml [] ty_res (ojs "get" [var x; str s])
+        | Getter s, ty_res -> js2ml [] ty_res (ojs_get (var x) s)
         | Setter s, Arrow {ty_args = [{lab=Arg; att=_; typ}]; ty_vararg = None; unit_arg = false; ty_res = Unit _} ->
-            mkfun (fun arg -> ojs "set" [var x; str s; ml2js [] typ arg])
+            mkfun (fun arg -> ojs_set (var x) s (ml2js [] typ arg))
         | MethodCall s, Arrow {ty_args; ty_vararg; unit_arg; ty_res} ->
             let formal_args, concrete_args = prepare_args [] ty_args ty_vararg in
-            let res = ojs_call_arr (var x) (str s) concrete_args in
+            let res = ojs_call_arr (var x) s concrete_args in
             func formal_args unit_arg (js2ml_unit [] ty_res res)
         | MethodCall s, ty_res ->
             js2ml_unit [] ty_res (ojs "call" [var x; str s; Exp.array []])
@@ -1601,7 +1618,7 @@ and gen_def ~global_object loc decl ty =
       mkfun (fun this -> js2ml [] ty_res (ml2js [] typ this))
 
   | PropGet s, Arrow {ty_args = [{lab=Arg; att=_; typ}]; ty_vararg = None; unit_arg = false; ty_res} ->
-      mkfun (fun this -> js2ml [] ty_res (ojs "get" [ml2js [] typ this; str s]))
+      mkfun (fun this -> js2ml [] ty_res (ojs_get (ml2js [] typ this) s))
 
   | PropGet s, Arrow {ty_args = []; ty_vararg = None; unit_arg = true; ty_res} ->
       fun_unit (gen_def ~global_object loc (Global s) ty_res)
@@ -1611,7 +1628,7 @@ and gen_def ~global_object loc decl ty =
       | Arrow {ty_args; ty_vararg; unit_arg; ty_res} ->
           let this, s = select_path global_object s in
           let formal_args, concrete_args = prepare_args [] ty_args ty_vararg in
-          let res this = ojs_call_arr (ml2js [] Js this) (str s) concrete_args in
+          let res this = ojs_call_arr (ml2js [] Js this) s concrete_args in
           func formal_args unit_arg (js2ml_unit [] ty_res (res this))
       | _ -> js2ml [] ty_res (get_path global_object s)
       end
@@ -1621,12 +1638,7 @@ and gen_def ~global_object loc decl ty =
                       {lab=Arg; att=_; typ=ty_arg}];
            ty_vararg = None; unit_arg = false; ty_res = Unit _} ->
       let res this arg =
-        ojs "set"
-          [
-            ml2js [] ty_this this;
-            str s;
-            ml2js [] ty_arg arg
-          ]
+        ojs_set (ml2js [] ty_this this) s (ml2js [] ty_arg arg)
       in
       mkfun (fun this -> mkfun (fun arg -> res this arg))
 
@@ -1636,7 +1648,7 @@ and gen_def ~global_object loc decl ty =
   | MethCall s,
     Arrow {ty_args = {lab=Arg; att=_; typ} :: ty_args; ty_vararg; unit_arg; ty_res} ->
       let formal_args, concrete_args = prepare_args [] ty_args ty_vararg in
-      let res this = ojs_call_arr (ml2js [] typ this) (str s) concrete_args in
+      let res this = ojs_call_arr (ml2js [] typ this) s concrete_args in
       mkfun (fun this -> func formal_args unit_arg (js2ml_unit [] ty_res (res this)))
 
   | New name, Arrow {ty_args; ty_vararg; unit_arg; ty_res} ->
@@ -1662,7 +1674,7 @@ and gen_def ~global_object loc decl ty =
             | None, Arg -> error loc Unlabelled_argument_in_builder
             | None, (Lab {ml; _} | Opt {ml; _}) -> js_name ~global_attrs ml
           in
-          let code exp = ojs "set" [x; str js; ml2js [] typ exp] in
+          let code exp = ojs_set x js (ml2js [] typ exp) in
           (* special logic to avoid setting optional argument to 'undefined' *)
           match lab with
           | Arg | Lab _ -> code (var s)
@@ -1707,9 +1719,8 @@ and gen_def ~global_object loc decl ty =
 and gen_index_get ty_index this ty_res =
   let res index =
     match ty_index with
-    | Name ("string", []) -> ojs "get" [this; index]
     | Name ("int", []) -> ojs "array_get" [this; index]
-    | _ -> ojs "generic_get" [this; ml2js [] ty_index index]
+    | _ -> ojs "get_prop" [this; ml2js [] ty_index index]
   in
   mkfun (fun index -> js2ml [] ty_res (res index))
 
@@ -1717,9 +1728,8 @@ and gen_index_set ty_index this ty_value =
   let res index value =
     let value_js = ml2js [] ty_value value in
     match ty_index with
-    | Name ("string", []) -> ojs "set" [this; index; value_js]
     | Name ("int", []) -> ojs "array_set" [this; index; value_js]
-    | _ -> ojs "generic_set" [this; ml2js [] ty_index index; value_js]
+    | _ -> ojs "set_prop" [this; ml2js [] ty_index index; value_js]
   in
   mkfun (fun index -> mkfun (fun value -> res index value))
 

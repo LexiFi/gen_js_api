@@ -2,4 +2,4 @@
 [@@@ocaml.warning "-7-32-39"]
 let (env : string Container.StringMap.t) =
   Container.StringMap.t_of_js Ojs.string_of_js
-    (Ojs.get (Ojs.get Ojs.global "process") "env")
+    (Ojs.get_prop_ascii (Ojs.get_prop_ascii Ojs.global "process") "env")

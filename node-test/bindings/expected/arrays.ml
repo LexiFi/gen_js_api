@@ -7,7 +7,8 @@ module JsArray(E:sig type t val t_to_js : t -> Ojs.t val t_of_js : Ojs.t -> t
     let rec (t_of_js : Ojs.t -> t) = fun x2 -> x2
     and (t_to_js : t -> Ojs.t) = fun x1 -> x1
     let (create : unit -> t) =
-      fun () -> t_of_js (Ojs.new_obj (Ojs.get Ojs.global "Array") [||])
+      fun () ->
+        t_of_js (Ojs.new_obj (Ojs.get_prop_ascii Ojs.global "Array") [||])
     let (push : t -> E.t -> unit) =
       fun x4 ->
         fun x3 -> ignore (Ojs.call (t_to_js x4) "push" [|(E.t_to_js x3)|])
