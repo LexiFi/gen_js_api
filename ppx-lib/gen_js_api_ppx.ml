@@ -758,7 +758,6 @@ let set_path global_object s v =
 let def s ty body =
   Str.value Nonrecursive [ Vb.mk (Pat.constraint_ (Pat.var (mknoloc s)) ty) body ]
 
-
 let builtin_type = function
   | "int" | "string" | "bool" | "float"
   | "array" | "list" | "option" -> true
@@ -1401,7 +1400,7 @@ and gen_funs ~global_attrs p =
         let ty =
           match p.ptype_manifest with
           | None -> Js
-          | Some ty -> parse_typ ~global_attrs { ty with ptyp_attributes = decl_attrs @ decl_attrs }
+          | Some ty -> parse_typ ~global_attrs { ty with ptyp_attributes = decl_attrs @ ty.ptyp_attributes }
         in
         (fun label -> typvar_occurs loc 0 label ty),
         lazy (js2ml_fun ctx ty),
