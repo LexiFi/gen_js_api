@@ -30,6 +30,11 @@ val type_decl_rewriter
   -> Migrate_parsetree.Ast_411.Parsetree.type_declaration list
   -> Migrate_parsetree.Ast_411.Parsetree.structure
 
+val type_decl_sig_rewriter
+  :  loc:Location.t
+  -> Migrate_parsetree.Ast_411.Parsetree.type_declaration list
+  -> Migrate_parsetree.Ast_411.Parsetree.signature
+
 val mark_attributes_as_used
   :  Migrate_parsetree.Ast_411.Ast_mapper.mapper
   -> Migrate_parsetree.Ast_411.Ast_mapper.mapper

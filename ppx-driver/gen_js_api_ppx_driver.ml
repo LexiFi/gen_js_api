@@ -21,12 +21,12 @@ module To_ppxlib = struct
     | _ -> assert false
 
   let copy_attribute (a : From_ppx.Ast.Parsetree.attribute)
-  : Ppxlib.Ast.attribute =
-  let pat : Migrate_parsetree.Ast_411.Parsetree.pattern =
-    Migrate_parsetree.Ast_411.Ast_helper.Pat.any ~attrs:[a] ()
-  in
-  let pat = copy_pattern pat in
-  List.hd pat.ppat_attributes
+    : Ppxlib.Ast.attribute =
+    let pat : Migrate_parsetree.Ast_411.Parsetree.pattern =
+      Migrate_parsetree.Ast_411.Ast_helper.Pat.any ~attrs:[a] ()
+    in
+    let pat = copy_pattern pat in
+    List.hd pat.ppat_attributes
 end
 
 
@@ -93,25 +93,31 @@ let () =
       rewriter
     |> Ppxlib.Context_free.Rule.extension
   in
-  let attr_typ =
-    let rewriter ~ctxt (rec_flag : Ppxlib.Asttypes.rec_flag) tdl _ =
-      tdl
-      |> List.map (Of_ppxlib.copy_type_declaration)
-      |> Gen_js_api_ppx.type_decl_rewriter
-        ~loc:(Ppxlib.Expansion_context.Deriver.derived_item_loc ctxt)
-        (Of_ppxlib.copy_rec_flag rec_flag)
-      |> To_ppxlib.copy_structure
-    in
-    Ppxlib.Context_free.Rule.attr_str_type_decl
-      (Ppxlib.Attribute.declare "js"
-         Ppxlib.Attribute.Context.type_declaration
-         Ppxlib.(Ast_pattern.pstr Ast_pattern.nil) ())
-      rewriter
-  in
   Ppxlib.Driver.register_transformation
     "gen_js_api"
-    ~rules:[module_expr_ext; ext_of; ext_to; attr_typ ]
+    ~rules:[module_expr_ext; ext_of; ext_to]
     ~impl:(fun str_ ->
         mapper_for_str.structure mapper_for_str str_)
     ~intf:(fun sig_ ->
         mapper_for_sig.signature mapper_for_sig sig_)
+
+let deriver =
+  let generate_intf ~ctxt (_, tdl) =
+      tdl
+      |> List.map (Of_ppxlib.copy_type_declaration)
+      |> Gen_js_api_ppx.type_decl_sig_rewriter
+        ~loc:(Ppxlib.Expansion_context.Deriver.derived_item_loc ctxt)
+      |> To_ppxlib.copy_signature
+  in
+  let generate_impl ~ctxt (rec_flag, tdl) =
+    tdl
+    |> List.map (Of_ppxlib.copy_type_declaration)
+    |> Gen_js_api_ppx.type_decl_rewriter
+      ~loc:(Ppxlib.Expansion_context.Deriver.derived_item_loc ctxt)
+      (Of_ppxlib.copy_rec_flag rec_flag)
+    |> To_ppxlib.copy_structure
+  in
+  let open Ppxlib in
+  let str_type_decl = Deriving.Generator.V2.make_noarg generate_impl in
+  let sig_type_decl = Deriving.Generator.V2.make_noarg generate_intf in
+  Deriving.add ~str_type_decl ~sig_type_decl "js"

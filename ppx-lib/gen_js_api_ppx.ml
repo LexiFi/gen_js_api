@@ -648,7 +648,7 @@ let pat_bool b = Pat.construct (mknoloc (longident_parse (if b then "true" else 
 
 let attr s e = (Attr.mk (mknoloc s) (PStr [Str.eval e]))
 
-let disable_warnings = Str.attribute (attr "ocaml.warning" (str "-7-32-39"))
+let disable_warnings = attr "ocaml.warning" (str "-7-32-39")
 (*  7: method overridden.
     32: unused value declarations (when *_of_js, *_to_js are not needed)
     39: unused rec flag (for *_of_js, *_to_js functions, when the
@@ -793,7 +793,10 @@ let ojs_new_obj_arr cl = function
 let assert_false = Exp.assert_ (Exp.construct (mknoloc (longident_parse "false")) None)
 
 let rewrite_typ_decl t =
-  let t = {t with ptype_private = Public} in
+  let ptype_attributes =
+    List.filter (fun a -> not (filter_attr "js" a)) t.ptype_attributes
+  in
+  let t = {t with ptype_private = Public; ptype_attributes} in
   match t.ptype_manifest, t.ptype_kind with
   | None, Ptype_abstract -> {t with ptype_manifest = Some ojs_typ}
   | _ -> t
@@ -1729,7 +1732,7 @@ and str_of_sg ~global_attrs sg =
   in
   register_loc attr;
   Str.attribute attr ::
-  disable_warnings ::
+  Str.attribute disable_warnings ::
   gen_decls decls
 
 and module_expr_rewriter ~loc ~attrs sg =
@@ -1754,7 +1757,7 @@ and type_decl_rewriter ~loc rec_flag l =
       (fun () ->
          let funs = List.concat (List.map (gen_funs ~global_attrs:[]) l) in
          [
-           disable_warnings;
+           Str.attribute disable_warnings;
            Str.value ~loc:loc rec_flag funs
          ]
       )
@@ -1811,6 +1814,44 @@ and mapper =
   in
   {super with module_expr; structure_item; expr; attribute}
 
+let gen_fun_types (p : type_declaration) : _ list =
+  let ctx =
+    List.map (function
+        | {ptyp_desc = Ptyp_any; ptyp_loc = _; ptyp_attributes = _; ptyp_loc_stack = _}, Invariant ->
+            fresh ()
+        | {ptyp_desc = Ptyp_var label; ptyp_loc = _; ptyp_attributes = _; ptyp_loc_stack = _}, Invariant ->
+            label
+        | _ -> error p.ptype_loc Cannot_parse_type
+      ) p.ptype_params
+  in
+  let push_typ f l =
+    List.map f ctx @ l
+  in
+  let alpha_of_js label =
+    Arrow {ty_args = [{lab=Arg; att=[]; typ = Js}]; ty_vararg = None; unit_arg = false; ty_res = Typ_var label}
+  in
+  let alpha_to_js label =
+    Arrow {ty_args = [{lab=Arg; att=[]; typ = Typ_var label}]; ty_vararg = None; unit_arg = false; ty_res = Js}
+  in
+  let name = p.ptype_name.txt in
+  let f (name, input_typs, ret_typ) =
+    let core_type =
+      gen_typ (Arrow {ty_args = (List.map (fun typ -> {lab=Arg; att=[]; typ}) input_typs); ty_vararg = None; unit_arg = false; ty_res = ret_typ})
+    in
+    Val.mk ~loc:p.ptype_loc (mknoloc name) core_type
+  in
+  List.map f
+    [ name ^ "_of_js", push_typ alpha_of_js [Js], Name (name, List.map (fun x -> Typ_var x) ctx);
+      name ^ "_to_js", push_typ alpha_to_js [Name (name, List.map (fun x -> Typ_var x) ctx)], Js ]
+
+let type_decl_sig_rewriter ~loc l : Parsetree.signature =
+  let itm = with_default_loc {loc with loc_ghost = true}
+      (fun () ->
+         let funs = List.flatten (List.map gen_fun_types l) in
+         List.map (Sig.value ~loc:loc) funs
+      )
+  in
+  itm
 let is_js_attribute txt = txt = "js" || has_prefix ~prefix:"js." txt
 
 let check_loc_mapper =
