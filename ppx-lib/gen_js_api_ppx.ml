@@ -69,12 +69,10 @@ let filter_attr_name key attr =
 
 let filter_extension key name = name.txt = key
 
-let filter_attr key attribute  = filter_attr_name key attribute
-
-let has_attribute key attrs = List.exists (filter_attr key) attrs
+let has_attribute key attrs = List.exists (filter_attr_name key) attrs
 
 let get_attribute key attrs =
-  match List.find (filter_attr key) attrs with
+  match List.find (filter_attr_name key) attrs with
   | exception Not_found -> None
   | attr -> Some attr
 
@@ -505,13 +503,13 @@ let parse_valdecl ~global_attrs ~in_sig vd =
   Val (s, ty, r, loc, global_attrs)
 
 let rec functor_of_module_type = function
-   | {pmty_desc = Pmty_signature si; pmty_attributes; _} -> Some ([], si, pmty_attributes)
-   | {pmty_desc = Pmty_functor (params, body); _} ->
-    begin match functor_of_module_type body with
-    | Some (parameters, si, attrs) ->
-      Some (params :: parameters, si, attrs)
-    | None -> None
-    end
+  | {pmty_desc = Pmty_signature si; pmty_attributes; _} -> Some ([], si, pmty_attributes)
+  | {pmty_desc = Pmty_functor (params, body); _} ->
+      begin match functor_of_module_type body with
+      | Some (parameters, si, attrs) ->
+          Some (params :: parameters, si, attrs)
+      | None -> None
+      end
   | _ -> None
 
 let rec parse_sig_item ~global_attrs rest s =
@@ -521,15 +519,15 @@ let rec parse_sig_item ~global_attrs rest s =
   | Psig_type (rec_flag, decls) ->
       Type (rec_flag, decls, global_attrs) :: rest ~global_attrs
   | Psig_module {pmd_name = { txt = Some name; _}; pmd_type; pmd_loc = _; pmd_attributes} ->
-    begin match functor_of_module_type pmd_type with
-    | None -> error s.psig_loc Cannot_parse_sigitem
-    | Some (functor_parameters, si, attrs) ->
-      (let global_attrs =
-         push_module_attributes name attrs
-           (push_module_attributes name pmd_attributes global_attrs)
-       in
-       Module (functor_parameters, name, parse_sig ~global_attrs si)) :: rest ~global_attrs
-    end
+      begin match functor_of_module_type pmd_type with
+      | None -> error s.psig_loc Cannot_parse_sigitem
+      | Some (functor_parameters, si, attrs) ->
+          (let global_attrs =
+             push_module_attributes name attrs
+               (push_module_attributes name pmd_attributes global_attrs)
+           in
+           Module (functor_parameters, name, parse_sig ~global_attrs si)) :: rest ~global_attrs
+      end
   | Psig_class cs -> Class (List.map (parse_class_decl ~global_attrs) cs) :: rest ~global_attrs
   | Psig_attribute ({attr_payload = PStr str; _} as attribute) when filter_attr_name "js.implem" attribute -> Implem str :: rest ~global_attrs
   | Psig_attribute attribute ->
@@ -537,13 +535,13 @@ let rec parse_sig_item ~global_attrs rest s =
       rest ~global_attrs
   | Psig_open descr -> Open descr :: rest ~global_attrs
   | Psig_include ({pincl_mod; _} as info) ->
-    let rec module_expr mod_typ =
-      match mod_typ.pmty_desc with
-      | Pmty_typeof module_expr -> module_expr
-      | Pmty_with (t, _) -> module_expr t
-      | _ -> error s.psig_loc Cannot_parse_sigitem
-    in
-    Include {info with pincl_mod = module_expr pincl_mod} :: rest ~global_attrs
+      let rec module_expr mod_typ =
+        match mod_typ.pmty_desc with
+        | Pmty_typeof module_expr -> module_expr
+        | Pmty_with (t, _) -> module_expr t
+        | _ -> error s.psig_loc Cannot_parse_sigitem
+      in
+      Include {info with pincl_mod = module_expr pincl_mod} :: rest ~global_attrs
   | _ ->
       error s.psig_loc Cannot_parse_sigitem
 
@@ -760,7 +758,6 @@ let set_path global_object s v =
 let def s ty body =
   Str.value Nonrecursive [ Vb.mk (Pat.constraint_ (Pat.var (mknoloc s)) ty) body ]
 
-
 let builtin_type = function
   | "int" | "string" | "bool" | "float"
   | "array" | "list" | "option" -> true
@@ -792,8 +789,16 @@ let ojs_new_obj_arr cl = function
 
 let assert_false = Exp.assert_ (Exp.construct (mknoloc (longident_parse "false")) None)
 
+let clear_attr_mapper =
+  let mapper = Ast_mapper.default_mapper in
+  let attributes _this attrs =
+    let f {attr_name = {txt = _; loc}; _} = not (is_registered_loc loc) in
+    List.filter f attrs
+  in
+  { mapper with Ast_mapper.attributes }
+
 let rewrite_typ_decl t =
-  let t = {t with ptype_private = Public} in
+  let t = clear_attr_mapper.type_declaration clear_attr_mapper {t with ptype_private = Public} in
   match t.ptype_manifest, t.ptype_kind with
   | None, Ptype_abstract -> {t with ptype_manifest = Some ojs_typ}
   | _ -> t
@@ -1350,7 +1355,8 @@ let rec gen_decls si =
 
 and gen_funs ~global_attrs p =
   let name = p.ptype_name.txt in
-  let global_attrs = p.ptype_attributes @ global_attrs in
+  let decl_attrs = p.ptype_attributes in
+  let global_attrs = global_attrs in
   let ctx =
     List.map (function
         | {ptyp_desc = Ptyp_any; ptyp_loc = _; ptyp_attributes = _; ptyp_loc_stack = _}, Invariant ->
@@ -1364,9 +1370,8 @@ and gen_funs ~global_attrs p =
   let exception Skip_mapping_generation in
   let typvar_used, of_js, to_js, custom_funs =
     match p.ptype_kind with
-    | _ when has_attribute "js.custom" global_attrs ->
-
-        begin match get_attribute "js.custom" global_attrs with
+    | _ when has_attribute "js.custom" decl_attrs ->
+        begin match get_attribute "js.custom" decl_attrs with
         | None -> assert false
         | Some attribute ->
             match expr_of_payload attribute with
@@ -1395,7 +1400,7 @@ and gen_funs ~global_attrs p =
         let ty =
           match p.ptype_manifest with
           | None -> Js
-          | Some ty -> parse_typ ~global_attrs ty
+          | Some ty -> parse_typ ~global_attrs { ty with ptyp_attributes = decl_attrs @ ty.ptyp_attributes }
         in
         (fun label -> typvar_occurs loc 0 label ty),
         lazy (js2ml_fun ctx ty),
@@ -1418,14 +1423,13 @@ and gen_funs ~global_attrs p =
           in
           { mlconstr; arg; attributes = c.pcd_attributes; location = c.pcd_loc }
         in
-        let attrs = p.ptype_attributes in
         let params = List.map prepare_constructor cstrs in
         (fun label -> typvar_occurs_constructors loc 0 label params),
-        lazy (mkfun (js2ml_of_variant ctx ~variant:false loc ~global_attrs attrs params)),
-        lazy (mkfun (ml2js_of_variant ctx ~variant:false loc ~global_attrs attrs params)),
+        lazy (mkfun (js2ml_of_variant ctx ~variant:false loc ~global_attrs decl_attrs params)),
+        lazy (mkfun (ml2js_of_variant ctx ~variant:false loc ~global_attrs decl_attrs params)),
         []
     | Ptype_record lbls ->
-        let global_attrs = p.ptype_attributes @ global_attrs in
+        let global_attrs = decl_attrs @ global_attrs in
         let lbls = List.map (process_fields ~global_attrs) lbls in
         let of_js x (_loc, ml, js, ty) = ml, js2ml ctx ty (ojs "get" [x; str js]) in
         let to_js x (_loc, ml, js, ty) = Exp.tuple [str js; ml2js ctx ty (Exp.field x ml)] in
@@ -1478,16 +1482,16 @@ and gen_funs ~global_attrs p =
 
 and gen_decl = function
   | Type (rec_flag, decls, global_attrs) ->
-      let decls = List.map rewrite_typ_decl decls in
       let funs = List.concat (List.map (gen_funs ~global_attrs) decls) in
+      let decls = List.map rewrite_typ_decl decls in
       [ Str.type_ rec_flag decls; Str.value rec_flag funs ]
 
   | Module (functor_parameters, s, decls) ->
       let structure = Mod.structure (gen_decls decls) in
       let functors =
         List.fold_left (fun acc param ->
-          Mod.functor_ param acc
-        ) structure (List.rev functor_parameters)
+            Mod.functor_ param acc
+          ) structure (List.rev functor_parameters)
       in
       [ Str.module_ (Mb.mk (mknoloc (Some s)) functors) ]
 
@@ -1733,9 +1737,10 @@ and str_of_sg ~global_attrs sg =
   gen_decls decls
 
 and module_expr_rewriter ~loc ~attrs sg =
+  let str = str_of_sg ~global_attrs:(attrs) sg in
   Mod.constraint_
-    (Mod.structure ~attrs:[ merlin_hide ] (str_of_sg ~global_attrs:(attrs) sg))
-    (Mty.signature ~loc ~attrs sg)
+    (Mod.structure ~attrs:[ merlin_hide ] str)
+    (Mty.signature ~loc ~attrs (clear_attr_mapper.signature clear_attr_mapper sg))
 
 and js_to_rewriter ~loc ty =
   let e' = with_default_loc {loc with loc_ghost = true }
@@ -1806,7 +1811,7 @@ and mapper =
         e
   in
   let attribute self a =
-    ignore (filter_attr "js.dummy" a : bool);
+    ignore (filter_attr_name "js.dummy" a : bool);
     super.attribute self a
   in
   {super with module_expr; structure_item; expr; attribute}
@@ -1823,14 +1828,6 @@ let check_loc_mapper =
     attr
   in
   { mapper with Ast_mapper.attribute }
-
-let clear_attr_mapper =
-  let mapper = Ast_mapper.default_mapper in
-  let attributes _this attrs =
-    let f {attr_name = {txt = _; loc}; _} = not (is_registered_loc loc) in
-    List.filter f attrs
-  in
-  { mapper with Ast_mapper.attributes }
 
 (** Main *)
 
@@ -1887,7 +1884,7 @@ let mark_attributes_as_used mapper =
   let attribute : _ -> attribute -> _ =
     fun this ({attr_name = {txt; _}; _} as attr) ->
       if is_js_attribute txt then
-        ignore (filter_attr txt attr : bool);
+        ignore (filter_attr_name txt attr : bool);
       mapper.Ast_mapper.attribute this attr
   in
   { mapper with attribute }
