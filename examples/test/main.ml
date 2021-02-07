@@ -136,6 +136,8 @@ let () =
   let charlie = Person.create "Charlie" (Person.Foo.OtherString "bla") in
   let eve = Person.create "Eve" (Person.Foo.OtherInt 2713) in
 
+  Ojs.iter_properties (Person.cast alice) (Format.printf "%s\n%!");
+
   let alice_obj = PersonObj.create "Alice" Person.Foo.Foo in
   let bob_obj = PersonObj.of_person bob in
   let dave_obj = new PersonObj.person "Dave" Person.Foo.Bar [1; 2; 3] in
@@ -196,11 +198,24 @@ let () =
 
 (* Custom mapping between association lists and JS objects *)
 
-module Dict = [%js:
+module Dict : sig
   type 'a t = (string * 'a) list
   val t_to_js: ('a -> Ojs.t) -> 'a t -> Ojs.t
   val t_of_js: (Ojs.t -> 'a) -> Ojs.t -> 'a t
-]
+end = struct
+  type 'a t = (string * 'a) list
+
+  let t_to_js ml2js l =
+    let o = Ojs.empty_obj () in
+    List.iter (fun (k, v) -> Ojs.set_prop o (Ojs.string_to_js k) (ml2js v)) l;
+    o
+
+  let t_of_js js2ml o =
+    let l = ref [] in
+    Ojs.iter_properties o
+      (fun k -> l := (k, js2ml (Ojs.get_prop o (Ojs.string_to_js k))) :: !l);
+    !l
+end
 
 include [%js:
 val int_dict_to_json_string: int Dict.t -> string

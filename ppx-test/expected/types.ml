@@ -103,7 +103,9 @@ let (_ : (label:int -> ?opt:int -> unit -> unit) of_js) =
           ignore
             (Ojs.call x59 "apply"
                [|Ojs.null;((let x62 =
-                              Ojs.new_obj (Ojs.get Ojs.global "Array") [||] in
+                              Ojs.new_obj
+                                (Ojs.get_prop_ascii Ojs.global "Array") 
+                                [||] in
                             ignore
                               (Ojs.call x62 "push" [|(Ojs.int_to_js x60)|]);
                             (match x61 with
@@ -128,7 +130,9 @@ let (_ : (label:int -> ?opt:int -> unit -> unit) of_js) =
           ignore
             (Ojs.call x68 "apply"
                [|Ojs.null;((let x71 =
-                              Ojs.new_obj (Ojs.get Ojs.global "Array") [||] in
+                              Ojs.new_obj
+                                (Ojs.get_prop_ascii Ojs.global "Array") 
+                                [||] in
                             ignore
                               (Ojs.call x71 "push" [|(Ojs.int_to_js x69)|]);
                             (match x70 with
@@ -167,9 +171,11 @@ module B :
           fun () ->
             ignore
               (let x80 = Ojs.global in
-               Ojs.call (Ojs.get x80 "default0") "apply"
+               Ojs.call (Ojs.get_prop_ascii x80 "default0") "apply"
                  [|x80;((let x78 =
-                           Ojs.new_obj (Ojs.get Ojs.global "Array") [||] in
+                           Ojs.new_obj
+                             (Ojs.get_prop_ascii Ojs.global "Array") 
+                             [||] in
                          (match x77 with
                           | Some x79 ->
                               ignore
@@ -188,17 +194,18 @@ module B :
       let (builder1 : x:int -> Ojs.t) =
         fun ~x:x84 ->
           let x85 = Ojs.empty_obj () in
-          Ojs.set x85 "x" (Ojs.int_to_js x84); x85
+          Ojs.set_prop_ascii x85 "x" (Ojs.int_to_js x84); x85
       let (builder2 : ?x:int -> ?y:string -> unit -> Ojs.t) =
         fun ?x:x86 ->
           fun ?y:x87 ->
             fun () ->
               let x88 = Ojs.empty_obj () in
               (match x86 with
-               | Some x90 -> Ojs.set x88 "x" (Ojs.int_to_js x90)
+               | Some x90 -> Ojs.set_prop_ascii x88 "x" (Ojs.int_to_js x90)
                | None -> ());
               (match x87 with
-               | Some x89 -> Ojs.set x88 "y" (Ojs.string_to_js x89)
+               | Some x89 ->
+                   Ojs.set_prop_ascii x88 "y" (Ojs.string_to_js x89)
                | None -> ());
               x88
       let (builder3 : x:int -> y:string -> unit -> Ojs.t) =
@@ -206,17 +213,17 @@ module B :
           fun ~y:x92 ->
             fun () ->
               let x93 = Ojs.empty_obj () in
-              Ojs.set x93 "x" (Ojs.int_to_js x91);
-              Ojs.set x93 "y" (Ojs.string_to_js x92);
+              Ojs.set_prop_ascii x93 "x" (Ojs.int_to_js x91);
+              Ojs.set_prop_ascii x93 "y" (Ojs.string_to_js x92);
               x93
       let (builder4 : x:int -> y:string -> z:unit -> Ojs.t) =
         fun ~x:x94 ->
           fun ~y:x95 ->
             fun ~z:x96 ->
               let x97 = Ojs.empty_obj () in
-              Ojs.set x97 "x" (Ojs.int_to_js x94);
-              Ojs.set x97 "y" (Ojs.string_to_js x95);
-              Ojs.set x97 "z" (Ojs.unit_to_js x96);
+              Ojs.set_prop_ascii x97 "x" (Ojs.int_to_js x94);
+              Ojs.set_prop_ascii x97 "y" (Ojs.string_to_js x95);
+              Ojs.set_prop_ascii x97 "z" (Ojs.unit_to_js x96);
               x97
       let (builder5 : ?x:int -> ?y:string -> unit -> Ojs.t) =
         fun ?x:x98 ->
@@ -224,10 +231,12 @@ module B :
             fun () ->
               let x100 = Ojs.empty_obj () in
               (match x98 with
-               | Some x102 -> Ojs.set x100 "x" (Ojs.int_to_js x102)
+               | Some x102 ->
+                   Ojs.set_prop_ascii x100 "x" (Ojs.int_to_js x102)
                | None -> ());
               (match x99 with
-               | Some x101 -> Ojs.set x100 "y" (Ojs.string_to_js x101)
+               | Some x101 ->
+                   Ojs.set_prop_ascii x100 "y" (Ojs.string_to_js x101)
                | None -> ());
               x100
       let (builder6 : ?x:int -> ?y:string -> ?z:int -> unit -> Ojs.t) =
@@ -236,14 +245,15 @@ module B :
             fun ?z:x105 ->
               fun () ->
                 let x106 = Ojs.empty_obj () in
-                Ojs.set x106 "x"
+                Ojs.set_prop_ascii x106 "x"
                   (Ojs.int_to_js
                      (match x103 with | Some x109 -> x109 | None -> 42));
-                Ojs.set x106 "y"
+                Ojs.set_prop_ascii x106 "y"
                   (Ojs.string_to_js
                      (match x104 with | Some x108 -> x108 | None -> "42"));
                 (match x105 with
-                 | Some x107 -> Ojs.set x106 "z" (Ojs.int_to_js x107)
+                 | Some x107 ->
+                     Ojs.set_prop_ascii x106 "z" (Ojs.int_to_js x107)
                  | None -> ());
                 x106
       let (sep : string -> string list -> string) =
@@ -251,9 +261,11 @@ module B :
           fun x110 ->
             Ojs.string_of_js
               (let x114 = Ojs.string_to_js x113 in
-               Ojs.call (Ojs.get x114 "sep") "apply"
+               Ojs.call (Ojs.get_prop_ascii x114 "sep") "apply"
                  [|x114;((let x111 =
-                            Ojs.new_obj (Ojs.get Ojs.global "Array") [||] in
+                            Ojs.new_obj
+                              (Ojs.get_prop_ascii Ojs.global "Array") 
+                              [||] in
                           List.iter
                             (fun x112 ->
                                ignore
@@ -346,8 +358,8 @@ module T :
       let rec (record_of_js : Ojs.t -> record) =
         fun x124 ->
           {
-            x = (js_of_js (Ojs.get x124 "x"));
-            y = (js_of_js (Ojs.get x124 "y"))
+            x = (js_of_js (Ojs.get_prop_ascii x124 "x"));
+            y = (js_of_js (Ojs.get_prop_ascii x124 "y"))
           }
       and (record_to_js : record -> Ojs.t) =
         fun x123 ->
@@ -358,8 +370,8 @@ module T :
       let rec (mutable_record_of_js : Ojs.t -> mutable_record) =
         fun x126 ->
           {
-            x = (js_of_js (Ojs.get x126 "x"));
-            y = (js_of_js (Ojs.get x126 "y"))
+            x = (js_of_js (Ojs.get_prop_ascii x126 "x"));
+            y = (js_of_js (Ojs.get_prop_ascii x126 "y"))
           }
       and (mutable_record_to_js : mutable_record -> Ojs.t) =
         fun x125 ->
@@ -370,8 +382,8 @@ module T :
       let rec (record_relabel_of_js : Ojs.t -> record_relabel) =
         fun x128 ->
           {
-            x = (Ojs.int_of_js (Ojs.get x128 "x"));
-            y = (Ojs.int_of_js (Ojs.get x128 "Y"))
+            x = (Ojs.int_of_js (Ojs.get_prop_ascii x128 "x"));
+            y = (Ojs.int_of_js (Ojs.get_prop_ascii x128 "Y"))
           }
       and (record_relabel_to_js : record_relabel -> Ojs.t) =
         fun x127 ->
@@ -386,8 +398,8 @@ module T :
           fun __b_of_js ->
             fun x130 ->
               {
-                x = (__a_of_js (Ojs.get x130 "x"));
-                y = (__b_of_js (Ojs.get x130 "y"))
+                x = (__a_of_js (Ojs.get_prop_ascii x130 "x"));
+                y = (__b_of_js (Ojs.get_prop_ascii x130 "y"))
               }
       and (parametrized_to_js :
         ('a -> Ojs.t) -> ('b -> Ojs.t) -> ('a, 'b) parametrized -> Ojs.t) =
@@ -478,28 +490,30 @@ module T :
       let rec (sum_of_js : Ojs.t -> sum) =
         fun x161 ->
           let x162 = x161 in
-          match Ojs.type_of (Ojs.get x162 "kind") with
+          match Ojs.type_of (Ojs.get_prop_ascii x162 "kind") with
           | "number" ->
-              (match Ojs.int_of_js (Ojs.get x162 "kind") with
+              (match Ojs.int_of_js (Ojs.get_prop_ascii x162 "kind") with
                | _ -> Unknown x162)
           | "string" ->
-              (match Ojs.string_of_js (Ojs.get x162 "kind") with
+              (match Ojs.string_of_js (Ojs.get_prop_ascii x162 "kind") with
                | "A" -> A
-               | "B" -> B (Ojs.int_of_js (Ojs.get x162 "arg"))
+               | "B" -> B (Ojs.int_of_js (Ojs.get_prop_ascii x162 "arg"))
                | "C" ->
                    C
-                     ((Ojs.int_of_js (Ojs.array_get (Ojs.get x162 "arg") 0)),
+                     ((Ojs.int_of_js
+                         (Ojs.array_get (Ojs.get_prop_ascii x162 "arg") 0)),
                        (Ojs.string_of_js
-                          (Ojs.array_get (Ojs.get x162 "arg") 1)))
+                          (Ojs.array_get (Ojs.get_prop_ascii x162 "arg") 1)))
                | "D" ->
                    D
                      {
-                       age = (Ojs.int_of_js (Ojs.get x162 "age"));
-                       name = (Ojs.string_of_js (Ojs.get x162 "name"))
+                       age = (Ojs.int_of_js (Ojs.get_prop_ascii x162 "age"));
+                       name =
+                         (Ojs.string_of_js (Ojs.get_prop_ascii x162 "name"))
                      }
                | _ -> Unknown x162)
           | "boolean" ->
-              (match Ojs.bool_of_js (Ojs.get x162 "kind") with
+              (match Ojs.bool_of_js (Ojs.get_prop_ascii x162 "kind") with
                | _ -> Unknown x162)
           | _ -> Unknown x162
       and (sum_to_js : sum -> Ojs.t) =
@@ -535,29 +549,31 @@ module T :
       let rec (t_of_js : Ojs.t -> t) =
         fun x171 ->
           let x172 = x171 in
-          match Ojs.type_of (Ojs.get x172 "kind") with
+          match Ojs.type_of (Ojs.get_prop_ascii x172 "kind") with
           | "number" ->
-              (match Ojs.int_of_js (Ojs.get x172 "kind") with
+              (match Ojs.int_of_js (Ojs.get_prop_ascii x172 "kind") with
                | _ -> Unknown x172)
           | "string" ->
-              (match Ojs.string_of_js (Ojs.get x172 "kind") with
+              (match Ojs.string_of_js (Ojs.get_prop_ascii x172 "kind") with
                | "A" -> A
-               | "B" -> B (Ojs.int_of_js (Ojs.get x172 "bArg"))
+               | "B" -> B (Ojs.int_of_js (Ojs.get_prop_ascii x172 "bArg"))
                | "C" ->
                    C
-                     ((Ojs.int_of_js (Ojs.array_get (Ojs.get x172 "cArg") 0)),
+                     ((Ojs.int_of_js
+                         (Ojs.array_get (Ojs.get_prop_ascii x172 "cArg") 0)),
                        (Ojs.string_of_js
-                          (Ojs.array_get (Ojs.get x172 "cArg") 1)))
+                          (Ojs.array_get (Ojs.get_prop_ascii x172 "cArg") 1)))
                | "D" ->
                    D
                      {
-                       age = (Ojs.int_of_js (Ojs.get x172 "X"));
-                       name = (Ojs.string_of_js (Ojs.get x172 "Y"))
+                       age = (Ojs.int_of_js (Ojs.get_prop_ascii x172 "X"));
+                       name =
+                         (Ojs.string_of_js (Ojs.get_prop_ascii x172 "Y"))
                      }
-               | "F" -> E (Ojs.int_of_js (Ojs.get x172 "fArg"))
+               | "F" -> E (Ojs.int_of_js (Ojs.get_prop_ascii x172 "fArg"))
                | _ -> Unknown x172)
           | "boolean" ->
-              (match Ojs.bool_of_js (Ojs.get x172 "kind") with
+              (match Ojs.bool_of_js (Ojs.get_prop_ascii x172 "kind") with
                | _ -> Unknown x172)
           | _ -> Unknown x172
       and (t_to_js : t -> Ojs.t) =
@@ -613,17 +629,19 @@ module T :
       let rec (discr_union_of_js : Ojs.t -> discr_union) =
         fun x189 ->
           let x190 = x189 in
-          match Ojs.type_of (Ojs.get x190 "discr") with
+          match Ojs.type_of (Ojs.get_prop_ascii x190 "discr") with
           | "number" ->
-              (match Ojs.int_of_js (Ojs.get x190 "discr") with | _ -> D x190)
+              (match Ojs.int_of_js (Ojs.get_prop_ascii x190 "discr") with
+               | _ -> D x190)
           | "string" ->
-              (match Ojs.string_of_js (Ojs.get x190 "discr") with
+              (match Ojs.string_of_js (Ojs.get_prop_ascii x190 "discr") with
                | "A" -> A
                | "B" -> B (Ojs.int_of_js x190)
                | "C" -> C (Ojs.int_of_js x190)
                | _ -> D x190)
           | "boolean" ->
-              (match Ojs.bool_of_js (Ojs.get x190 "discr") with | _ -> D x190)
+              (match Ojs.bool_of_js (Ojs.get_prop_ascii x190 "discr") with
+               | _ -> D x190)
           | _ -> D x190
       and (discr_union_to_js : discr_union -> Ojs.t) =
         fun x185 ->
@@ -636,17 +654,18 @@ module T :
       let rec (discr_poly_union_of_js : Ojs.t -> discr_poly_union) =
         fun x195 ->
           let x196 = x195 in
-          match Ojs.type_of (Ojs.get x196 "discr") with
+          match Ojs.type_of (Ojs.get_prop_ascii x196 "discr") with
           | "number" ->
-              (match Ojs.int_of_js (Ojs.get x196 "discr") with | _ -> `D x196)
+              (match Ojs.int_of_js (Ojs.get_prop_ascii x196 "discr") with
+               | _ -> `D x196)
           | "string" ->
-              (match Ojs.string_of_js (Ojs.get x196 "discr") with
+              (match Ojs.string_of_js (Ojs.get_prop_ascii x196 "discr") with
                | "A" -> `A
                | "B" -> `B (Ojs.int_of_js x196)
                | "C" -> `C (Ojs.int_of_js x196)
                | _ -> `D x196)
           | "boolean" ->
-              (match Ojs.bool_of_js (Ojs.get x196 "discr") with
+              (match Ojs.bool_of_js (Ojs.get_prop_ascii x196 "discr") with
                | _ -> `D x196)
           | _ -> `D x196
       and (discr_poly_union_to_js : discr_poly_union -> Ojs.t) =
@@ -664,18 +683,19 @@ module T :
       let rec (discr_union_value_of_js : Ojs.t -> discr_union_value) =
         fun x201 ->
           let x202 = x201 in
-          match Ojs.type_of (Ojs.get x202 "discr") with
+          match Ojs.type_of (Ojs.get_prop_ascii x202 "discr") with
           | "number" ->
-              (match Ojs.int_of_js (Ojs.get x202 "discr") with
+              (match Ojs.int_of_js (Ojs.get_prop_ascii x202 "discr") with
                | 0 -> A
                | _ -> D x202)
           | "string" ->
-              (match Ojs.string_of_js (Ojs.get x202 "discr") with
+              (match Ojs.string_of_js (Ojs.get_prop_ascii x202 "discr") with
                | "42" -> B (Ojs.int_of_js x202)
                | "C" -> C (Ojs.int_of_js x202)
                | _ -> D x202)
           | "boolean" ->
-              (match Ojs.bool_of_js (Ojs.get x202 "discr") with | _ -> D x202)
+              (match Ojs.bool_of_js (Ojs.get_prop_ascii x202 "discr") with
+               | _ -> D x202)
           | _ -> D x202
       and (discr_union_value_to_js : discr_union_value -> Ojs.t) =
         fun x197 ->

@@ -89,6 +89,7 @@ external obj: (string * t) array -> t = "caml_js_object"
 val empty_obj: unit -> t
 
 val has_property: t -> string -> bool
+external iter_properties: t -> (string -> unit) -> unit = "caml_ojs_iterate_properties"
 
 (** {2 Calling JS functions} *)
 
@@ -101,6 +102,13 @@ external apply: t -> t array -> t = "caml_js_fun_call"
 external new_obj: t -> t array -> t = "caml_js_new"
 (** Call a constructor *)
 
+val call_arr: t -> string -> t -> t
+(** Variant of [Ojs.call] where the arguments are passed as an already
+    built JS array. *)
+
+val apply_arr: t -> t -> t
+(** Variant of [Ojs.apply] where the arguments are passed as an already
+    built JS array. *)
 
 external new_obj_arr: t -> t -> t = "caml_ojs_new_arr"
 (** Variant of [Ojs.new_obj] where the arguments are passed as an already
