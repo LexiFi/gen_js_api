@@ -1,16 +1,15 @@
 Changelog
 =========
 
-Next version
-------------
+Version 1.0.7
+-------------
 
+- GPR#135: UTF-8 support for (Ojs.get/set/delete) adaptions (@mlasson)
 - GPR#132: Add support for indexers and "callable" objects (@cannorin)
-- GPR#131: type [@@js] to derive conversions signatures (@@)
 - GPR#130: Javascript -> JavaScript (@smorimoto)
 - GPR#129: Add GitHub Actions workflow (@smorimoto)
 - GPR#128: Bucklescript -> ReScript (also add genType ppx as a resource) (@ryyppy)
 - GPR#127: Support boolean "enum"s and boolean union discriminators (@cannorin)
-- GPR#126: Put Ojs_exn inside Ojs module (breaking change !) (@mlasson)
 - GPR#125: js.custom attribute for type declaration to support custom mapping #125 (@cannorin)
 - GPR#123: Upgrade ppx to the ocaml 4.11 ast (@hhugo)
 - GPR#120: Split runtime library to own package (@rgrinberg)

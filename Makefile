@@ -2,7 +2,7 @@
 # See the attached LICENSE file.
 # Copyright 2015 by LexiFi.
 
-.PHONY: all examples test test-promote clean install uninstall doc
+.PHONY: all examples test test-promote clean install uninstall doc reindent publish
 
 all:
 	dune build @install @DEFAULT
@@ -32,3 +32,16 @@ uninstall:
 
 reindent:
 	git ls-files *.ml *.mli | grep -v expected | xargs ocp-indent -i
+
+VERSION := $$(opam show . | grep "^version" | sort -u | sed 's/version *//')
+
+publish: all
+	echo "Publishing v$(VERSION) ..." 
+	git tag -a v$(VERSION)
+	git push origin v$(VERSION)
+	opam publish
+
+
+
+	
+	
