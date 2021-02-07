@@ -4,4 +4,5 @@
   (synopsis "Syntactic support for gen_js_api")
   (libraries ocaml-migrate-parsetree gen_js_api.lib ppxlib.ast ppxlib)
   (kind ppx_rewriter)
+  (ppx_runtime_libraries ojs)
   (preprocess no_preprocessing))
