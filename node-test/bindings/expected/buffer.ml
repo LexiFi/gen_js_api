@@ -6,19 +6,20 @@ and (t_to_js : t -> Ojs.t) = fun x1 -> x1
 let (alloc : int -> t) =
   fun x3 ->
     t_of_js
-      (Ojs.call (Ojs.get Ojs.global "Buffer") "alloc" [|(Ojs.int_to_js x3)|])
+      (Ojs.call (Ojs.get_prop_ascii Ojs.global "Buffer") "alloc"
+         [|(Ojs.int_to_js x3)|])
 let (from : string -> t) =
   fun x4 ->
     t_of_js
-      (Ojs.call (Ojs.get Ojs.global "Buffer") "from"
+      (Ojs.call (Ojs.get_prop_ascii Ojs.global "Buffer") "from"
          [|(Ojs.string_to_js x4)|])
 let (concat : t list -> t) =
   fun x5 ->
     t_of_js
-      (Ojs.call (Ojs.get Ojs.global "Buffer") "concat"
+      (Ojs.call (Ojs.get_prop_ascii Ojs.global "Buffer") "concat"
          [|(Ojs.list_to_js t_to_js x5)|])
 let (length : t -> int) =
-  fun x7 -> Ojs.int_of_js (Ojs.get (t_to_js x7) "length")
+  fun x7 -> Ojs.int_of_js (Ojs.get_prop_ascii (t_to_js x7) "length")
 let (get : t -> int -> int option) =
   fun x8 ->
     fun x9 -> Ojs.option_of_js Ojs.int_of_js (Ojs.array_get (t_to_js x8) x9)

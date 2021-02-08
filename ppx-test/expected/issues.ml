@@ -17,14 +17,14 @@ module Issue117 :
           let (log : 'a -> unit) =
             fun x3 ->
               ignore
-                (Ojs.call (Ojs.get Ojs.global "console") "log"
+                (Ojs.call (Ojs.get_prop_ascii Ojs.global "console") "log"
                    [|(Obj.magic x3)|])
           let (log2 : 'a -> 'b -> unit) =
             fun x4 ->
               fun x5 ->
                 ignore
-                  (Ojs.call (Ojs.get Ojs.global "console") "jsLog2"
-                     [|(Obj.magic x4);(Obj.magic x5)|])
+                  (Ojs.call (Ojs.get_prop_ascii Ojs.global "console")
+                     "jsLog2" [|(Obj.magic x4);(Obj.magic x5)|])
         end
     end)[@merlin.hide ]) 
 module Issue124 :
@@ -69,17 +69,17 @@ module Issue124 :
       let rec (u_of_js : Ojs.t -> u) =
         fun x15 ->
           let x16 = x15 in
-          match Ojs.type_of (Ojs.get x16 "type") with
+          match Ojs.type_of (Ojs.get_prop_ascii x16 "type") with
           | "number" ->
-              (match Ojs.int_of_js (Ojs.get x16 "type") with
+              (match Ojs.int_of_js (Ojs.get_prop_ascii x16 "type") with
                | _ -> Unknown x16)
           | "string" ->
-              (match Ojs.string_of_js (Ojs.get x16 "type") with
+              (match Ojs.string_of_js (Ojs.get_prop_ascii x16 "type") with
                | "t" -> T (t_of_js x16)
                | "wrapped_t" -> WrappedT (wrapped_of_js t_of_js x16)
                | _ -> Unknown x16)
           | "boolean" ->
-              (match Ojs.bool_of_js (Ojs.get x16 "type") with
+              (match Ojs.bool_of_js (Ojs.get_prop_ascii x16 "type") with
                | _ -> Unknown x16)
           | _ -> Unknown x16
       and (u_to_js : u -> Ojs.t) =

@@ -6,25 +6,31 @@ module M =
     let rec (t_of_js : Ojs.t -> t) = fun x2 -> x2
     and (t_to_js : t -> Ojs.t) = fun x1 -> x1
     let (prop_get_arg : t -> int) =
-      fun x3 -> Ojs.int_of_js (Ojs.get (t_to_js x3) "propGetArg")
+      fun x3 -> Ojs.int_of_js (Ojs.get_prop_ascii (t_to_js x3) "propGetArg")
     let (prop_get : unit -> int) =
       fun () ->
-        Ojs.int_of_js (Ojs.get (Ojs.get Ojs.global "scope") "propGet")
+        Ojs.int_of_js
+          (Ojs.get_prop_ascii (Ojs.get_prop_ascii Ojs.global "scope")
+             "propGet")
     let (set_prop : t -> int -> unit) =
-      fun x4 -> fun x5 -> Ojs.set (t_to_js x4) "prop" (Ojs.int_to_js x5)
+      fun x4 ->
+        fun x5 -> Ojs.set_prop_ascii (t_to_js x4) "prop" (Ojs.int_to_js x5)
     let (set_global : int -> unit) =
       fun x6 ->
-        Ojs.set (Ojs.get Ojs.global "scope") "global" (Ojs.int_to_js x6)
+        Ojs.set_prop_ascii (Ojs.get_prop_ascii Ojs.global "scope") "global"
+          (Ojs.int_to_js x6)
     let (new_thing_unit : unit -> t) =
       fun () ->
         t_of_js
-          (Ojs.new_obj (Ojs.get (Ojs.get Ojs.global "scope") "ThingUnit")
-             [||])
+          (Ojs.new_obj
+             (Ojs.get_prop_ascii (Ojs.get_prop_ascii Ojs.global "scope")
+                "ThingUnit") [||])
     let (new_thing_args : int -> t) =
       fun x7 ->
         t_of_js
-          (Ojs.new_obj (Ojs.get (Ojs.get Ojs.global "scope") "ThingArgs")
-             [|(Ojs.int_to_js x7)|])
+          (Ojs.new_obj
+             (Ojs.get_prop_ascii (Ojs.get_prop_ascii Ojs.global "scope")
+                "ThingArgs") [|(Ojs.int_to_js x7)|])
     let (method_call_global : t -> unit) =
       fun x8 -> ignore (Ojs.call (t_to_js x8) "methodCallGlobal" [||])
     let (method_call_unit : t -> unit -> int) =
@@ -45,5 +51,6 @@ module M =
             (Ojs.call (t_to_js x14) "methodCallArgsUnit"
                [|(Ojs.int_to_js x13)|])
     let (global : t) =
-      t_of_js (Ojs.get (Ojs.get Ojs.global "scope") "global")
+      t_of_js
+        (Ojs.get_prop_ascii (Ojs.get_prop_ascii Ojs.global "scope") "global")
   end

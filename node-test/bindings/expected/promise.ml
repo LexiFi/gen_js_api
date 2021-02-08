@@ -6,9 +6,11 @@ module UntypedPromise =
     let rec (t_of_js : Ojs.t -> t) = fun x2 -> x2
     and (t_to_js : t -> Ojs.t) = fun x1 -> x1
     let (resolve : Ojs.t -> Ojs.t) =
-      fun x3 -> Ojs.call (Ojs.get Ojs.global "Promise") "resolve" [|x3|]
+      fun x3 ->
+        Ojs.call (Ojs.get_prop_ascii Ojs.global "Promise") "resolve" [|x3|]
     let (reject : Ojs.t -> Ojs.t) =
-      fun x4 -> Ojs.call (Ojs.get Ojs.global "Promise") "reject" [|x4|]
+      fun x4 ->
+        Ojs.call (Ojs.get_prop_ascii Ojs.global "Promise") "reject" [|x4|]
     let (then_ :
       Ojs.t -> success:(Ojs.t -> Ojs.t) -> error:(Ojs.t -> Ojs.t) -> Ojs.t) =
       fun x9 ->
@@ -17,7 +19,7 @@ module UntypedPromise =
             Ojs.call x9 "then" [|(Ojs.fun_to_js 1 x5);(Ojs.fun_to_js 1 x7)|]
     let (all : Ojs.t list -> Ojs.t) =
       fun x10 ->
-        Ojs.call (Ojs.get Ojs.global "Promise") "all"
+        Ojs.call (Ojs.get_prop_ascii Ojs.global "Promise") "all"
           [|(Ojs.list_to_js (fun x11 -> x11) x10)|]
     include
       struct
@@ -25,14 +27,16 @@ module UntypedPromise =
           content: Ojs.t }
         [@@@ocaml.warning "-7-32-39"]
         let rec (wrap_of_js : Ojs.t -> wrap) =
-          fun x13 -> { content = (Ojs.get x13 "content") }
+          fun x13 -> { content = (Ojs.get_prop_ascii x13 "content") }
         and (wrap_to_js : wrap -> Ojs.t) =
           fun x12 -> Ojs.obj [|("content", (x12.content))|]
       end
     let is_promise o = (resolve o) == o
     let wrap o = if is_promise o then wrap_to_js { content = o } else o
     let unwrap o =
-      if Ojs.has_property o "content" then Ojs.get o "content" else o
+      if Ojs.has_property o "content"
+      then Ojs.get_prop_ascii o "content"
+      else o
     let return x = resolve (wrap x)
     let fail err = reject (wrap err)
     let bind ?(error= fail)  p f =

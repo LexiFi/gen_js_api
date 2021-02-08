@@ -1,14 +1,11 @@
 module StringMap = struct
   include Map.Make(String)
 
-  let t_to_js ml2js l =
-    let o = Ojs.empty_obj () in
-    iter (fun k v -> Ojs.set o k (ml2js v)) l;
-    o
+  let t_to_js (type s) (s_to_js : s -> Ojs.t) m =
+    [%js.of: (string * s) list] (bindings m)
 
-  let t_of_js js2ml o =
-    let l = ref empty in
-    Ojs.iter_properties o
-      (fun k -> l := add k (js2ml (Ojs.get o k)) !l);
-    !l
+  let t_of_js (type s) (s_of_js : Ojs.t -> s) o =
+    let l = [%js.to: (string * s) list] o in
+    List.fold_left (fun acc (k, o) -> add k o acc) empty l
+
 end

@@ -213,16 +213,18 @@ type union_int =
 let rec (union_int_of_js : Ojs.t -> union_int) =
   fun x61 ->
     let x62 = x61 in
-    match Ojs.type_of (Ojs.get x62 "tag") with
+    match Ojs.type_of (Ojs.get_prop_ascii x62 "tag") with
     | "number" ->
-        (match Ojs.int_of_js (Ojs.get x62 "tag") with
+        (match Ojs.int_of_js (Ojs.get_prop_ascii x62 "tag") with
          | 0 -> Union_int_0 (dummy1_of_js x62)
          | 1 -> Union_int_1 (dummy2_of_js x62)
          | _ -> Unknown x62)
     | "string" ->
-        (match Ojs.string_of_js (Ojs.get x62 "tag") with | _ -> Unknown x62)
+        (match Ojs.string_of_js (Ojs.get_prop_ascii x62 "tag") with
+         | _ -> Unknown x62)
     | "boolean" ->
-        (match Ojs.bool_of_js (Ojs.get x62 "tag") with | _ -> Unknown x62)
+        (match Ojs.bool_of_js (Ojs.get_prop_ascii x62 "tag") with
+         | _ -> Unknown x62)
     | _ -> Unknown x62
 and (union_int_to_js : union_int -> Ojs.t) =
   fun x57 ->
@@ -237,16 +239,18 @@ type union_string =
 let rec (union_string_of_js : Ojs.t -> union_string) =
   fun x67 ->
     let x68 = x67 in
-    match Ojs.type_of (Ojs.get x68 "tag") with
+    match Ojs.type_of (Ojs.get_prop_ascii x68 "tag") with
     | "number" ->
-        (match Ojs.int_of_js (Ojs.get x68 "tag") with | _ -> Unknown x68)
+        (match Ojs.int_of_js (Ojs.get_prop_ascii x68 "tag") with
+         | _ -> Unknown x68)
     | "string" ->
-        (match Ojs.string_of_js (Ojs.get x68 "tag") with
+        (match Ojs.string_of_js (Ojs.get_prop_ascii x68 "tag") with
          | "foo" -> Union_string_foo (dummy3_of_js x68)
          | "bar" -> Union_string_bar (dummy4_of_js x68)
          | _ -> Unknown x68)
     | "boolean" ->
-        (match Ojs.bool_of_js (Ojs.get x68 "tag") with | _ -> Unknown x68)
+        (match Ojs.bool_of_js (Ojs.get_prop_ascii x68 "tag") with
+         | _ -> Unknown x68)
     | _ -> Unknown x68
 and (union_string_to_js : union_string -> Ojs.t) =
   fun x63 ->
@@ -260,7 +264,7 @@ type union_bool =
 let rec (union_bool_of_js : Ojs.t -> union_bool) =
   fun x72 ->
     let x73 = x72 in
-    match Ojs.bool_of_js (Ojs.get x73 "tag") with
+    match Ojs.bool_of_js (Ojs.get_prop_ascii x73 "tag") with
     | true -> Union_bool_true (dummy5_of_js x73)
     | false -> Union_bool_false (dummy6_of_js x73)
 and (union_bool_to_js : union_bool -> Ojs.t) =
@@ -273,7 +277,7 @@ type union_bool_partial =
 let rec (union_bool_partial_of_js : Ojs.t -> union_bool_partial) =
   fun x76 ->
     let x77 = x76 in
-    match Ojs.bool_of_js (Ojs.get x77 "tag") with
+    match Ojs.bool_of_js (Ojs.get_prop_ascii x77 "tag") with
     | true -> Union_bool_true (dummy5_of_js x77)
     | _ -> assert false
 and (union_bool_partial_to_js : union_bool_partial -> Ojs.t) =
@@ -284,13 +288,15 @@ type union_bool_partial2 =
 let rec (union_bool_partial2_of_js : Ojs.t -> union_bool_partial2) =
   fun x81 ->
     let x82 = x81 in
-    match Ojs.type_of (Ojs.get x82 "tag") with
+    match Ojs.type_of (Ojs.get_prop_ascii x82 "tag") with
     | "number" ->
-        (match Ojs.int_of_js (Ojs.get x82 "tag") with | _ -> Unknown x82)
+        (match Ojs.int_of_js (Ojs.get_prop_ascii x82 "tag") with
+         | _ -> Unknown x82)
     | "string" ->
-        (match Ojs.string_of_js (Ojs.get x82 "tag") with | _ -> Unknown x82)
+        (match Ojs.string_of_js (Ojs.get_prop_ascii x82 "tag") with
+         | _ -> Unknown x82)
     | "boolean" ->
-        (match Ojs.bool_of_js (Ojs.get x82 "tag") with
+        (match Ojs.bool_of_js (Ojs.get_prop_ascii x82 "tag") with
          | true -> Union_bool_true (dummy5_of_js x82)
          | _ -> Unknown x82)
     | _ -> Unknown x82
@@ -310,19 +316,19 @@ type union_mixed =
 let rec (union_mixed_of_js : Ojs.t -> union_mixed) =
   fun x91 ->
     let x92 = x91 in
-    match Ojs.type_of (Ojs.get x92 "tag") with
+    match Ojs.type_of (Ojs.get_prop_ascii x92 "tag") with
     | "number" ->
-        (match Ojs.int_of_js (Ojs.get x92 "tag") with
+        (match Ojs.int_of_js (Ojs.get_prop_ascii x92 "tag") with
          | 0 -> Union_int_0 (dummy1_of_js x92)
          | 1 -> Union_int_1 (dummy2_of_js x92)
          | _ -> Unknown x92)
     | "string" ->
-        (match Ojs.string_of_js (Ojs.get x92 "tag") with
+        (match Ojs.string_of_js (Ojs.get_prop_ascii x92 "tag") with
          | "foo" -> Union_string_foo (dummy3_of_js x92)
          | "bar" -> Union_string_bar (dummy4_of_js x92)
          | _ -> Unknown x92)
     | "boolean" ->
-        (match Ojs.bool_of_js (Ojs.get x92 "tag") with
+        (match Ojs.bool_of_js (Ojs.get_prop_ascii x92 "tag") with
          | true -> Union_bool_true (dummy5_of_js x92)
          | false -> Union_bool_false (dummy6_of_js x92))
     | _ -> Unknown x92
@@ -347,19 +353,19 @@ let rec (union_mixed_partial_bool_of_js : Ojs.t -> union_mixed_partial_bool)
   =
   fun x100 ->
     let x101 = x100 in
-    match Ojs.type_of (Ojs.get x101 "tag") with
+    match Ojs.type_of (Ojs.get_prop_ascii x101 "tag") with
     | "number" ->
-        (match Ojs.int_of_js (Ojs.get x101 "tag") with
+        (match Ojs.int_of_js (Ojs.get_prop_ascii x101 "tag") with
          | 0 -> Union_int_0 (dummy1_of_js x101)
          | 1 -> Union_int_1 (dummy2_of_js x101)
          | _ -> Unknown x101)
     | "string" ->
-        (match Ojs.string_of_js (Ojs.get x101 "tag") with
+        (match Ojs.string_of_js (Ojs.get_prop_ascii x101 "tag") with
          | "foo" -> Union_string_foo (dummy3_of_js x101)
          | "bar" -> Union_string_bar (dummy4_of_js x101)
          | _ -> Unknown x101)
     | "boolean" ->
-        (match Ojs.bool_of_js (Ojs.get x101 "tag") with
+        (match Ojs.bool_of_js (Ojs.get_prop_ascii x101 "tag") with
          | true -> Union_bool_true (dummy5_of_js x101)
          | _ -> Unknown x101)
     | _ -> Unknown x101

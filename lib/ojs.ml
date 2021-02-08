@@ -34,11 +34,17 @@ external obj: (string * t) array -> t = "caml_js_object"
 
 external variable: string -> t = "caml_js_var"
 
-external generic_get: t -> t -> t = "caml_js_get"
-external generic_set: t -> t -> t -> unit = "caml_js_set"
-
 external get: t -> string -> t = "caml_js_get"
 external set: t -> string -> t -> unit = "caml_js_set"
+external delete: t -> string -> unit = "caml_js_delete"
+
+external get_prop: t -> t -> t = "caml_js_get"
+external set_prop: t -> t -> t -> unit = "caml_js_set"
+external delete_prop: t -> t -> unit = "caml_js_delete"
+
+external get_prop_ascii: t -> string -> t = "caml_js_get"
+external set_prop_ascii: t -> string -> t -> unit = "caml_js_set"
+external delete_prop_ascii: t -> string -> unit = "caml_js_delete"
 
 external internal_type_of: t -> t = "caml_js_typeof"
 let type_of x = string_of_js (internal_type_of x)
@@ -56,12 +62,12 @@ external new_obj: t -> t array -> t = "caml_js_new"
 external call: t -> string -> t array -> t = "caml_js_meth_call"
 external apply: t -> t array -> t = "caml_js_fun_call"
 
-let array_make n = new_obj (get global "Array") [|int_to_js n|]
-let array_get t i = generic_get t (int_to_js i)
-let array_set t i x = generic_set t (int_to_js i) x
+let array_make n = new_obj (get_prop_ascii global "Array") [|int_to_js n|]
+let array_get t i = get_prop t (int_to_js i)
+let array_set t i x = set_prop t (int_to_js i) x
 
 let array_of_js_from f objs start =
-  let n = int_of_js (get objs "length") in
+  let n = int_of_js (get_prop_ascii objs "length") in
   Array.init (n - start) (fun i -> f (array_get objs (start + i)))
 
 let array_of_js f objs = array_of_js_from f objs 0
@@ -102,17 +108,15 @@ external fun_to_js_args: (t -> 'a) -> t = "caml_ojs_wrap_fun_arguments"
 
 let has_property o x =
   type_of o = "object" && o != null
-  && get o x != undefined
+  && get_prop o (string_to_js x) != undefined
 
-external iter_properties: t -> (string -> unit) -> unit = "caml_ojs_iterate_properties"
-
-let empty_obj () = new_obj (get global "Object") [||]
-
-let apply_arr o arr = call o "apply" [| null; arr |]
-let call_arr o s arr = call (get o s) "apply" [| o; arr |]
 external new_obj_arr: t -> t -> t = "caml_ojs_new_arr"
 
-external delete: t -> string -> unit = "caml_js_delete"
+let empty_obj () = new_obj (get_prop_ascii global "Object") [||]
+
+external iter_properties: t -> (string -> unit) -> unit = "caml_ojs_iterate_properties"
+let apply_arr o arr = call o "apply" [| null; arr |]
+let call_arr o s arr = call (get_prop o (string_to_js s)) "apply" [| o; arr |]
 
 let is_null x =
   equals x null

@@ -57,13 +57,32 @@ external fun_to_js_args: (t -> 'a) -> t = "caml_ojs_wrap_fun_arguments"
 
 (** {2 JS objects} *)
 
-external generic_get: t -> t -> t = "caml_js_get"
-
-external generic_set: t -> t -> t -> unit = "caml_js_set"
-
 external get: t -> string -> t = "caml_js_get"
+  [@@ocaml.deprecated "Use Ojs.get_prop_ascii instead."]
 
 external set: t -> string -> t -> unit = "caml_js_set"
+  [@@ocaml.deprecated "Use Ojs.set_prop_ascii instead."]
+
+external delete: t -> string -> unit = "caml_js_delete"
+  [@@ocaml.deprecated "Use Ojs.delete_prop_ascii instead."]
+
+external get_prop_ascii: t -> string -> t = "caml_js_get"
+  (** Get the property from an object (only works if the property key is a plain ascii string). *)
+
+external set_prop_ascii: t -> string -> t -> unit = "caml_js_set"
+  (** Set an object property (only works if the property key is a plain ascii string). *)
+
+external delete_prop_ascii: t -> string -> unit = "caml_js_delete"
+  (** Delete an object property (only works if the property key is a plain ascii string). *)
+
+external get_prop: t -> t -> t = "caml_js_get"
+  (** Get the property from an object. *)
+
+external set_prop: t -> t -> t -> unit = "caml_js_set"
+  (** Set an object property. *)
+
+external delete_prop: t -> t -> unit = "caml_js_delete"
+  (** Delete an object property. *)
 
 external obj: (string * t) array -> t = "caml_js_object"
 
@@ -95,13 +114,11 @@ external new_obj_arr: t -> t -> t = "caml_ojs_new_arr"
 (** Variant of [Ojs.new_obj] where the arguments are passed as an already
     built JS array. *)
 
-
 (** {2 Arrays} *)
 
 val array_make: int -> t
 val array_get: t -> int -> t
 val array_set: t -> int -> t -> unit
-
 
 (** {2 Misc} *)
 
@@ -116,8 +133,6 @@ class obj: t ->
   object
     method to_js: t
   end
-
-external delete: t -> string -> unit = "caml_js_delete"
 
 val is_null: t -> bool
 
