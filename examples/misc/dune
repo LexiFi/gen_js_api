@@ -1,31 +1,35 @@
 (executables
-  (names test_jquery)
-  (libraries ojs)
-  (link_flags -no-check-prims)
-  (preprocess (pps gen_js_api))
-  (modes js)
-)
+ (names test_jquery)
+ (libraries ojs)
+ (link_flags -no-check-prims)
+ (preprocess
+  (pps gen_js_api))
+ (modes js))
 
 (rule
-  (targets jquery.ml)
-  (deps jquery.mli)
-  (action (run %{bin:gen_js_api} %{deps})))
+ (targets jquery.ml)
+ (deps jquery.mli)
+ (action
+  (run %{bin:gen_js_api} %{deps})))
 
 (rule
-  (targets js_date.ml)
-  (deps js_date.mli)
-  (action (run %{bin:gen_js_api} %{deps})))
+ (targets js_date.ml)
+ (deps js_date.mli)
+ (action
+  (run %{bin:gen_js_api} %{deps})))
 
 (rule
-  (targets js_str.ml)
-  (deps js_str.mli)
-  (action (run %{bin:gen_js_api} %{deps})))
+ (targets js_str.ml)
+ (deps js_str.mli)
+ (action
+  (run %{bin:gen_js_api} %{deps})))
 
 (rule
-  (targets test_jquery.js)
-  (deps test_jquery.bc.js)
-  (action (run cp %{deps} %{targets})))
+ (targets test_jquery.js)
+ (deps test_jquery.bc.js)
+ (action
+  (run cp %{deps} %{targets})))
 
 (alias
-  (name DEFAULT)
-  (deps test_jquery.js test_jquery.html))
+ (name DEFAULT)
+ (deps test_jquery.js test_jquery.html))

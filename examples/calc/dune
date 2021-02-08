@@ -1,16 +1,17 @@
 (executables
-  (names calc)
-  (libraries ojs)
-  (link_flags -no-check-prims)
-  (preprocess (pps gen_js_api))
-  (modes js)
-)
+ (names calc)
+ (libraries ojs)
+ (link_flags -no-check-prims)
+ (preprocess
+  (pps gen_js_api))
+ (modes js))
 
 (rule
-  (targets calc.js)
-  (deps calc.bc.js)
-  (action (run cp %{deps} %{targets})))
+ (targets calc.js)
+ (deps calc.bc.js)
+ (action
+  (run cp %{deps} %{targets})))
 
 (alias
-  (name DEFAULT)
-  (deps calc.js calc.html))
+ (name DEFAULT)
+ (deps calc.js calc.html))

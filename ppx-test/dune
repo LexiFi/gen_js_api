@@ -37,7 +37,8 @@
 (rule
  (targets binding_automatic.ml)
  (deps binding_automatic.mli)
- (action (run gen_js_api %{deps} -o %{targets})))
+ (action
+  (run gen_js_api %{deps} -o %{targets})))
 
 (rule
  (alias runtest)
@@ -48,7 +49,8 @@
 (rule
  (targets binding_explicitly_automatic.ml)
  (deps binding_explicitly_automatic.mli)
- (action (run gen_js_api %{deps} -o %{targets})))
+ (action
+  (run gen_js_api %{deps} -o %{targets})))
 
 (rule
  (alias runtest)
@@ -59,7 +61,8 @@
 (rule
  (targets binding_manual.ml)
  (deps binding_manual.mli)
- (action (run gen_js_api %{deps} -o %{targets})))
+ (action
+  (run gen_js_api %{deps} -o %{targets})))
 
 (rule
  (alias runtest)
@@ -70,7 +73,8 @@
 (rule
  (targets binding.ml)
  (deps binding.mli)
- (action (run gen_js_api %{deps} -o %{targets})))
+ (action
+  (run gen_js_api %{deps} -o %{targets})))
 
 (rule
  (alias runtest)
@@ -81,7 +85,8 @@
 (rule
  (targets scoped.ml)
  (deps scoped.mli)
- (action (run %{bin:gen_js_api} %{deps} -o %{targets})))
+ (action
+  (run %{bin:gen_js_api} %{deps} -o %{targets})))
 
 (rule
  (alias runtest)
@@ -91,7 +96,8 @@
 (rule
  (targets union_and_enum.ml)
  (deps union_and_enum.mli)
- (action (run %{bin:gen_js_api} %{deps} -o %{targets})))
+ (action
+  (run %{bin:gen_js_api} %{deps} -o %{targets})))
 
 (rule
  (alias runtest)
@@ -101,7 +107,8 @@
 (library
  (name test_library)
  (libraries ojs)
- (preprocess (pps gen_js_api))
+ (preprocess
+  (pps gen_js_api))
  (modes byte)
  (modules binding_automatic binding_manual extension issues types))
 
@@ -109,5 +116,5 @@
  (alias runtest)
  (package gen_js_api)
  (deps test_library.cma)
- (action (echo "Successfully compile test_library"))
-)
+ (action
+  (echo "Successfully compile test_library")))

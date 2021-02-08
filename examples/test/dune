@@ -1,20 +1,23 @@
 (executables
-  (names main)
-  (libraries ojs)
-  (link_flags -no-check-prims)
-  (preprocess (pps gen_js_api))
-  (modes js))
+ (names main)
+ (libraries ojs)
+ (link_flags -no-check-prims)
+ (preprocess
+  (pps gen_js_api))
+ (modes js))
 
 (rule
-  (targets test_bindings.ml)
-  (deps test_bindings.mli)
-  (action (run gen_js_api %{deps})))
+ (targets test_bindings.ml)
+ (deps test_bindings.mli)
+ (action
+  (run gen_js_api %{deps})))
 
 (rule
-  (targets main.js)
-  (deps main.bc.js)
-  (action (run cp %{deps} %{targets})))
+ (targets main.js)
+ (deps main.bc.js)
+ (action
+  (run cp %{deps} %{targets})))
 
 (alias
-  (name DEFAULT)
-  (deps main.js main.html))
+ (name DEFAULT)
+ (deps main.js main.html))
