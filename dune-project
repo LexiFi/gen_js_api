@@ -18,9 +18,8 @@
  (synopsis "Runtime Library for gen_js_api generated libraries")
  (description "To be used in conjunction with gen_js_api")
  (conflicts (js_of_ocaml-compiler (< 3.0.0)))
- (depends (ocaml (>= 4.08))
-          (gen_js_api (and :with-test (>= "1.0.7")))
- ))
+ (depends (ocaml (>= 4.08)))
+ )
 
 (package
  (name gen_js_api)

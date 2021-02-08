@@ -14,23 +14,12 @@ bug-reports: "https://github.com/LexiFi/gen_js_api/issues"
 depends: [
   "dune" {>= "2.0"}
   "ocaml" {>= "4.08"}
-  "gen_js_api" {with-test & >= "1.0.7"}
 ]
 conflicts: [
   "js_of_ocaml-compiler" {< "3.0.0"}
 ]
+dev-repo: "git+https://github.com/LexiFi/gen_js_api.git"
 build: [
   ["dune" "subst"] {pinned}
-  [
-    "dune"
-    "build"
-    "-p"
-    name
-    "-j"
-    jobs
-    "@install"
-    "@runtest" {with-test}
-    "@doc" {with-doc}
-  ]
+  ["dune" "build" "-p" name "-j" jobs "@install" "@doc" {with-doc}]
 ]
-dev-repo: "git+https://github.com/LexiFi/gen_js_api.git"
