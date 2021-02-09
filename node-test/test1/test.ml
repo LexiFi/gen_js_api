@@ -1,5 +1,27 @@
 open Node
 
+let check_node_version version =
+  let major_version = function
+    | Some s when String.length s > 0 && s.[0] = 'v' ->
+        begin match
+          String.sub s 1 (String.length s - 1)
+          |> String.split_on_char '.'
+        with
+        | [] -> None
+        | hd :: _ -> int_of_string_opt hd
+        end
+    | _ -> None
+  in
+  if Option.value ~default:(-1) (major_version Process.version) < version then
+    begin
+      Printf.eprintf "[WARNING] Ignoring test: it requires Node > %d; please upgrade (current version %s)" version
+        (Option.value ~default:"???" Process.version);
+      exit 0
+    end
+
+let () =
+  check_node_version 10
+
 (** Buffer **)
 
 let caml_from_set s =
