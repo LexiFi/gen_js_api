@@ -1397,14 +1397,41 @@ and gen_funs ~global_attrs p =
                     { txt = Lident "to_js"; loc = loc_to}, to_js ]
                 | [ { txt = Lident "to_js"; loc = loc_to}, to_js;
                     { txt = Lident "of_js"; loc = loc_of}, of_js ] ), None); _} ->
-                let value_binding suffix loc (body: expression) =
+                let value_binding suffix loc (body: expression) (ty: core_type) =
                   let name = { txt = Printf.sprintf "%s_%s" name suffix; loc} in
-                  Vb.mk ~loc (Pat.var name) body
+                  Vb.mk ~loc (Pat.constraint_ (Pat.var name) ty) body
                 in
+                let ctx_withloc : label with_loc list = List.map (fun label -> { txt = label; loc = Location.none }) ctx in
+                let create_ty is_of_js =
+                  let p_ty =
+                    Typ.constr (mknoloc (longident_parse p.ptype_name.txt)) (List.map Typ.var ctx)
+                  in
+                  let rec go = function
+                    | [] ->
+                        if is_of_js then
+                          Typ.arrow Nolabel ojs_typ p_ty
+                        else
+                          Typ.arrow Nolabel p_ty ojs_typ
+                    | tv :: rest ->
+                        let arr =
+                          if is_of_js then
+                            Typ.arrow Nolabel ojs_typ (Typ.var tv)
+                          else
+                            Typ.arrow Nolabel (Typ.var tv) ojs_typ
+                        in
+                        Typ.arrow Nolabel arr (go rest)
+                  in
+                  if ctx = [] then
+                    go ctx
+                  else
+                    Typ.poly ctx_withloc (go ctx)
+                in
+                let of_js_ty = create_ty true in
+                let to_js_ty = create_ty false in
                 let vbs =
                   [
-                    value_binding "of_js" loc_of of_js;
-                    value_binding "to_js" loc_to to_js;
+                    value_binding "of_js" loc_of of_js of_js_ty;
+                    value_binding "to_js" loc_to to_js to_js_ty;
                   ]
                 in
                 (fun _ -> true),

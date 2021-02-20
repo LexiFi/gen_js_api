@@ -40,6 +40,14 @@ module Issue124 = [%js:
   and t = [`U of u] dummy [@@js.custom {
     to_js = Obj.magic; of_js = Obj.magic
   }]
+
+  type ('a, 'b) base = [ `BaseA of 'a | `BaseB of 'b ] dummy [@@js.custom {
+    to_js = (fun _ _ -> Obj.magic);
+    of_js = (fun _ _ -> Obj.magic)
+  }]
+
+  type base1 = (int, string) base
+  type base2 = (string, int) base
 ]
 module Issue109 = [%js:
   type t =
