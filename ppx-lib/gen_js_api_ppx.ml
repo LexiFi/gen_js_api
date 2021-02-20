@@ -1374,15 +1374,16 @@ and gen_funs ~global_attrs p =
   let name = p.ptype_name.txt in
   let decl_attrs = p.ptype_attributes in
   let global_attrs = global_attrs in
-  let ctx =
+  let ctx_withloc =
     List.map (function
-        | {ptyp_desc = Ptyp_any; ptyp_loc = _; ptyp_attributes = _; ptyp_loc_stack = _}, Invariant ->
-            fresh ()
-        | {ptyp_desc = Ptyp_var label; ptyp_loc = _; ptyp_attributes = _; ptyp_loc_stack = _}, Invariant ->
-            label
-        | _ -> error p.ptype_loc Cannot_parse_type
-      ) p.ptype_params
+      | {ptyp_desc = Ptyp_any; ptyp_loc = loc; ptyp_attributes = _; ptyp_loc_stack = _}, Invariant ->
+          { loc = loc; txt = fresh () }
+      | {ptyp_desc = Ptyp_var label; ptyp_loc = loc; ptyp_attributes = _; ptyp_loc_stack = _}, Invariant ->
+          { loc = loc; txt = label }
+      | _ -> error p.ptype_loc Cannot_parse_type
+    ) p.ptype_params
   in
+  let ctx = List.map (fun lwl -> lwl.txt) ctx_withloc in
   let loc = p.ptype_loc in
   let exception Skip_mapping_generation in
   let typvar_used, of_js, to_js, custom_funs =
@@ -1401,11 +1402,8 @@ and gen_funs ~global_attrs p =
                   let name = { txt = Printf.sprintf "%s_%s" name suffix; loc} in
                   Vb.mk ~loc (Pat.constraint_ (Pat.var name) ty) body
                 in
-                let ctx_withloc : label with_loc list = List.map (fun label -> { txt = label; loc = Location.none }) ctx in
                 let create_ty is_of_js =
-                  let p_ty =
-                    Typ.constr (mknoloc (longident_parse p.ptype_name.txt)) (List.map Typ.var ctx)
-                  in
+                  let p_ty = gen_typ (Name (name, List.map (fun x -> Typ_var x) ctx)) in
                   let rec go = function
                     | [] ->
                         if is_of_js then
@@ -1508,6 +1506,10 @@ and gen_funs ~global_attrs p =
           )
   in
   let f (name, input_typs, ret_typ, code) =
+    let append_poly ty =
+      if ctx_withloc = [] then ty
+      else Typ.poly ctx_withloc ty
+    in
     match code with
     | None -> None
     | Some code ->
@@ -1515,7 +1517,8 @@ and gen_funs ~global_attrs p =
           (Vb.mk ~loc:p.ptype_loc
              (Pat.constraint_
                 (Pat.var (mknoloc name))
-                (gen_typ (Arrow {ty_args = (List.map (fun typ -> {lab=Arg; att=[]; typ}) input_typs); ty_vararg = None; unit_arg = false; ty_res = ret_typ})))
+                (append_poly
+                  (gen_typ (Arrow {ty_args = (List.map (fun typ -> {lab=Arg; att=[]; typ}) input_typs); ty_vararg = None; unit_arg = false; ty_res = ret_typ}))))
              code)
   in
   let funs =

@@ -392,8 +392,10 @@ module T :
       type ('a, 'b) parametrized = {
         x: 'a ;
         y: 'b }
-      let rec (parametrized_of_js :
-        (Ojs.t -> 'a) -> (Ojs.t -> 'b) -> Ojs.t -> ('a, 'b) parametrized) =
+      let rec parametrized_of_js :
+        'a 'b .
+          (Ojs.t -> 'a) -> (Ojs.t -> 'b) -> Ojs.t -> ('a, 'b) parametrized
+        =
         fun __a_of_js ->
           fun __b_of_js ->
             fun x130 ->
@@ -401,8 +403,10 @@ module T :
                 x = (__a_of_js (Ojs.get_prop_ascii x130 "x"));
                 y = (__b_of_js (Ojs.get_prop_ascii x130 "y"))
               }
-      and (parametrized_to_js :
-        ('a -> Ojs.t) -> ('b -> Ojs.t) -> ('a, 'b) parametrized -> Ojs.t) =
+      and parametrized_to_js :
+        'a 'b .
+          ('a -> Ojs.t) -> ('b -> Ojs.t) -> ('a, 'b) parametrized -> Ojs.t
+        =
         fun __a_to_js ->
           fun __b_to_js ->
             fun x129 ->

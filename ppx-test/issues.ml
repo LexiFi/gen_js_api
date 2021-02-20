@@ -45,9 +45,8 @@ module Issue124 = [%js:
     to_js = (fun _ _ -> Obj.magic);
     of_js = (fun _ _ -> Obj.magic)
   }]
-
-  type base1 = (int, string) base
-  type base2 = (string, int) base
+  and base1 = (int, string) base
+  and base2 = (string, int) base
 ]
 module Issue109 = [%js:
   type t =
