@@ -1376,12 +1376,12 @@ and gen_funs ~global_attrs p =
   let global_attrs = global_attrs in
   let ctx_withloc =
     List.map (function
-      | {ptyp_desc = Ptyp_any; ptyp_loc = loc; ptyp_attributes = _; ptyp_loc_stack = _}, Invariant ->
-          { loc = loc; txt = fresh () }
-      | {ptyp_desc = Ptyp_var label; ptyp_loc = loc; ptyp_attributes = _; ptyp_loc_stack = _}, Invariant ->
-          { loc = loc; txt = label }
-      | _ -> error p.ptype_loc Cannot_parse_type
-    ) p.ptype_params
+        | {ptyp_desc = Ptyp_any; ptyp_loc = loc; ptyp_attributes = _; ptyp_loc_stack = _}, Invariant ->
+            { loc = loc; txt = fresh () }
+        | {ptyp_desc = Ptyp_var label; ptyp_loc = loc; ptyp_attributes = _; ptyp_loc_stack = _}, Invariant ->
+            { loc = loc; txt = label }
+        | _ -> error p.ptype_loc Cannot_parse_type
+      ) p.ptype_params
   in
   let ctx = List.map (fun lwl -> lwl.txt) ctx_withloc in
   let loc = p.ptype_loc in
@@ -1402,30 +1402,22 @@ and gen_funs ~global_attrs p =
                   let name = { txt = Printf.sprintf "%s_%s" name suffix; loc} in
                   Vb.mk ~loc (Pat.constraint_ (Pat.var name) ty) body
                 in
-                let create_ty is_of_js =
-                  let p_ty = gen_typ (Name (name, List.map (fun x -> Typ_var x) ctx)) in
-                  let rec go = function
-                    | [] ->
-                        if is_of_js then
-                          Typ.arrow Nolabel ojs_typ p_ty
-                        else
-                          Typ.arrow Nolabel p_ty ojs_typ
-                    | tv :: rest ->
-                        let arr =
-                          if is_of_js then
-                            Typ.arrow Nolabel ojs_typ (Typ.var tv)
-                          else
-                            Typ.arrow Nolabel (Typ.var tv) ojs_typ
-                        in
-                        Typ.arrow Nolabel arr (go rest)
+                let ty = gen_typ (Name (name, List.map (fun x -> Typ_var x) ctx)) in
+                let fold_types f base =
+                  let ty =
+                    List.fold_right (fun tv acc -> Typ.arrow Nolabel (f tv) acc) ctx base
                   in
-                  if ctx = [] then
-                    go ctx
+                  if ctx_withloc = [] then
+                    ty
                   else
-                    Typ.poly ctx_withloc (go ctx)
+                    Typ.poly ctx_withloc ty
                 in
-                let of_js_ty = create_ty true in
-                let to_js_ty = create_ty false in
+                let of_js_ty =
+                  fold_types (fun tv -> Typ.arrow Nolabel ojs_typ (Typ.var tv)) (Typ.arrow Nolabel ojs_typ ty)
+                in
+                let to_js_ty =
+                  fold_types (fun tv -> Typ.arrow Nolabel (Typ.var tv) ojs_typ) (Typ.arrow Nolabel ty ojs_typ)
+                in
                 let vbs =
                   [
                     value_binding "of_js" loc_of of_js of_js_ty;
@@ -1518,7 +1510,7 @@ and gen_funs ~global_attrs p =
              (Pat.constraint_
                 (Pat.var (mknoloc name))
                 (append_poly
-                  (gen_typ (Arrow {ty_args = (List.map (fun typ -> {lab=Arg; att=[]; typ}) input_typs); ty_vararg = None; unit_arg = false; ty_res = ret_typ}))))
+                   (gen_typ (Arrow {ty_args = (List.map (fun typ -> {lab=Arg; att=[]; typ}) input_typs); ty_vararg = None; unit_arg = false; ty_res = ret_typ}))))
              code)
   in
   let funs =
