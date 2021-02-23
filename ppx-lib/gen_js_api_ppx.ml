@@ -1380,9 +1380,6 @@ let global_object ~global_attrs =
   in
   traverse global_attrs
 
-let poly ctx ty =
-  Typ.poly ctx ty
-
 let rec gen_decls si =
   List.concat (List.map gen_decl si)
 
@@ -1424,7 +1421,7 @@ and gen_funs ~global_attrs p =
                   let ty =
                     List.fold_right (fun tv acc -> Typ.arrow Nolabel (f tv) acc) ctx base
                   in
-                  poly ctx_withloc ty
+                  Typ.poly ctx_withloc ty
                 in
                 let of_js_ty =
                   fold_types (fun tv -> Typ.arrow Nolabel ojs_typ (Typ.var tv)) (Typ.arrow Nolabel ojs_typ ty)
@@ -1524,7 +1521,7 @@ and gen_funs ~global_attrs p =
           (Vb.mk ~loc:p.ptype_loc
              (Pat.constraint_
                 (Pat.var (mknoloc name))
-                (poly ctx_withloc
+                (Typ.poly ctx_withloc
                    (gen_typ (Arrow
                                {
                                  ty_args = (List.map (fun typ -> {lab=Arg; att=[]; typ}) input_typs);
