@@ -876,7 +876,7 @@ let rec js2ml ty exp =
       exp
   | Name (s, tl) ->
       let s = if builtin_type s then "Ojs." ^ s else s in
-      let args = List.map (js2ml_fun) tl in
+      let args = List.map js2ml_fun tl in
       app (var (s ^ "_of_js")) (nolabel (args @ [exp])) false
   | Arrow {ty_args; ty_vararg; unit_arg; ty_res} ->
       let formal_args, concrete_args = prepare_args ty_args ty_vararg in
@@ -1036,7 +1036,7 @@ and ml2js ty exp =
   | Js -> exp
   | Name (s, tl) ->
       let s = if builtin_type s then "Ojs." ^ s else s in
-      let args = List.map (ml2js_fun) tl in
+      let args = List.map ml2js_fun tl in
       app (var (s ^ "_to_js")) (nolabel (args @ [exp])) false
   | Arrow {ty_args; ty_vararg = None; unit_arg; ty_res} ->
       let args =
@@ -1793,7 +1793,7 @@ and str_of_sg ~global_attrs sg =
   gen_decls decls
 
 and module_expr_rewriter ~loc ~attrs sg =
-  let str = str_of_sg ~global_attrs:(attrs) sg in
+  let str = str_of_sg ~global_attrs:attrs sg in
   Mod.constraint_
     (Mod.structure ~attrs:[ merlin_hide ] str)
     (Mty.signature ~loc ~attrs (clear_attr_mapper.signature clear_attr_mapper sg))
