@@ -77,6 +77,8 @@ module T  = [%js:
 
     type ('a, 'b) parametrized = { x : 'a; y : 'b }
 
+    type 'a abs = ('a -> int) -> unit
+
     type specialized = (int, int) parametrized
 
     type enum =

@@ -3,10 +3,10 @@
 module Error =
   struct
     type t = Ojs.t
-    let rec (t_of_js : Ojs.t -> t) = fun x2 -> x2
-    and (t_to_js : t -> Ojs.t) = fun x1 -> x1
+    let rec t_of_js : Ojs.t -> t = fun (x2 : Ojs.t) -> x2
+    and t_to_js : t -> Ojs.t = fun (x1 : Ojs.t) -> x1
     let (create : string -> t) =
-      fun x3 ->
+      fun (x3 : string) ->
         t_of_js
           (Ojs.new_obj (Ojs.get_prop_ascii Ojs.global "Error")
              [|(Ojs.string_to_js x3)|])
@@ -15,13 +15,16 @@ module Error =
         (Ojs.get_prop_ascii (Ojs.get_prop_ascii Ojs.global "Error")
            "stackTraceLimit")
     let (set_stack_trace_limit : int -> unit) =
-      fun x4 ->
+      fun (x4 : int) ->
         Ojs.set_prop_ascii (Ojs.get_prop_ascii Ojs.global "Error")
           "stackTraceLimit" (Ojs.int_to_js x4)
     let (code : t -> string) =
-      fun x5 -> Ojs.string_of_js (Ojs.get_prop_ascii (t_to_js x5) "code")
+      fun (x5 : t) ->
+        Ojs.string_of_js (Ojs.get_prop_ascii (t_to_js x5) "code")
     let (message : t -> string) =
-      fun x6 -> Ojs.string_of_js (Ojs.get_prop_ascii (t_to_js x6) "message")
+      fun (x6 : t) ->
+        Ojs.string_of_js (Ojs.get_prop_ascii (t_to_js x6) "message")
     let (stack : t -> string) =
-      fun x7 -> Ojs.string_of_js (Ojs.get_prop_ascii (t_to_js x7) "stack")
+      fun (x7 : t) ->
+        Ojs.string_of_js (Ojs.get_prop_ascii (t_to_js x7) "stack")
   end
