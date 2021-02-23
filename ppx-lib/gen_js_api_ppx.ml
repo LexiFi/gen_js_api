@@ -325,7 +325,13 @@ type decl =
 let local_type_of_type_var label =
   "__"^label
 
-let rec parse_arg ctx lab ~global_attrs ty =
+
+let neg_variance = function
+  | -1 -> 1
+  | 0 | 1 -> -1
+  | _ -> invalid_arg "neg_variance"
+
+let rec parse_arg ~variance ctx lab ~global_attrs ty =
   let lab =
     match lab with
     | Nolabel -> Arg
@@ -336,16 +342,16 @@ let rec parse_arg ctx lab ~global_attrs ty =
   {
     lab;
     att=ty.ptyp_attributes;
-    typ = parse_typ ctx ~global_attrs ty;
+    typ = parse_typ ~variance:(neg_variance variance) ctx ~global_attrs ty;
   }
 
-and parse_typ ctx ~global_attrs ty =
+and parse_typ ~variance ctx ~global_attrs ty =
   match ty.ptyp_desc with
   | Ptyp_arrow (lab, t1, t2) when has_attribute "js.variadic" t1.ptyp_attributes ->
-      begin match parse_arg ctx lab ~global_attrs t1 with
+      begin match parse_arg ~variance ctx lab ~global_attrs t1 with
       | {lab; att; typ=Name ("list", [typ])} ->
           let ty_vararg = Some {lab; att; typ} in
-          begin match parse_typ ctx ~global_attrs t2 with
+          begin match parse_typ ~variance ctx ~global_attrs t2 with
           | Arrow ({ty_args = []; ty_vararg = None; unit_arg = _; ty_res = _} as params) when t2.ptyp_attributes = [] ->
               Arrow {params with ty_vararg}
           | Arrow _ when t2.ptyp_attributes = [] -> error ty.ptyp_loc Cannot_parse_type
@@ -354,8 +360,8 @@ and parse_typ ctx ~global_attrs ty =
       | _ -> error t1.ptyp_loc Invalid_variadic_type_arg
       end
   | Ptyp_arrow (lab, t1, t2) ->
-      let t1 = parse_arg ctx lab ~global_attrs t1 in
-      begin match parse_typ ctx ~global_attrs t2 with
+      let t1 = parse_arg ~variance ctx lab ~global_attrs t1 in
+      begin match parse_typ ~variance ctx ~global_attrs t2 with
       | Arrow ({ty_args; ty_vararg = _; unit_arg = _; ty_res = _} as params) when t2.ptyp_attributes = [] -> Arrow {params with ty_args = t1 :: ty_args}
       | tres ->
           begin match t1 with
@@ -367,7 +373,7 @@ and parse_typ ctx ~global_attrs ty =
       begin match String.concat "." (Longident.flatten lid), tl with
       | "unit", [] -> Unit ty.ptyp_loc
       | "Ojs.t", [] -> Js
-      | s, tl -> Name (s, List.map (parse_typ ctx ~global_attrs) tl)
+      | s, tl -> Name (s, List.map (parse_typ ~variance ctx ~global_attrs) tl)
       end
   | Ptyp_variant (rows, Closed, None) ->
       let location = ty.ptyp_loc in
@@ -375,7 +381,7 @@ and parse_typ ctx ~global_attrs ty =
         | {prf_desc = Rtag ({txt = mlconstr; _}, true, []); prf_attributes = attributes; prf_loc = location} ->
             { mlconstr; arg = Constant; attributes; location }
         | {prf_desc = Rtag ({txt = mlconstr; _}, false, [typ]); prf_attributes = attributes; prf_loc = location} ->
-            begin match parse_typ ctx ~global_attrs typ with
+            begin match parse_typ ~variance ctx ~global_attrs typ with
             | Tuple typs -> { mlconstr; arg = Nary typs; attributes; location }
             | typ -> { mlconstr; arg = Unary typ; attributes; location }
             end
@@ -384,17 +390,22 @@ and parse_typ ctx ~global_attrs ty =
       Variant {location; global_attrs; attributes = ty.ptyp_attributes; constrs = List.map prepare_row rows}
 
   | Ptyp_tuple typs ->
-      let typs = List.map (parse_typ ctx ~global_attrs) typs in
+      let typs = List.map (parse_typ ~variance ctx ~global_attrs) typs in
       Tuple typs
 
   | Ptyp_var label ->
       if List.mem label ctx then
-        Name (local_type_of_type_var label, [])
+        if variance < 0 then
+          error ty.ptyp_loc (Contravariant_type_parameter label)
+        else
+          Name (local_type_of_type_var label, [])
       else
         Typ_var label
 
   | _ ->
       error ty.ptyp_loc Cannot_parse_type
+
+let parse_typ = parse_typ ~variance:0
 
 let check_prefix ~prefix s =
   let l = String.length prefix in
@@ -1331,42 +1342,6 @@ let process_fields ctx ~global_attrs l =
   jsname, (* JS name *)
   parse_typ ctx ~global_attrs typ
 
-let neg_variance =function
-  | -1 -> 1
-  | 0 | 1 -> -1
-  | _ -> invalid_arg "neg_variance"
-
-let thorough_exists f l =
-  List.fold_left (fun acc x -> acc || f x) false l
-
-let rec name_occurs loc variance label = function
-  | Typ_var _ -> false
-  | Arrow {ty_args; ty_vararg; ty_res; _} ->
-      let (|||) a b = a || b in
-      thorough_exists (fun {typ; _} -> name_occurs loc (neg_variance variance) label typ) ty_args
-      ||| (match ty_vararg with None -> false | Some {typ; _} -> name_occurs loc variance label typ)
-      ||| name_occurs loc variance label ty_res
-  | Js | Unit _ -> false
-  | Name (l, []) when label = l ->
-      if variance < 0 then
-        error loc (Contravariant_type_parameter l)
-      else
-        true
-  | Name (_, l)
-  | Tuple l -> thorough_exists (name_occurs loc variance label) l
-  | Variant {constrs; _} -> typvar_occurs_constructors loc variance label constrs
-
-and typvar_occurs_constructors loc variance label =
-  thorough_exists (fun {arg; _} ->
-      match arg with
-      | Constant -> false
-      | Unary typ -> name_occurs loc variance label typ
-      | Nary l -> thorough_exists (name_occurs loc variance label) l
-      | Record l -> thorough_exists (fun (_, _, _, typ) -> name_occurs loc variance label typ) l
-    )
-
-let local_type_occurs loc label typ =
-  name_occurs loc 0 (local_type_of_type_var label) typ
 
 let global_object ~global_attrs =
   let rec traverse = function
@@ -1400,7 +1375,7 @@ and gen_funs ~global_attrs p =
   let loc = p.ptype_loc in
   let exception Skip_mapping_generation in
   let local_type = Name (name, List.map (fun txt -> Name (local_type_of_type_var txt, [])) ctx) in
-  let typvar_used, of_js, to_js, custom_funs =
+  let of_js, to_js, custom_funs =
     match p.ptype_kind with
     | _ when has_attribute "js.custom" decl_attrs ->
         begin match get_attribute "js.custom" decl_attrs with
@@ -1435,7 +1410,6 @@ and gen_funs ~global_attrs p =
                     value_binding "to_js" loc_to to_js to_js_ty;
                   ]
                 in
-                (fun _ -> true),
                 lazy (raise Skip_mapping_generation),
                 lazy (raise Skip_mapping_generation),
                 vbs
@@ -1447,7 +1421,6 @@ and gen_funs ~global_attrs p =
           | None -> Js
           | Some ty -> parse_typ ctx ~global_attrs { ty with ptyp_attributes = decl_attrs @ ty.ptyp_attributes }
         in
-        (fun label -> local_type_occurs loc label ty),
         lazy (js2ml_fun ty),
         lazy (ml2js_fun ty),
         []
@@ -1469,7 +1442,6 @@ and gen_funs ~global_attrs p =
           { mlconstr; arg; attributes = c.pcd_attributes; location = c.pcd_loc }
         in
         let params = List.map prepare_constructor cstrs in
-        (fun label -> typvar_occurs_constructors loc 0 label params),
         lazy (mkfun ~typ:Js (js2ml_of_variant ~variant:false loc ~global_attrs decl_attrs params)),
         lazy (mkfun ~typ:local_type (ml2js_of_variant ~variant:false loc ~global_attrs decl_attrs params)),
         []
@@ -1478,7 +1450,6 @@ and gen_funs ~global_attrs p =
         let lbls = List.map (process_fields ctx ~global_attrs) lbls in
         let of_js x (_loc, ml, js, ty) = ml, js2ml ty (ojs_get x js) in
         let to_js x (_loc, ml, js, ty) = Exp.tuple [str js; ml2js ty (Exp.field x ml)] in
-        (fun label -> List.exists (fun (_, _, _, ty) -> local_type_occurs loc label ty) lbls),
         lazy (mkfun ~typ:Js (fun x -> Exp.record (List.map (of_js x) lbls) None)),
         lazy (mkfun ~typ:local_type (fun x -> ojs "obj" [Exp.array (List.map (to_js x) lbls)])),
         []
@@ -1507,7 +1478,7 @@ and gen_funs ~global_attrs p =
              ) ctx_withloc
              (List.fold_right
                 (fun label acc ->
-                   let name = if typvar_used label then "__"^label^suffix else "_" in
+                   let name = (local_type_of_type_var label)^suffix in
                    let label = Name (local_type_of_type_var label, []) in
                    Exp.fun_ Nolabel None (Pat.constraint_ (Pat.var (mknoloc name)) (gen_typ (typ label))) acc
                 ) ctx body
