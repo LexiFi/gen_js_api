@@ -56,9 +56,11 @@ module Issue124 :
       and b_to_js : b -> Ojs.t = fun { a } -> a_to_js a
       type 'a dummy = Ojs.t
       let rec dummy_of_js : 'a . (Ojs.t -> 'a) -> Ojs.t -> 'a dummy =
-        fun (type __a) -> fun (_ : Ojs.t -> __a) -> fun (x9 : Ojs.t) -> x9
+        fun (type __a) ->
+          fun (__a_of_js : Ojs.t -> __a) -> fun (x9 : Ojs.t) -> x9
       and dummy_to_js : 'a . ('a -> Ojs.t) -> 'a dummy -> Ojs.t =
-        fun (type __a) -> fun (_ : __a -> Ojs.t) -> fun (x8 : Ojs.t) -> x8
+        fun (type __a) ->
+          fun (__a_to_js : __a -> Ojs.t) -> fun (x8 : Ojs.t) -> x8
       type 'a wrapped =
         | Wrapped of 'a 
       let rec wrapped_of_js : 'a . (Ojs.t -> 'a) -> Ojs.t -> 'a wrapped =
