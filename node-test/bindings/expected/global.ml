@@ -20,7 +20,7 @@ let (set_timeout : (unit -> unit) -> int -> timeout_id) =
            [|(Ojs.fun_to_js 1 (fun _ -> x7 ()));(Ojs.int_to_js x8)|])
 let (clear_timeout : timeout_id -> unit) =
   fun (x9 : timeout_id) ->
-    ignore (Ojs.call (timeout_id_to_js x9) "clearTimeout" [||])
+    ignore (Ojs.call Ojs.global "clearTimeout" [|(timeout_id_to_js x9)|])
 let (clear_interval : interval_id -> unit) =
   fun (x10 : interval_id) ->
-    ignore (Ojs.call (interval_id_to_js x10) "clearInterval" [||])
+    ignore (Ojs.call Ojs.global "clearInterval" [|(interval_id_to_js x10)|])

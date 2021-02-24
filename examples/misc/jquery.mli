@@ -5,6 +5,7 @@
 (** Partial binding to jQuery, serving as an illustration
     of gen_js_api.  The binding is far from complete! *)
 
+[@@@js.implem [@@@ocaml.warning "-22"]]
 
 (** {2 Sets of elements} *)
 

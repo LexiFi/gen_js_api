@@ -285,6 +285,30 @@ type valdef =
   | Global of string
   | New of string option
   | Builder of attributes
+  | Auto of valdef
+
+let string_of_valdef = function
+  | Cast -> "js.cast"
+  | Ignore -> "js.ignore"
+  | PropGet _ -> "js.get"
+  | PropSet _ -> "js.set"
+  | IndexGet -> "js.index_get"
+  | IndexSet -> "js.index_set"
+  | MethCall _ -> "js.call"
+  | Apply -> "js.apply"
+  | Global _ -> "js.global"
+  | New None -> "js.create"
+  | New (Some _) -> "js.new"
+  | Builder _ -> "js.builder"
+  | Auto _ -> "js"
+
+let auto_deprecation_attribute loc valdef =
+  let message =
+    Printf.sprintf
+      "Heuristic for automatic binding is deprecated; please add the '@%s' attribute."
+      (string_of_valdef valdef)
+  in
+  Ast_mapper.attribute_of_warning loc message
 
 type methoddef =
   | Getter of string
@@ -294,13 +318,13 @@ type methoddef =
   | MethodCall of string
   | ApplyAsFunction
 
-
 type method_decl =
   {
     method_name: string;
     method_typ: typ;
     method_def: methoddef;
     method_loc: Location.t;
+    method_attrs: attributes
   }
 
 type class_field =
@@ -457,7 +481,7 @@ let auto ~global_attrs s ty =
   if derived_from_type s ty then
     Ignore
   else
-    match ty with
+    Auto begin match ty with
     | Arrow {ty_args = _; ty_vararg = None; unit_arg = _; ty_res = Name _} when s = "create" -> New None
     | Arrow {ty_args = _; ty_vararg = None; unit_arg = _; ty_res = Name _} when has_prefix ~prefix:"new_" s -> New (Some (js_name ~capitalize:true ~global_attrs (drop_prefix ~prefix:"new_" s)))
     | Arrow {ty_args = [_]; ty_vararg = None; unit_arg = false; ty_res = Unit _} when has_prefix ~prefix:"set_" s -> PropSet (js_name ~global_attrs (drop_prefix ~prefix:"set_" s))
@@ -470,8 +494,10 @@ let auto ~global_attrs s ty =
     | Arrow {ty_args = {lab=Arg; att=_; typ=Name _} :: _; ty_vararg = _; unit_arg = _; ty_res = _} when s = "apply" -> Apply
     | Arrow {ty_args = {lab=Arg; att=_; typ=Name _} :: _; ty_vararg = _; unit_arg = _; ty_res = _} -> MethCall (js_name ~global_attrs s)
     | _ -> Global (js_name ~global_attrs s)
+    end
 
-let auto_in_object ~global_attrs s = function
+let auto_in_object ~global_attrs s typ =
+  Auto begin match typ with
   | Arrow {ty_args = [{lab=Arg; att=_; typ=_}]; ty_vararg = None; unit_arg = false; ty_res = Unit _} when has_prefix ~prefix:"set_" s -> PropSet (js_name ~global_attrs (drop_prefix ~prefix:"set_" s))
   | Arrow {ty_args = [_]; ty_vararg = None; unit_arg = _; ty_res = _} when s = "get" -> IndexGet
   | Arrow {ty_args = [_; _]; ty_vararg = None; unit_arg = false; ty_res = Unit _} when s = "set" -> IndexSet
@@ -479,6 +505,7 @@ let auto_in_object ~global_attrs s = function
   | Arrow _ -> MethCall (js_name ~global_attrs s)
   | Unit _ -> MethCall (js_name ~global_attrs s)
   | _ -> PropGet (js_name ~global_attrs s)
+  end
 
 let parse_attr ~global_attrs (s, loc, auto) attribute =
   let opt_name ?(prefix = "") ?(capitalize = false) () =
@@ -636,8 +663,8 @@ and parse_class_field ~global_attrs = function
         | [] -> auto ()
         | _ -> error pctf_loc Multiple_binding_declarations
       in
-      let method_def =
-        match kind with
+      let rec method_def = function
+        | Auto def -> method_def def
         | PropGet s -> Getter s
         | PropSet s -> Setter s
         | IndexGet -> IndexGetter
@@ -646,12 +673,19 @@ and parse_class_field ~global_attrs = function
         | Apply -> ApplyAsFunction
         | _ -> error pctf_loc Cannot_parse_classfield
       in
+      let method_attrs =
+        match kind with
+        | Auto _ ->
+          [ auto_deprecation_attribute pctf_loc kind ]
+        | _ -> []
+      in
       Method
         {
           method_name;
           method_typ = ty;
-          method_def;
+          method_def = method_def kind;
           method_loc = pctf_loc;
+          method_attrs;
         }
   | {pctf_desc = Pctf_inherit {pcty_desc = Pcty_constr (id, []); _}; _} ->
       Inherit id
@@ -1574,7 +1608,7 @@ and gen_classdecl cast_funcs = function
       Ci.mk (mknoloc class_name) (List.fold_left f e (List.rev formal_args))
 
 and gen_class_field x = function
-  | Method {method_name; method_typ; method_def; method_loc} ->
+  | Method {method_name; method_typ; method_def; method_loc; method_attrs} ->
       let body =
         match method_def, method_typ with
         | Getter s, ty_res -> js2ml ty_res (ojs_get (var x) s)
@@ -1596,7 +1630,7 @@ and gen_class_field x = function
             func formal_args unit_arg (js2ml_unit ty_res res)
         | _ -> error method_loc Binding_type_mismatch
       in
-      Cf.method_ (mknoloc method_name) Public (Cf.concrete Fresh (Exp.constraint_ body (gen_typ method_typ)))
+      Cf.method_ ~attrs:method_attrs (mknoloc method_name) Public (Cf.concrete Fresh (Exp.constraint_ body (gen_typ method_typ)))
   | Inherit super ->
       let e = Cl.apply (Cl.constr super []) [Nolabel, var x] in
       Cf.inherit_ Fresh e None
@@ -1727,6 +1761,10 @@ and gen_def ~global_object loc decl ty =
            ty_vararg = None; unit_arg = false; ty_res = Unit _} ->
       mkfun ~typ:ty_this (fun this -> gen_index_set ty_index (ml2js ty_this this) ty_value)
 
+  | Auto valdef, _ ->
+      Ast_helper.Exp.attr
+        (gen_def ~global_object loc valdef ty)
+        (auto_deprecation_attribute loc valdef)
   | _ ->
       error loc Binding_type_mismatch
 

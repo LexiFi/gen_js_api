@@ -4,6 +4,7 @@ Changelog
 Version 1.0.7
 -------------
 
+- GPR#140: Adds a deprecation warning the automatic heuristic is used (@mlasson)
 - GPR#139: Rename things for backward compatibility (@mlasson)
 - GPR#135: UTF-8 support for (Ojs.get/set/delete) adaptions (@mlasson)
 - GPR#132: Add support for indexers and "callable" objects (@cannorin)

@@ -72,11 +72,14 @@ Method binding
       [@@js.call "f"]
   ````
 
-
 As always, the names can be omitted if they correspond to the implicit
-naming scheme.  And as for value bindings, some implicit rules apply,
-so that `[@@js.*]` attributes can often be omitted (in particular, in
-all the examples above).  The following rules are applied in order:
+naming scheme.
+
+Prior to version 1.0.7, as for value bindings, some implicit rules applied,
+so that `[@@js.*]` attributes could often be omitted (in particular, in
+all the examples above).
+
+The following rules were applied in order:
 
 - If the method is a function with one argument `t -> unit` and its
   name starts with `set_`, then the declaration is assumed to be a
@@ -88,6 +91,8 @@ all the examples above).  The following rules are applied in order:
 
 - Otherwise, the method is assumed to be a `[@@js.get]` property getter.
 
+But since version 1.0.7, *this feature has been deprecated*; all method
+should be explicitly annotated or a preprocessor warning will be emitted.
 
 Constructors
 ------------
