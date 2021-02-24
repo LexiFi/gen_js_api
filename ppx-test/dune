@@ -108,7 +108,7 @@
  (name test_library)
  (libraries ojs)
  (preprocess
-  (pps gen_js_api))
+  (pps gen_js_api.ppx))
  (modes byte)
  (modules binding_automatic binding_manual extension issues types))
 

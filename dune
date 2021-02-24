@@ -1,3 +1,7 @@
 (env
  (dev
   (flags (:standard))))
+
+(deprecated_library_name
+ (old_public_name gen_js_api)
+ (new_public_name ojs))
