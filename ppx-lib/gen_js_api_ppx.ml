@@ -287,7 +287,7 @@ type valdef =
   | Builder of attributes
   | Auto of valdef
 
-let string_of_valdef = function
+let rec string_of_valdef = function
   | Cast -> "js.cast"
   | Ignore -> "js.ignore"
   | PropGet _ -> "js.get"
@@ -300,7 +300,7 @@ let string_of_valdef = function
   | New None -> "js.create"
   | New (Some _) -> "js.new"
   | Builder _ -> "js.builder"
-  | Auto _ -> "js"
+  | Auto valdef -> string_of_valdef valdef
 
 let auto_deprecation_attribute loc valdef =
   let message =
