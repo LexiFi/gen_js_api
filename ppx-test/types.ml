@@ -55,7 +55,7 @@ module B  = [%js:
     val builder5: ?x:int -> ?y:string -> unit -> Ojs.t [@@js.builder]
     val builder6: ?x:(int [@js.default 42]) -> ?y:(string [@js.default "42"]) -> ?z:int -> unit -> Ojs.t [@@js.builder]
 
-    val sep: string -> (string list [@js.variadic]) -> string
+    val sep: string -> (string list [@js.variadic]) -> string [@@js.global]
 ]
 
 

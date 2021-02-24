@@ -67,12 +67,6 @@
   (run gen_js_api %{deps} -o %{targets})))
 
 (rule
- (alias runtest)
- (package gen_js_api)
- (action
-  (diff binding_automatic.ml binding_manual.ml)))
-
-(rule
  (targets binding.ml)
  (deps binding.mli)
  (action

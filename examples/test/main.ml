@@ -7,6 +7,8 @@
 
 open Test_bindings
 
+[@@@ocaml.warning "-22"]
+
 include
   [%js:
     val wrapper: (int -> int -> int) -> (int -> int -> int [@js.dummy])

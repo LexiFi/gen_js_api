@@ -264,21 +264,23 @@ module B :
                  | None -> ());
                 x106
       let (sep : string -> string list -> string) =
-        fun (x113 : string) ->
-          fun (x110 : string list) ->
+        fun (x110 : string) ->
+          fun (x111 : string list) ->
             Ojs.string_of_js
-              (let x114 = Ojs.string_to_js x113 in
+              (let x114 = Ojs.global in
                Ojs.call (Ojs.get_prop_ascii x114 "sep") "apply"
-                 [|x114;((let x111 =
+                 [|x114;((let x112 =
                             Ojs.new_obj
                               (Ojs.get_prop_ascii Ojs.global "Array") 
                               [||] in
+                          ignore
+                            (Ojs.call x112 "push" [|(Ojs.string_to_js x110)|]);
                           List.iter
-                            (fun (x112 : string) ->
+                            (fun (x113 : string) ->
                                ignore
-                                 (Ojs.call x111 "push"
-                                    [|(Ojs.string_to_js x112)|])) x110;
-                          x111))|])
+                                 (Ojs.call x112 "push"
+                                    [|(Ojs.string_to_js x113)|])) x111;
+                          x112))|])
     end)[@merlin.hide ]) 
 module T :
   sig

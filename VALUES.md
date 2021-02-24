@@ -172,7 +172,7 @@ Supported forms
   Corresponds to setting to an index accessor or [an index signature in a TypeScript interface](https://www.typescriptlang.org/docs/handbook/interfaces.html#indexable-types).
 
   The name of the function need not necessarily be `set` as long as the `[@@js.index_set]` attribute is present.
-  
+
   `index` must be `int`, `string`, or abstract types holding a JavaScript `number` or `string` value.
 
 
@@ -304,12 +304,16 @@ An experimental feature also allows to pass an expression of type `Ojs.t` as
 a payload to replace the global object. The intended use case is to allow
 dynamic loading of modules.
 
-Automatic binding
------------------
+Automatic binding (Deprecated since 1.0.7)
+------------------------------------------
 
 Some conventions, based on the declared value names and their types,
 allow to infer implicitly the `[@@js.xxx]` attributes on value
 declarations in most cases.
+
+*This feature has been deprecated starting from version 1.0.7*. All values
+declaration should be annotated with an explicit attribute. Otherwise
+a preprocessor warning will be emitted.
 
 Note that in all modes the declaration of conversion functions generated
 from types are ignored in order to expose the generated functions.

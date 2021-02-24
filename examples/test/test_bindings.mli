@@ -5,6 +5,8 @@
 (** Some ad hoc code to illustrate and test various aspects
     of gen_js_api *)
 
+[@@@js.implem [@@@ocaml.warning "-22"]]
+
 module Element : sig
   type t = private Ojs.t
 

@@ -5,9 +5,9 @@ module Element = [%js:
 
   val append_child: t -> t -> unit [@@js.call]
 
-  val set_attribute: t -> string -> string -> unit
+  val set_attribute: t -> string -> string -> unit [@@js.call]
 
-  val set_onclick: t -> (unit -> unit) -> unit
+  val set_onclick: t -> (unit -> unit) -> unit [@@js.set]
 ]
 
 module Window = [%js:
@@ -15,7 +15,7 @@ module Window = [%js:
 
   val instance: t [@@js.global "window"]
 
-  val set_onload: t -> (unit -> unit) -> unit
+  val set_onload: t -> (unit -> unit) -> unit [@@js.set]
 ]
 
 module Document = [%js:
@@ -23,11 +23,11 @@ module Document = [%js:
 
   val instance: t [@@js.global "document"]
 
-  val create_element: t -> string -> Element.t
+  val create_element: t -> string -> Element.t [@@js.call]
 
-  val create_text_node: t -> string -> Element.t
+  val create_text_node: t -> string -> Element.t [@@js.call]
 
-  val body: t -> Element.t
+  val body: t -> Element.t [@@js.get]
 ]
 
 let element tag children =
