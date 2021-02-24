@@ -2,31 +2,31 @@
 [@@@ocaml.warning "-7-32-39"]
 let (sep : string) = Ojs.string_of_js (Ojs.get_prop_ascii Imports.path "sep")
 let (dirname : string -> string) =
-  fun x1 ->
+  fun (x1 : string) ->
     Ojs.string_of_js
       (Ojs.call Imports.path "dirname" [|(Ojs.string_to_js x1)|])
 let (extname : string -> string) =
-  fun x2 ->
+  fun (x2 : string) ->
     Ojs.string_of_js
       (Ojs.call Imports.path "extname" [|(Ojs.string_to_js x2)|])
 let (is_absolute : string -> bool) =
-  fun x3 ->
+  fun (x3 : string) ->
     Ojs.bool_of_js
       (Ojs.call Imports.path "isAbsolute" [|(Ojs.string_to_js x3)|])
 let (join : string list -> string) =
-  fun x4 ->
+  fun (x4 : string list) ->
     Ojs.string_of_js
       (let x7 = Imports.path in
        Ojs.call (Ojs.get_prop_ascii x7 "join") "apply"
          [|x7;((let x5 =
                   Ojs.new_obj (Ojs.get_prop_ascii Ojs.global "Array") [||] in
                 List.iter
-                  (fun x6 ->
+                  (fun (x6 : string) ->
                      ignore (Ojs.call x5 "push" [|(Ojs.string_to_js x6)|]))
                   x4;
                 x5))|])
 let (normalize : string -> string) =
-  fun x8 ->
+  fun (x8 : string) ->
     Ojs.string_of_js
       (Ojs.call Imports.path "normalize" [|(Ojs.string_to_js x8)|])
 type parse_result =
@@ -36,8 +36,8 @@ type parse_result =
   base: string ;
   name: string ;
   ext: string }
-let rec (parse_result_of_js : Ojs.t -> parse_result) =
-  fun x10 ->
+let rec parse_result_of_js : Ojs.t -> parse_result =
+  fun (x10 : Ojs.t) ->
     {
       dir = (Ojs.string_of_js (Ojs.get_prop_ascii x10 "dir"));
       root = (Ojs.string_of_js (Ojs.get_prop_ascii x10 "root"));
@@ -45,8 +45,8 @@ let rec (parse_result_of_js : Ojs.t -> parse_result) =
       name = (Ojs.string_of_js (Ojs.get_prop_ascii x10 "name"));
       ext = (Ojs.string_of_js (Ojs.get_prop_ascii x10 "ext"))
     }
-and (parse_result_to_js : parse_result -> Ojs.t) =
-  fun x9 ->
+and parse_result_to_js : parse_result -> Ojs.t =
+  fun (x9 : parse_result) ->
     Ojs.obj
       [|("dir", (Ojs.string_to_js x9.dir));("root",
                                              (Ojs.string_to_js x9.root));
@@ -54,6 +54,6 @@ and (parse_result_to_js : parse_result -> Ojs.t) =
                                                (Ojs.string_to_js x9.name));
         ("ext", (Ojs.string_to_js x9.ext))|]
 let (parse : string -> parse_result) =
-  fun x11 ->
+  fun (x11 : string) ->
     parse_result_of_js
       (Ojs.call Imports.path "parse" [|(Ojs.string_to_js x11)|])

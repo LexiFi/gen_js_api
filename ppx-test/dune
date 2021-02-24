@@ -19,6 +19,7 @@
 (rule
  (alias runtest)
  (package gen_js_api)
+ (enabled_if (>= %{ocaml_version} 4.09))
  (action
   (diff expected/issues.ml issues.ml.result)))
 
@@ -31,6 +32,7 @@
 (rule
  (alias runtest)
  (package gen_js_api)
+ (enabled_if (>= %{ocaml_version} 4.09))
  (action
   (diff expected/types.ml types.ml.result)))
 
