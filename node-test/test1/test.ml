@@ -82,7 +82,7 @@ let () =
 let uncaught_handler p =
   let open Promise in
   catch p (fun error ->
-      Printf.eprintf "Uncaught execption: %s\n" (Printexc.to_string (Obj.magic error));
+      Printf.eprintf "Uncaught exception: %s\n" (Printexc.to_string (Obj.magic error));
       exit 1
     )
 

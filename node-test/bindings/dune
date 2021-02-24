@@ -1,9 +1,9 @@
 (library
  (name node)
  (synopsis "Bindings")
- (libraries gen_js_api)
+ (libraries ojs)
  (preprocess
-  (pps gen_js_api))
+  (pps gen_js_api.ppx))
  (modes byte)
  (js_of_ocaml
   (javascript_files imports.js)))
