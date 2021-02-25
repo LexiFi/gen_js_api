@@ -9,4 +9,4 @@
 (rule
  (alias runtest)
  (action
-  (run node %{dep:./test.bc.js})))
+  (run nodejs %{dep:./test.bc.js})))
