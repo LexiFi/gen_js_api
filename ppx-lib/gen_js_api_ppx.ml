@@ -729,11 +729,13 @@ let ojs_null = ojs_var "null"
 let list_iter f x =
   Exp.apply (Exp.ident (mknoloc (longident_parse "List.iter"))) (nolabel [f; x])
 
-let fun_ (label, s, typ) e =
-  match e.pexp_desc with
-  | Pexp_apply (f, [Nolabel, {pexp_desc = Pexp_ident {txt = Lident x; loc = _}; _}])
+let fun_ ?eta (label, s, typ) e =
+  match e.pexp_desc, eta with
+  | _, Some false ->
+      Exp.fun_ label None (Pat.constraint_ (Pat.var (mknoloc s)) typ) e
+  | Pexp_apply (f, [Nolabel, {pexp_desc = Pexp_ident {txt = Lident x; loc = _}; _}]), _
     when x = s -> f
-  | _ ->
+  | _, _ ->
       Exp.fun_ label None (Pat.constraint_ (Pat.var (mknoloc s)) typ) e
 
 let fun_unit e =
@@ -921,7 +923,7 @@ let rec js2ml ty exp =
       exp
   | Name (s, tl) ->
       let s = if builtin_type s then "Ojs." ^ s else s in
-      let args = List.map js2ml_fun tl in
+      let args = List.map (js2ml_fun ~eta:true) tl in
       app (var (s ^ "_of_js")) (nolabel (args @ [exp])) false
   | Arrow {ty_args; ty_vararg; unit_arg; ty_res} ->
       let formal_args, concrete_args = prepare_args ty_args ty_vararg in
@@ -1081,7 +1083,7 @@ and ml2js ty exp =
   | Js -> exp
   | Name (s, tl) ->
       let s = if builtin_type s then "Ojs." ^ s else s in
-      let args = List.map ml2js_fun tl in
+      let args = List.map (ml2js_fun ~eta:true) tl in
       app (var (s ^ "_to_js")) (nolabel (args @ [exp])) false
   | Arrow {ty_args; ty_vararg = None; unit_arg; ty_res} ->
       let args =
@@ -1207,8 +1209,8 @@ and ml2js_of_variant ~variant loc ~global_attrs attrs constrs exp =
   in
   Exp.match_ exp (List.map case constrs)
 
-and js2ml_fun ty = mkfun ~typ:Js (js2ml ty)
-and ml2js_fun ty = mkfun ~typ:ty (ml2js ty)
+and js2ml_fun ?eta ty = mkfun ?eta ~typ:Js (js2ml ty)
+and ml2js_fun ?eta ty = mkfun ?eta ~typ:ty (ml2js ty)
 
 and prepare_args ty_args ty_vararg : (arg_label * label * _) list * [ `Push of expression | `Simple of expression ] =
   if ty_vararg = None &&
@@ -1352,14 +1354,14 @@ and gen_typ = function
       Typ.tuple (List.map gen_typ typs)
   | Typ_var label -> Typ.var label
 
-and mkfun ?typ f =
+and mkfun ?typ ?eta f =
   let s = fresh () in
   let typ =
     match typ with
     | None -> Typ.any ()
     | Some typ -> gen_typ typ
   in
-  fun_ (Nolabel, s, typ) (f (var s))
+  fun_ ?eta (Nolabel, s, typ) (f (var s))
 
 let process_fields ctx ~global_attrs l =
   let loc = l.pld_name.loc in
@@ -1450,13 +1452,13 @@ and gen_funs ~global_attrs p =
             | { pexp_loc; _ } -> error pexp_loc (Record_expected "{ to_js = ...; of_js = ... }")
         end
     | Ptype_abstract ->
-        let ty =
+        let ty, eta =
           match p.ptype_manifest with
-          | None -> Js
-          | Some ty -> parse_typ ctx ~global_attrs { ty with ptyp_attributes = decl_attrs @ ty.ptyp_attributes }
+          | None -> Js, true
+          | Some ty -> parse_typ ctx ~global_attrs { ty with ptyp_attributes = decl_attrs @ ty.ptyp_attributes }, false
         in
-        lazy (js2ml_fun ty),
-        lazy (ml2js_fun ty),
+        lazy (js2ml_fun ~eta ty),
+        lazy (ml2js_fun ~eta ty),
         []
     | Ptype_variant cstrs ->
         let prepare_constructor c =
