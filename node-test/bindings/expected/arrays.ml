@@ -20,8 +20,8 @@ module JsArray(E:sig type t val t_to_js : t -> Ojs.t val t_of_js : Ojs.t -> t
 module JsString =
   struct
     type t = string
-    let rec t_of_js : Ojs.t -> t = Ojs.string_of_js
-    and t_to_js : t -> Ojs.t = Ojs.string_to_js
+    let rec t_of_js : Ojs.t -> t = fun (x8 : Ojs.t) -> Ojs.string_of_js x8
+    and t_to_js : t -> Ojs.t = fun (x7 : string) -> Ojs.string_to_js x7
   end
 module UntypedArray = struct include (JsArray)(Ojs) end
 module StringArray =

@@ -54,3 +54,7 @@ module Issue109 = [%js:
     | `I of int [@js.default]
     ] [@@js.enum]
 ]
+module Issue142 = [%js:
+  type t = [`Foo [@js 42]] [@js.enum]
+  and u = t
+]

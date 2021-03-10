@@ -357,11 +357,14 @@ module T :
       let rec abstract_of_js : Ojs.t -> abstract = fun (x118 : Ojs.t) -> x118
       and abstract_to_js : abstract -> Ojs.t = fun (x117 : Ojs.t) -> x117
       type alias = js
-      let rec alias_of_js : Ojs.t -> alias = js_of_js
-      and alias_to_js : alias -> Ojs.t = js_to_js
+      let rec alias_of_js : Ojs.t -> alias =
+        fun (x120 : Ojs.t) -> js_of_js x120
+      and alias_to_js : alias -> Ojs.t = fun (x119 : js) -> js_to_js x119
       type private_alias = alias
-      let rec private_alias_of_js : Ojs.t -> private_alias = alias_of_js
-      and private_alias_to_js : private_alias -> Ojs.t = alias_to_js
+      let rec private_alias_of_js : Ojs.t -> private_alias =
+        fun (x122 : Ojs.t) -> alias_of_js x122
+      and private_alias_to_js : private_alias -> Ojs.t =
+        fun (x121 : alias) -> alias_to_js x121
       type record = {
         x: js ;
         y: js }
