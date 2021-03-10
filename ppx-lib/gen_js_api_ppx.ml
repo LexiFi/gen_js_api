@@ -729,13 +729,11 @@ let ojs_null = ojs_var "null"
 let list_iter f x =
   Exp.apply (Exp.ident (mknoloc (longident_parse "List.iter"))) (nolabel [f; x])
 
-let fun_ ?eta (label, s, typ) e =
-  match e.pexp_desc, eta with
-  | _, Some false ->
-      Exp.fun_ label None (Pat.constraint_ (Pat.var (mknoloc s)) typ) e
-  | Pexp_apply (f, [Nolabel, {pexp_desc = Pexp_ident {txt = Lident x; loc = _}; _}]), _
-    when x = s -> f
-  | _, _ ->
+let fun_ ?(eta = true) (label, s, typ) e =
+  match e.pexp_desc with
+  | Pexp_apply (f, [Nolabel, {pexp_desc = Pexp_ident {txt = Lident x; loc = _}; _}])
+    when x = s && eta -> f
+  | _ ->
       Exp.fun_ label None (Pat.constraint_ (Pat.var (mknoloc s)) typ) e
 
 let fun_unit e =
