@@ -58,3 +58,7 @@ module Issue142 = [%js:
   type t = [`Foo [@js 42]] [@js.enum]
   and u = t
 ]
+module Issue144 = [%js:
+  type t
+  val f: t -> (args:int -> int [@js.dummy]) [@@js.call "f"]
+]

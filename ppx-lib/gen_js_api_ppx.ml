@@ -34,7 +34,7 @@ type error =
   | No_input
   | Multiple_inputs
   | Unlabelled_argument_in_builder
-  | Spurious_attribute
+  | Spurious_attribute of label
   | Sum_kind_args
   | Union_without_discriminator
   | Contravariant_type_parameter of string
@@ -157,8 +157,8 @@ let print_error ppf = function
       Format.fprintf ppf "A single input file must be provided"
   | Unlabelled_argument_in_builder ->
       Format.fprintf ppf "Arguments of builder must be named"
-  | Spurious_attribute ->
-      Format.fprintf ppf "Spurious js.* attribute"
+  | Spurious_attribute label ->
+      Format.fprintf ppf "Spurious %s attribute" label
   | Sum_kind_args ->
       Format.fprintf ppf "Incompatible label name for 'kind' and constructor arguments."
   | Constructor_in_union ->
@@ -1885,7 +1885,8 @@ let check_loc_mapper =
   let attribute _this ({attr_name = {txt; loc}; _} as attr) =
     if is_js_attribute txt then begin
       if is_registered_loc loc || not !check_attribute then ()
-      else error loc Spurious_attribute
+      else if txt = "js.dummy" then ()
+      else error loc (Spurious_attribute txt)
     end;
     attr
   in
