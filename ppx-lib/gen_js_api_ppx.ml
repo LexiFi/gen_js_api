@@ -1214,9 +1214,9 @@ and prepare_args ty_args ty_vararg : (arg_label * label * _) list * [ `Push of e
   if ty_vararg = None &&
      List.for_all
        (function
+         | {lab = Opt {def = None; _}; _} -> false
          | {typ = Variant {location = _; global_attrs = _; attributes; constrs}; _} when has_attribute "js.enum" attributes -> is_simple_enum constrs
          | {lab = Arg | Lab _ | Opt {def = Some _; _}; _} -> true
-         | {lab = Opt {def = None; _}; _} -> false
        )
        ty_args
   then
