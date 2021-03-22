@@ -1,6 +1,12 @@
 Changelog
 =========
 
+
+Upcoming
+--------
+
+- GPR#143: Disable eta reduction for of_js and to_js of type aliases (@cannorin)
+
 Version 1.0.7
 -------------
 
