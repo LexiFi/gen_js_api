@@ -1,6 +1,6 @@
 (library
  (name gen_js_api_ppx)
  (public_name gen_js_api.lib)
- (libraries compiler-libs.common ocaml-migrate-parsetree)
+ (libraries compiler-libs.common ppxlib)
  (ppx_runtime_libraries ojs)
  (preprocess no_preprocessing))
