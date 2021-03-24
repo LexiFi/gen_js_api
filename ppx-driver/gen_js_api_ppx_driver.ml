@@ -47,7 +47,6 @@ let () =
   Gen_js_api_ppx.mark_as_handled_manually := (fun attribute ->
       Ppxlib.Attribute.mark_as_handled_manually attribute);
   let mapper_for_sig =
-
     Gen_js_api_ppx.mark_attributes_as_used
   in
   let mapper_for_str =
@@ -55,10 +54,7 @@ let () =
   in
   let module_expr_ext =
     let rewriter ~loc ~path:_ si =
-      si
-
-      |> Gen_js_api_ppx.module_expr_rewriter ~loc ~attrs:[]
-
+      Gen_js_api_ppx.module_expr_rewriter ~loc ~attrs:[] si
     in
     Ppxlib.Extension.declare "js"
       Ppxlib.Extension.Context.Module_expr
@@ -68,8 +64,7 @@ let () =
   in
   let ext_to =
     let rewriter ~loc ~path:_ core_type =
-      core_type
-      |> Gen_js_api_ppx.js_to_rewriter ~loc
+      Gen_js_api_ppx.js_to_rewriter ~loc core_type
     in
     Ppxlib.Extension.declare "js.to"
       Ppxlib.Extension.Context.Expression
@@ -79,8 +74,7 @@ let () =
   in
   let ext_of =
     let rewriter ~loc ~path:_ core_type =
-      core_type
-      |> Gen_js_api_ppx.js_of_rewriter ~loc
+      Gen_js_api_ppx.js_of_rewriter ~loc core_type
     in
     Ppxlib.Extension.declare "js.of"
       Ppxlib.Extension.Context.Expression
@@ -90,10 +84,9 @@ let () =
   in
   let attr_typ =
     let rewriter ~ctxt (rec_flag : Ppxlib.Asttypes.rec_flag) tdl _ =
-      tdl
-      |> Gen_js_api_ppx.type_decl_rewriter
+      Gen_js_api_ppx.type_decl_rewriter
         ~loc:(Ppxlib.Expansion_context.Deriver.derived_item_loc ctxt)
-        rec_flag
+        rec_flag tdl
     in
     Ppxlib.Context_free.Rule.attr_str_type_decl
       (Ppxlib.Attribute.declare "js"
