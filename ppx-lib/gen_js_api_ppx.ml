@@ -34,7 +34,7 @@ type error =
   | No_input
   | Multiple_inputs
   | Unlabelled_argument_in_builder
-  | Spurious_attribute
+  | Spurious_attribute of label
   | Sum_kind_args
   | Union_without_discriminator
   | Contravariant_type_parameter of string
@@ -157,8 +157,8 @@ let print_error ppf = function
       Format.fprintf ppf "A single input file must be provided"
   | Unlabelled_argument_in_builder ->
       Format.fprintf ppf "Arguments of builder must be named"
-  | Spurious_attribute ->
-      Format.fprintf ppf "Spurious js.* attribute"
+  | Spurious_attribute label ->
+      Format.fprintf ppf "Spurious %s attribute" label
   | Sum_kind_args ->
       Format.fprintf ppf "Incompatible label name for 'kind' and constructor arguments."
   | Constructor_in_union ->
@@ -355,6 +355,12 @@ let neg_variance = function
   | 0 | 1 -> -1
   | _ -> invalid_arg "neg_variance"
 
+let no_attributes attributes =
+  List.iter (fun attr ->
+    ignore (filter_attr_name "js.dummy" attr)
+  ) attributes;
+  attributes = []
+
 let rec parse_arg ~variance ctx lab ~global_attrs ty =
   let lab =
     match lab with
@@ -376,7 +382,7 @@ and parse_typ ~variance ctx ~global_attrs ty =
       | {lab; att; typ=Name ("list", [typ])} ->
           let ty_vararg = Some {lab; att; typ} in
           begin match parse_typ ~variance ctx ~global_attrs t2 with
-          | Arrow ({ty_args = []; ty_vararg = None; unit_arg = _; ty_res = _} as params) when t2.ptyp_attributes = [] ->
+          | Arrow ({ty_args = []; ty_vararg = None; unit_arg = _; ty_res = _} as params) when no_attributes t2.ptyp_attributes ->
               Arrow {params with ty_vararg}
           | Arrow _ when t2.ptyp_attributes = [] -> error ty.ptyp_loc Cannot_parse_type
           | tres -> Arrow {ty_args = []; ty_vararg; unit_arg = false; ty_res = tres}
@@ -386,7 +392,7 @@ and parse_typ ~variance ctx ~global_attrs ty =
   | Ptyp_arrow (lab, t1, t2) ->
       let t1 = parse_arg ~variance ctx lab ~global_attrs t1 in
       begin match parse_typ ~variance ctx ~global_attrs t2 with
-      | Arrow ({ty_args; ty_vararg = _; unit_arg = _; ty_res = _} as params) when t2.ptyp_attributes = [] -> Arrow {params with ty_args = t1 :: ty_args}
+      | Arrow ({ty_args; ty_vararg = _; unit_arg = _; ty_res = _} as params) when no_attributes t2.ptyp_attributes -> Arrow {params with ty_args = t1 :: ty_args}
       | tres ->
           begin match t1 with
           | {lab=Arg; att=[]; typ=Unit _} -> Arrow {ty_args = []; ty_vararg = None; unit_arg = true; ty_res = tres}
@@ -1885,7 +1891,7 @@ let check_loc_mapper =
   let attribute _this ({attr_name = {txt; loc}; _} as attr) =
     if is_js_attribute txt then begin
       if is_registered_loc loc || not !check_attribute then ()
-      else error loc Spurious_attribute
+      else error loc (Spurious_attribute txt)
     end;
     attr
   in
