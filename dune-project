@@ -35,7 +35,7 @@ gen_js_api is to be used with the js_of_ocaml compiler.
  (conflicts (js_of_ocaml-compiler (< 3.0.0)))
  (depends
   (ocaml (>= 4.08))
-  (ppxlib (>= 0.9))
+  (ppxlib (>= 0.22))
   (js_of_ocaml-compiler :with-test)
   (conf-npm :with-test)
   ojs))
