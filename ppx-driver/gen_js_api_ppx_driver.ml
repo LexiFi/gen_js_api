@@ -1,36 +1,3 @@
-(*
-module From_ppx = Migrate_parsetree.OCaml_411
-module Selected =  Ppxlib.Select_ast(From_ppx)
-
-module Of_ppxlib = struct
-  include Selected.To_ocaml
-  let copy_rec_flag (rec_flag : Ppxlib.Asttypes.rec_flag) : From_ppx.Ast.Asttypes.rec_flag =
-    match rec_flag with
-    | Nonrecursive -> From_ppx.Ast.Asttypes.Nonrecursive
-    | Recursive -> Recursive
-end
-
-module To_ppxlib = struct
-  include Selected.Of_ocaml
-
-  let copy_module_expr (m : From_ppx.Ast.Parsetree.module_expr) : Ppxlib.Parsetree.module_expr =
-    match
-      copy_structure
-        [ From_ppx.Ast.Ast_helper.(Str.module_ (Mb.mk ({txt= Some "FAKE";loc=Location.none}) m))]
-    with
-    | [{pstr_desc=Pstr_module {pmb_expr;_}; _}] -> pmb_expr
-    | _ -> assert false
-
-  let copy_attribute (a : From_ppx.Ast.Parsetree.attribute)
-  : Ppxlib.Ast.attribute =
-  let pat : Migrate_parsetree.Ast_411.Parsetree.pattern =
-    Migrate_parsetree.Ast_411.Ast_helper.Pat.any ~attrs:[a] ()
-  in
-  let pat = copy_pattern pat in
-  List.hd pat.ppat_attributes
-end *)
-
-
 let check_attributes_with_ppxlib = false
 let check_locations_with_ppxlib = false
 
