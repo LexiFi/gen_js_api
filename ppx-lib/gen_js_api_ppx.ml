@@ -126,7 +126,7 @@ let get_string_attribute_default key default attrs =
   | None -> default
   | Some payload -> payload.attr_loc, id_of_expr (expr_of_payload payload)
 
-let _print_error ppf = function
+let print_error ppf = function
   | Expression_expected ->
       Format.fprintf ppf "Expression expected"
   | Structure_expected ->
@@ -181,7 +181,12 @@ let _print_error ppf = function
 let () =
   Location.Error.register_error_of_exn
     (function
-      | Error (loc, _err) -> Some (Location.Error.make  ~loc ~sub:[] "ERROR")
+      | Error (loc, err) ->
+        let createf ~loc fmt =
+          Format.kasprintf
+            (fun str -> Location.Error.make ~loc ~sub:[] str) fmt
+        in
+        Some (createf ~loc "%a" print_error err)
       | _ -> None
     )
 

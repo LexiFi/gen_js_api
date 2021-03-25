@@ -17,7 +17,7 @@ let () =
     Gen_js_api_ppx.mark_attributes_as_used
   in
   let mapper_for_str =
-      Gen_js_api_ppx.mark_attributes_as_used
+    Gen_js_api_ppx.mark_attributes_as_used
   in
   let module_expr_ext =
     let rewriter ~loc ~path:_ si =
