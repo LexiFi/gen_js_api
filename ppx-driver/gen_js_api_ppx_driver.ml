@@ -11,8 +11,6 @@ let () =
   then (
     Ppxlib.Driver.enable_location_check ()
   );
-  Gen_js_api_ppx.mark_as_handled_manually := (fun attribute ->
-      Ppxlib.Attribute.mark_as_handled_manually attribute);
   let mapper_for_sig =
     Gen_js_api_ppx.mark_attributes_as_used
   in

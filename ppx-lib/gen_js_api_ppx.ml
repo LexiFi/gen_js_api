@@ -55,7 +55,6 @@ let is_ascii s =
   with Break -> false
 
 let check_attribute = ref true
-let mark_as_handled_manually = ref (fun (_ : Parsetree.attribute) -> ())
 let used_attributes_tbl = Hashtbl.create 16
 
 (* [merlin_hide] tells merlin to not look at a node, or at any of its
@@ -67,7 +66,7 @@ let merlin_hide =
   }
 
 let register_loc attr =
-  !mark_as_handled_manually attr;
+  Ppxlib.Attribute.mark_as_handled_manually attr;
   Hashtbl.replace used_attributes_tbl attr.attr_name.loc ()
 
 let is_registered_loc loc = Hashtbl.mem used_attributes_tbl loc
