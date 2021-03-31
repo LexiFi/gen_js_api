@@ -26,7 +26,6 @@ type error =
   | Implicit_name of string
   | Not_supported_here of string
   | Record_expected of string
-  | Keywords_expected of string list
   | Constructor_in_union
   | Unknown_union_method
   | Non_constant_constructor_in_enum
@@ -172,8 +171,6 @@ let print_error ppf = function
       Format.fprintf ppf "Contravariant type parameter '%s is not allowed." label
   | Record_expected shape ->
       Format.fprintf ppf "Record %s expected." shape
-  | Keywords_expected keywords ->
-      Format.fprintf ppf "%s expected." (String.concat " or " (List.map (Format.sprintf "'%s'") keywords))
 
 let () =
   Location.register_error_of_exn
@@ -302,7 +299,8 @@ let rec string_of_valdef = function
   | IndexGet -> "js.index_get"
   | IndexSet -> "js.index_set"
   | MethCall _ -> "js.call"
-  | Apply _ -> "js.apply"
+  | Apply Function -> "js.apply"
+  | Apply Constructor -> "js.apply_constructor"
   | Global _ -> "js.global"
   | New None -> "js.create"
   | New (Some _) -> "js.new"
@@ -525,19 +523,6 @@ let parse_attr ~global_attrs (s, loc, auto) attribute =
         end
     | _ -> id_of_expr (expr_of_payload attribute)
   in
-  let opt_apply_type () =
-    match attribute.attr_payload with
-    | PStr [_] ->
-      let result =
-        match (expr_of_payload attribute).pexp_desc with
-        | Pexp_ident { txt = Lident name; loc } ->
-          if name = "as_function" then Function
-          else if name = "as_constructor" then Constructor
-          else error loc (Keywords_expected ["as_function"; "as_constructor"])
-        | _ -> error attribute.attr_loc (Keywords_expected ["as_function"; "as_constructor"])
-      in result
-    | _ -> Function
-  in
   let actions =
     [ "js.cast", (fun () -> Cast);
       "js.get", (fun () -> PropGet (opt_name ()));
@@ -545,7 +530,8 @@ let parse_attr ~global_attrs (s, loc, auto) attribute =
       "js.index_get", (fun () -> IndexGet);
       "js.index_set", (fun () -> IndexSet);
       "js.call", (fun () -> MethCall (opt_name ()));
-      "js.apply", (fun () -> Apply (opt_apply_type ()));
+      "js.apply", (fun () -> Apply Function);
+      "js.apply_constructor", (fun () -> Apply Constructor);
       "js.global", (fun () -> Global (opt_name ()));
       "js", (fun () -> auto ());
       "js.create", (fun () -> New None);

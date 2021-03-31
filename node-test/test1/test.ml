@@ -212,7 +212,7 @@ include [%js:
       ?hours:int -> ?minutes:int -> ?seconds:int ->
       ?ms:int -> unit -> float [@@js.call "UTC"]
     val new_:
-      t -> float -> Date.t [@@js.apply as_constructor]
+      t -> float -> Date.t [@@js.apply_constructor]
   end
 
   val date: DateConstructor.t [@@js.global "Date"]
