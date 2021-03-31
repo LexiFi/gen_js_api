@@ -194,6 +194,40 @@ let () =
   assert (res1 = res2);
   ()
 
+(*** Newable function *)
+
+include [%js:
+  module Date: sig
+    type t = private Ojs.t
+    val getUTCFullYear: t -> float [@@js.call "getUTCFullYear"]
+    val getUTCMonth: t -> float [@@js.call "getUTCMonth"]
+    val getUTCDate: t -> float [@@js.call "getUTCDate"]
+  end
+
+  module DateConstructor: sig
+    type t = private Ojs.t
+    val utc:
+      t ->
+      year:int -> month:int -> ?date:int ->
+      ?hours:int -> ?minutes:int -> ?seconds:int ->
+      ?ms:int -> unit -> float [@@js.call "UTC"]
+    val new_:
+      t -> float -> Date.t [@@js.apply_newable]
+  end
+
+  val date: DateConstructor.t [@@js.global "Date"]
+]
+
+let () =
+  let d =
+    DateConstructor.new_ date
+      (DateConstructor.utc date ~year:1999 ~month:11 ~date:31 ())
+  in
+  assert (int_of_float (Date.getUTCFullYear d) == 1999);
+  assert (int_of_float (Date.getUTCMonth d) == 11);
+  assert (int_of_float (Date.getUTCDate d) == 31);
+  ()
+
 (** Arrays **)
 let () =
     let open Arrays.StringArray in
