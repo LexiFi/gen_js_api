@@ -44,12 +44,12 @@ Supported forms
 
   The name of the function need not necessarily be `apply` as long as the `[@@js.apply]` attribute is present.
 
-  When the function you want to bind is a "newable" one (a function that must be called with a prefix `new`, e.g. constructors), add `as_constructor` to the payload. This is especially useful to bind to constructor interfaces in TypeScript.
+  When the function you want to bind is a "newable" one (a function that must be called with a prefix `new`, e.g. constructors), use `[@@js.apply_newable]` instead. This is especially useful to bind to constructor interfaces in TypeScript.
 
   ```ocaml
   module FooConstructor: sig
     type t
-    val new_: t -> Foo.t [@@js.apply as_constructor]
+    val new_: t -> Foo.t [@@js.apply_newable]
   end
   val fooConstructor: FooConstructor.t [@@js.global "Foo"]
   ```

@@ -275,7 +275,7 @@ let arg_label = function
 
 type apply_type =
   | Function    (* f(..) *)
-  | Constructor (* new f(..) *)
+  | NewableFunction (* new f(..) *)
 
 type valdef =
   | Cast
@@ -300,7 +300,7 @@ let rec string_of_valdef = function
   | IndexSet -> "js.index_set"
   | MethCall _ -> "js.call"
   | Apply Function -> "js.apply"
-  | Apply Constructor -> "js.apply_constructor"
+  | Apply NewableFunction -> "js.apply_newable"
   | Global _ -> "js.global"
   | New None -> "js.create"
   | New (Some _) -> "js.new"
@@ -531,7 +531,7 @@ let parse_attr ~global_attrs (s, loc, auto) attribute =
       "js.index_set", (fun () -> IndexSet);
       "js.call", (fun () -> MethCall (opt_name ()));
       "js.apply", (fun () -> Apply Function);
-      "js.apply_constructor", (fun () -> Apply Constructor);
+      "js.apply_newable", (fun () -> Apply NewableFunction);
       "js.global", (fun () -> Global (opt_name ()));
       "js", (fun () -> auto ());
       "js.create", (fun () -> New None);
@@ -1635,7 +1635,7 @@ and gen_class_field x = function
             let res =
               match t with
               | Function -> ojs_apply_arr (var x) concrete_args
-              | Constructor -> ojs_new_obj_arr (var x) concrete_args
+              | NewableFunction -> ojs_new_obj_arr (var x) concrete_args
             in
             func formal_args unit_arg (js2ml_unit ty_res res)
         | _ -> error method_loc Binding_type_mismatch
@@ -1759,7 +1759,7 @@ and gen_def ~global_object loc decl ty =
       let res this =
         match t with
         | Function -> ojs_apply_arr (ml2js typ this) concrete_args
-        | Constructor -> ojs_new_obj_arr (ml2js typ this) concrete_args
+        | NewableFunction -> ojs_new_obj_arr (ml2js typ this) concrete_args
       in
       mkfun ~typ (fun this -> func formal_args unit_arg (js2ml_unit ty_res (res this)))
 
