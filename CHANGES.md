@@ -6,6 +6,7 @@ Upcoming
 --------
 
 - GPR#149: Stop using OMP directly (@mlasson)
+- GPR#145: Add support for "newable" functions to [@@js.apply] (@cannorin)
 - GPR#143: Disable eta reduction for of_js and to_js of type aliases (@cannorin)
 - GPR#144: Disable "Spurious js.\* attribute" error for @js.dummy (@cannorin, @mlasson)
 - GPR#146: Fix an edge-case bug of prepare_args
