@@ -408,47 +408,42 @@ module T :
       let rec parametrized_of_js :
         'a 'b .
           (Ojs.t -> 'a) -> (Ojs.t -> 'b) -> Ojs.t -> ('a, 'b) parametrized
-        =
-        fun (type __a) ->
-          fun (type __b) ->
-            fun (__a_of_js : Ojs.t -> __a) ->
-              fun (__b_of_js : Ojs.t -> __b) ->
-                fun (x130 : Ojs.t) ->
-                  {
-                    x = (__a_of_js (Ojs.get_prop_ascii x130 "x"));
-                    y = (__b_of_js (Ojs.get_prop_ascii x130 "y"))
-                  }
+        = fun (type __a) -> fun (type __b) ->
+        fun (__a_of_js : Ojs.t -> __a) ->
+          fun (__b_of_js : Ojs.t -> __b) ->
+            fun (x130 : Ojs.t) ->
+              {
+                x = (__a_of_js (Ojs.get_prop_ascii x130 "x"));
+                y = (__b_of_js (Ojs.get_prop_ascii x130 "y"))
+              }
       and parametrized_to_js :
         'a 'b .
           ('a -> Ojs.t) -> ('b -> Ojs.t) -> ('a, 'b) parametrized -> Ojs.t
-        =
-        fun (type __a) ->
-          fun (type __b) ->
-            fun (__a_to_js : __a -> Ojs.t) ->
-              fun (__b_to_js : __b -> Ojs.t) ->
-                fun (x129 : (__a, __b) parametrized) ->
-                  Ojs.obj
-                    [|("x", (__a_to_js x129.x));("y", (__b_to_js x129.y))|]
+        = fun (type __a) -> fun (type __b) ->
+        fun (__a_to_js : __a -> Ojs.t) ->
+          fun (__b_to_js : __b -> Ojs.t) ->
+            fun (x129 : (__a, __b) parametrized) ->
+              Ojs.obj [|("x", (__a_to_js x129.x));("y", (__b_to_js x129.y))|]
       type 'a abs = ('a -> int) -> unit
-      let rec abs_of_js : 'a . (Ojs.t -> 'a) -> Ojs.t -> 'a abs =
-        fun (type __a) ->
-          fun (__a_of_js : Ojs.t -> __a) ->
-            fun (x134 : Ojs.t) ->
-              fun (x135 : __a -> int) ->
-                ignore
-                  (Ojs.apply x134
-                     [|(Ojs.fun_to_js 1
-                          (fun (x136 : Ojs.t) ->
-                             Ojs.int_to_js (x135 (__a_of_js x136))))|])
-      and abs_to_js : 'a . ('a -> Ojs.t) -> 'a abs -> Ojs.t =
-        fun (type __a) ->
-          fun (__a_to_js : __a -> Ojs.t) ->
-            fun (x131 : (__a -> int) -> unit) ->
-              Ojs.fun_to_js 1
-                (fun (x132 : Ojs.t) ->
-                   x131
-                     (fun (x133 : __a) ->
-                        Ojs.int_of_js (Ojs.apply x132 [|(__a_to_js x133)|])))
+      let rec abs_of_js : 'a . (Ojs.t -> 'a) -> Ojs.t -> 'a abs = fun (type
+        __a) ->
+        fun (__a_of_js : Ojs.t -> __a) ->
+          fun (x134 : Ojs.t) ->
+            fun (x135 : __a -> int) ->
+              ignore
+                (Ojs.apply x134
+                   [|(Ojs.fun_to_js 1
+                        (fun (x136 : Ojs.t) ->
+                           Ojs.int_to_js (x135 (__a_of_js x136))))|])
+      and abs_to_js : 'a . ('a -> Ojs.t) -> 'a abs -> Ojs.t = fun (type __a)
+        ->
+        fun (__a_to_js : __a -> Ojs.t) ->
+          fun (x131 : (__a -> int) -> unit) ->
+            Ojs.fun_to_js 1
+              (fun (x132 : Ojs.t) ->
+                 x131
+                   (fun (x133 : __a) ->
+                      Ojs.int_of_js (Ojs.apply x132 [|(__a_to_js x133)|])))
       type specialized = (int, int) parametrized
       let rec specialized_of_js : Ojs.t -> specialized =
         fun (x140 : Ojs.t) ->

@@ -2,13 +2,19 @@
 (* See the attached LICENSE file.                                         *)
 (* Copyright 2015 by LexiFi.                                              *)
 
-open Migrate_parsetree.Ast_411
+open Ppxlib
 
-open Location
 open Asttypes
 open Parsetree
 open Longident
-open! Ast_helper
+open Ast_helper
+open Location
+
+let mkloc txt loc =
+  { txt; loc }
+
+let mknoloc txt =
+  mkloc txt !Ast_helper.default_loc
 
 (** Errors *)
 
@@ -49,7 +55,6 @@ let is_ascii s =
   with Break -> false
 
 let check_attribute = ref true
-let mark_as_handled_manually = ref (fun (_ : Parsetree.attribute) -> ())
 let used_attributes_tbl = Hashtbl.create 16
 
 (* [merlin_hide] tells merlin to not look at a node, or at any of its
@@ -61,7 +66,7 @@ let merlin_hide =
   }
 
 let register_loc attr =
-  !mark_as_handled_manually attr;
+  Ppxlib.Attribute.mark_as_handled_manually attr;
   Hashtbl.replace used_attributes_tbl attr.attr_name.loc ()
 
 let is_registered_loc loc = Hashtbl.mem used_attributes_tbl loc
@@ -173,9 +178,14 @@ let print_error ppf = function
       Format.fprintf ppf "Record %s expected." shape
 
 let () =
-  Location.register_error_of_exn
+  Location.Error.register_error_of_exn
     (function
-      | Error (loc, err) -> Some (Location.error_of_printer ~loc print_error err)
+      | Error (loc, err) ->
+        let createf ~loc fmt =
+          Format.kasprintf
+            (fun str -> Location.Error.make ~loc ~sub:[] str) fmt
+        in
+        Some (createf ~loc "%a" print_error err)
       | _ -> None
     )
 
@@ -313,7 +323,7 @@ let auto_deprecation_attribute loc valdef =
       "Heuristic for automatic binding is deprecated; please add the '@%s' attribute."
       (string_of_valdef valdef)
   in
-  Ast_mapper.attribute_of_warning loc message
+  attribute_of_warning loc message
 
 type methoddef =
   | Getter of string
@@ -405,7 +415,7 @@ and parse_typ ~variance ctx ~global_attrs ty =
           end
       end
   | Ptyp_constr ({txt = lid; loc = _}, tl) ->
-      begin match String.concat "." (Longident.flatten lid), tl with
+      begin match String.concat "." (Longident.flatten_exn lid), tl with
       | "unit", [] -> Unit ty.ptyp_loc
       | "Ojs.t", [] -> Js
       | s, tl -> Name (s, List.map (parse_typ ~variance ctx ~global_attrs) tl)
@@ -867,15 +877,16 @@ let ojs_new_obj_arr cl = function
 let assert_false = Exp.assert_ (Exp.construct (mknoloc (longident_parse "false")) None)
 
 let clear_attr_mapper =
-  let mapper = Ast_mapper.default_mapper in
-  let attributes _this attrs =
+  object
+  inherit Ast_traverse.map
+
+  method! attributes attrs =
     let f {attr_name = {txt = _; loc}; _} = not (is_registered_loc loc) in
     List.filter f attrs
-  in
-  { mapper with Ast_mapper.attributes }
+  end
 
 let rewrite_typ_decl t =
-  let t = clear_attr_mapper.type_declaration clear_attr_mapper {t with ptype_private = Public} in
+  let t = clear_attr_mapper # type_declaration {t with ptype_private = Public} in
   match t.ptype_manifest, t.ptype_kind with
   | None, Ptype_abstract -> {t with ptype_manifest = Some ojs_typ}
   | _ -> t
@@ -1351,7 +1362,7 @@ and gen_typ = function
       List.fold_right (fun {lab; att=_; typ} t2 -> Typ.arrow (arg_label lab) (gen_typ typ) t2) tl (gen_typ ty_res)
   | Variant {location = _; global_attrs = _; attributes = _; constrs} ->
       let f {mlconstr; arg; attributes = _; location = _} =
-        let mlconstr = Location.mknoloc mlconstr in
+        let mlconstr = mknoloc mlconstr in
         match arg with
         | Constant -> Rf.mk (Rtag (mlconstr, true, []))
         | Unary typ -> Rf.mk (Rtag (mlconstr, false, [gen_typ typ]))
@@ -1410,9 +1421,9 @@ and gen_funs ~global_attrs p =
   let global_attrs = global_attrs in
   let ctx_withloc =
     List.map (function
-        | {ptyp_desc = Ptyp_any; ptyp_loc = loc; ptyp_attributes = _; ptyp_loc_stack = _}, Invariant ->
+        | {ptyp_desc = Ptyp_any; ptyp_loc = loc; ptyp_attributes = _; ptyp_loc_stack = _}, (NoVariance, _) ->
             { loc = loc; txt = fresh () }
-        | {ptyp_desc = Ptyp_var label; ptyp_loc = loc; ptyp_attributes = _; ptyp_loc_stack = _}, Invariant ->
+        | {ptyp_desc = Ptyp_var label; ptyp_loc = loc; ptyp_attributes = _; ptyp_loc_stack = _}, (NoVariance, _) ->
             { loc = loc; txt = label }
         | _ -> error p.ptype_loc Cannot_parse_type
       ) p.ptype_params
@@ -1580,7 +1591,7 @@ and gen_decl = function
       [Str.class_ classes; Str.value Nonrecursive cast_funcs]
 
   | Implem str ->
-      mapper.Ast_mapper.structure mapper str
+      (Lazy.force mapper) # structure str
 
   | Open descr ->
       let descr = {descr with popen_expr = Mod.ident descr.popen_expr} in
@@ -1822,7 +1833,7 @@ and module_expr_rewriter ~loc ~attrs sg =
   let str = str_of_sg ~global_attrs:attrs sg in
   Mod.constraint_
     (Mod.structure ~attrs:[ merlin_hide ] str)
-    (Mty.signature ~loc ~attrs (clear_attr_mapper.signature clear_attr_mapper sg))
+    (Mty.signature ~loc ~attrs (clear_attr_mapper # signature sg))
 
 and js_to_rewriter ~loc ty =
   let e' = with_default_loc {loc with loc_ghost = true }
@@ -1849,18 +1860,18 @@ and type_decl_rewriter ~loc rec_flag l =
   itm
 
 and mapper =
-  let open Ast_mapper in
-  let super = default_mapper in
+  lazy (object
+    inherit Ast_traverse.map as super
 
-  let module_expr self mexp =
-    let mexp = super.module_expr self mexp in
+  method! module_expr mexp =
+    let mexp = super # module_expr mexp in
     match mexp.pmod_desc with
     | Pmod_extension ({txt = "js"; _}, PSig sg) ->
         module_expr_rewriter ~loc:mexp.pmod_loc ~attrs:mexp.pmod_attributes sg
     | _ -> mexp
-  in
-  let structure_item self str =
-    let str = super.structure_item self str in
+
+  method! structure_item str =
+    let str = super # structure_item str in
     let global_attrs = [] in
     match str.pstr_desc with
     | Pstr_primitive vd when vd.pval_prim = [] ->
@@ -1881,9 +1892,9 @@ and mapper =
         end
     | _ ->
         str
-  in
-  let expr self e =
-    let e = super.expr self e in
+
+    method! expression e =
+    let e = super # expression e in
     match e.pexp_desc with
     | Pexp_extension (attr, PTyp ty) when filter_extension "js.to" attr ->
         js_to_rewriter ~loc:e.pexp_loc ty
@@ -1891,25 +1902,27 @@ and mapper =
         js_of_rewriter ~loc:e.pexp_loc ty
     | _ ->
         e
-  in
-  let attribute self a =
+
+  method! attribute a =
     ignore (filter_attr_name "js.dummy" a : bool);
-    super.attribute self a
-  in
-  {super with module_expr; structure_item; expr; attribute}
+    super # attribute a
+
+  end)
 
 let is_js_attribute txt = txt = "js" || has_prefix ~prefix:"js." txt
 
 let check_loc_mapper =
-  let mapper = Ast_mapper.default_mapper in
-  let attribute _this ({attr_name = {txt; loc}; _} as attr) =
+  object
+    inherit Ast_traverse.map
+
+   method! attribute ({attr_name = {txt; loc}; _} as attr) =
     if is_js_attribute txt then begin
       if is_registered_loc loc || not !check_attribute then ()
       else error loc (Spurious_attribute txt)
     end;
     attr
-  in
-  { mapper with Ast_mapper.attribute }
+
+  end
 
 (** Main *)
 
@@ -1921,14 +1934,6 @@ let specs =
   ]
 
 let usage = "gen_js_api [-o mymodule.ml] mymodule.mli"
-
-let from_current =
-  let open Migrate_parsetree in
-  Versions.migrate Versions.ocaml_current Versions.ocaml_411
-
-let to_current =
-  let open Migrate_parsetree in
-  Versions.migrate Versions.ocaml_411 Versions.ocaml_current
 
 let standalone () =
   let files = ref [] in
@@ -1942,31 +1947,32 @@ let standalone () =
   if !out = "" then out := Filename.chop_extension src ^ ".ml";
   let oc = if !out = "-" then stdout else open_out !out in
   let sg =
-    Pparse.parse_interface
+    Ocaml_common.Pparse.parse_interface
       ~tool_name:"gen_js_iface"
-      src |> from_current.Migrate_parsetree.Versions.copy_signature
+      src |> Selected_ast.Of_ocaml.copy_signature
   in
   let str = str_of_sg ~global_attrs:[] sg in
-  ignore (check_loc_mapper.Ast_mapper.signature check_loc_mapper sg);
-  let str = clear_attr_mapper.Ast_mapper.structure clear_attr_mapper str in
-  Format.fprintf (Format.formatter_of_out_channel oc) "%a@." Pprintast.structure (to_current.copy_structure str);
+  ignore (check_loc_mapper # signature sg);
+  let str = clear_attr_mapper # structure str in
+  Format.fprintf (Format.formatter_of_out_channel oc) "%a@." Pprintast.structure str;
   if !out <> "-" then close_out oc
 
-
 let mapper =
-  { mapper with
-    Ast_mapper.structure = (fun _this str ->
-        check_loc_mapper.Ast_mapper.structure
-          check_loc_mapper
-          (mapper.Ast_mapper.structure mapper str));
-  }
+  object
+    inherit Ast_traverse.map as super
 
-let mark_attributes_as_used mapper =
+    method! structure str =
+      check_loc_mapper # structure (super#structure str)
+  end
+
+
+let mark_attributes_as_used =
   (* mark `js.***` attributes as used in mli. *)
-  let attribute : _ -> attribute -> _ =
-    fun this ({attr_name = {txt; _}; _} as attr) ->
+  object
+    inherit Ast_traverse.map as super
+    method! attribute ({attr_name = {txt; _}; _} as attr) =
       if is_js_attribute txt then
         ignore (filter_attr_name txt attr : bool);
-      mapper.Ast_mapper.attribute this attr
-  in
-  { mapper with attribute }
+
+      super # attribute attr
+  end
