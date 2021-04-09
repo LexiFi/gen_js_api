@@ -2,8 +2,8 @@ Changelog
 =========
 
 
-Upcoming
---------
+Version 1.0.8
+-------------
 
 - GPR#149: Stop using OMP directly (@mlasson)
 - GPR#145: Add support for "newable" functions to [@@js.apply] (@cannorin)
