@@ -1,4 +1,4 @@
-(lang dune 2.0)
+(lang dune 2.7)
 (name gen_js_api)
 (version 1.0.8)
 
