@@ -50,23 +50,6 @@ Several forms are supported:
    with `[@@js]` (if needed). See [this page](TYPES.md) for a description
    of support forms of type declarations.
 
- - `[@@js.*]` attributes on val declarations.
-
-   Example:
-
-   ````
-     val alert_bool: bool -> unit
-       [@@js.global "alert"]
-
-     val myGlobalValue: int array
-       [@@js]
-   ````
-
-   In implementations, such `val` declarations are recognized only
-   if they have some `[@@js.*]` attribute.  To enable the default
-   heuristics, one can use `[@@js]`.  See [this page](VALUES.md)
-   for a description of supported forms of value bindings.
-
  - `[%js.to: ty]` and `[%js.of: ty]` extensions on expressions.
 
    Example:
