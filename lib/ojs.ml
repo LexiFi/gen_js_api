@@ -49,6 +49,9 @@ external delete_prop_ascii: t -> string -> unit = "caml_js_delete"
 external internal_type_of: t -> t = "caml_js_typeof"
 let type_of x = string_of_js (internal_type_of x)
 
+external internal_instance_of: t -> t -> t = "caml_js_instanceof"
+let instance_of x ~constr = bool_of_js (internal_instance_of x constr)
+
 external pure_js_expr: string -> t = "caml_pure_js_expr"
 let null = pure_js_expr "null"
 let undefined = pure_js_expr "undefined"

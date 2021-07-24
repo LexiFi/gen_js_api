@@ -117,3 +117,14 @@
  (alias runtest)
  (action
   (diff expected/arrays.ml arrays.ml)))
+
+(rule
+ (targets number.ml)
+ (deps number.mli)
+ (action
+  (run gen_js_api %{deps})))
+
+(rule
+ (alias runtest)
+ (action
+  (diff expected/number.ml number.ml)))

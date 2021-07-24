@@ -296,6 +296,7 @@ type valdef =
   | IndexSet
   | MethCall of string
   | Apply of apply_type
+  | Invoke
   | Global of string
   | New of string option
   | Builder of attributes
@@ -311,6 +312,7 @@ let rec string_of_valdef = function
   | MethCall _ -> "js.call"
   | Apply Function -> "js.apply"
   | Apply NewableFunction -> "js.apply_newable"
+  | Invoke -> "js.invoke"
   | Global _ -> "js.global"
   | New None -> "js.create"
   | New (Some _) -> "js.new"
@@ -548,6 +550,7 @@ let parse_attr ~global_attrs (s, loc, auto) attribute =
       "js.call", (fun () -> MethCall (opt_name ()));
       "js.apply", (fun () -> Apply Function);
       "js.apply_newable", (fun () -> Apply NewableFunction);
+      "js.invoke", (fun () -> Invoke);
       "js.global", (fun () -> Global (opt_name ()));
       "js", (fun () -> auto ());
       "js.create", (fun () -> New None);
@@ -1779,6 +1782,11 @@ and gen_def ~global_object loc decl ty =
         | NewableFunction -> ojs_new_obj_arr (ml2js typ this) concrete_args
       in
       mkfun ~typ (fun this -> func formal_args unit_arg (js2ml_unit ty_res (res this)))
+
+  | Invoke, Arrow {ty_args; ty_vararg; unit_arg; ty_res} ->
+      let formal_args, concrete_args = prepare_args ty_args ty_vararg in
+      let res = ojs_apply_arr global_object concrete_args in
+      func formal_args unit_arg (js2ml ty_res res)
 
   | IndexGet,
     Arrow {ty_args = [{lab=Arg; att=_; typ=(Name _ as ty_this)}; {lab=Arg; att=_; typ=ty_index}];

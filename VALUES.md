@@ -54,6 +54,30 @@ Supported forms
   val fooConstructor: FooConstructor.t [@@js.global "Foo"]
   ```
 
+  When the "callable" object you want to bind to is a global object, the `[@@js.invoke]`
+  attribute along with the `[@js.scope]` attribute (see below) may be used to call it.
+
+  For instance, you can write
+  ```ocaml
+    module[@js.scope "JavaScriptClassName"] C : sig
+      val invoke: T1 -> ... -> Tn [@@js.invoke]
+    end
+
+    (* usage *)
+    let x = C.invoke arg1 ... argn
+  ```
+  instead of
+  ```ocaml
+    module C : sig
+      type t
+      val apply: t -> T1 -> ... -> Tn [@@js.apply]
+    end
+    val c: C.t [@@js.global "JavaScriptClassName"]
+
+    (* usage *)
+    let x = C.apply c arg1 ... argn
+  ```
+
 - Object constructor:
 
   ```ocaml
@@ -83,13 +107,13 @@ Supported forms
   For instance,
   ```ocaml
     module[@js.scope "JavaScriptClassName"] C : sig
-      val create: T1 -> ... -> Tn -> t [@js.create]
+      val create: T1 -> ... -> Tn -> t [@@js.create]
     end
   ```
   is the same as
   ```ocaml
     module C : sig
-      val create: T1 -> ... -> Tn -> t [@js.new "JavaScriptClassName"]
+      val create: T1 -> ... -> Tn -> t [@@js.new "JavaScriptClassName"]
     end
   ```
 
@@ -275,6 +299,16 @@ Supported forms
   implementation must be provided explicitly.
 
   See [Verbatim section](IMPLGEN.md) for more details and examples.
+
+Calling a function/constructor by different means
+-------------------------------------------------
+
+|                                     | as a function          | as a constructor       |
+|-------------------------------------|------------------------|------------------------|
+| call the first argument             | `[@@js.apply]`         | `[@@js.apply_newable]` |
+| call the global object              | `[@@js.invoke]`        | `[@@js.create]`        |
+| call a member of the first argument | `[@@js.call "methodName"]`   | N/A                    |
+| call a member of the global object  | `[@@js.global "funcName"]` | `[@@js.new "ClassName"]`    |
 
 Scope
 -----
