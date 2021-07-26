@@ -60,7 +60,7 @@ Supported forms
   For instance, you can write
   ```ocaml
     module[@js.scope "JavaScriptClassName"] C : sig
-      val invoke: T1 -> ... -> Tn [@@js.invoke]
+      val invoke: T1 -> ... -> Tn -> t [@@js.invoke]
     end
 
     (* usage *)
@@ -70,7 +70,7 @@ Supported forms
   ```ocaml
     module C : sig
       type t
-      val apply: t -> T1 -> ... -> Tn [@@js.apply]
+      val apply: t -> T1 -> ... -> Tn -> t [@@js.apply]
     end
     val c: C.t [@@js.global "JavaScriptClassName"]
 
