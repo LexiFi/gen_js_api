@@ -66,10 +66,6 @@ let () =
   assert_equal_buffer native from_write;
   assert_equal_buffer native from_copy
 
-(** Path **)
-
-let () = assert (Path.sep = Filename.dir_sep)
-
 (** Process **)
 
 let () =
