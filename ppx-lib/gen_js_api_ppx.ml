@@ -147,7 +147,7 @@ let print_error ppf = function
   | Cannot_parse_classfield ->
       Format.fprintf ppf "Cannot parse class field"
   | Implicit_name prefix ->
-      Format.fprintf ppf "Implicit name must start with '%s'" prefix
+      Format.fprintf ppf "Implicit name must start with '%s' and cannot be empty" prefix
   | Not_supported_here msg ->
       Format.fprintf ppf "%s not supported in this context" msg
   | Non_constant_constructor_in_enum ->
@@ -535,7 +535,7 @@ let parse_attr ~global_attrs (s, loc, auto) attribute =
     match attribute.attr_payload with
     | PStr [] ->
         begin match check_prefix ~prefix s with
-        | None -> error loc (Implicit_name prefix)
+        | None | Some "" -> error loc (Implicit_name prefix)
         | Some s ->
             js_name ~global_attrs ~capitalize s
         end
