@@ -1925,7 +1925,7 @@ let check_loc_mapper =
 
    method! attribute ({attr_name = {txt; loc}; _} as attr) =
     if is_js_attribute txt then begin
-      if is_registered_loc loc || not !check_attribute then ()
+      if is_registered_loc loc || not !check_attribute || txt = "js.dummy" then ()
       else error loc (Spurious_attribute txt)
     end;
     attr
