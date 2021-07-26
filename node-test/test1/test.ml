@@ -239,3 +239,17 @@ let () =
     List.iteri (fun k x ->
       assert (string_of_int k = x)
     ) (String.split_on_char ',' s)
+
+(** Invoking a global object **)
+(** https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Number/Number **)
+let () =
+    let check (a: Number.t) (b: float) =
+      assert (Ojs.instance_of (a :> Ojs.t) ~constr:(Number.number :> Ojs.t));
+      assert (not (Ojs.instance_of (Ojs.float_to_js b) ~constr:(Number.number :> Ojs.t)));
+      assert (Number.valueOf a = b);
+      ()
+    in
+    check (Number.Scoped.create "123") (Number.Scoped.invoke "123");
+    check (Number.Static.create Number.number "123") (Number.Static.apply Number.number "123");
+    assert (Number.Scoped.max_value = Number.Static.max_value Number.number);
+    ()

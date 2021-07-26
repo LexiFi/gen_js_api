@@ -129,6 +129,8 @@ external variable: string -> t = "caml_js_var"
 
 val type_of: t -> string
 
+val instance_of: t -> constr:t -> bool
+
 class obj: t ->
   object
     method to_js: t

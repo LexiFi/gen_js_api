@@ -83,4 +83,8 @@ module M =
              "global"))
       [@ocaml.ppwarning
         "Heuristic for automatic binding is deprecated; please add the '@js.global' attribute."])
+    let (invoke : unit -> unit) =
+      fun () ->
+        Ojs.unit_of_js
+          (Ojs.apply (Ojs.get_prop_ascii Ojs.global "scope") [||])
   end
