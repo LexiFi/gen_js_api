@@ -596,11 +596,11 @@ let rec parse_sig_item ~global_attrs rest s =
       begin match functor_of_module_type pmd_type with
       | None -> error s.psig_loc Cannot_parse_sigitem
       | Some (functor_parameters, si, attrs) ->
-          (let global_attrs =
+          let global_attrs =
              push_module_attributes name attrs
                (push_module_attributes name pmd_attributes global_attrs)
-           in
-           (functor_parameters, name, parse_sig ~global_attrs si))
+          in
+          (functor_parameters, name, parse_sig ~global_attrs si)
       end
     | _ ->
       error s.psig_loc Cannot_parse_sigitem
