@@ -1,6 +1,11 @@
 Changelog
 =========
 
+Upcoming
+--------
+
+- GPR#153: Support recursive modulesa (@cannorin)
+- GPR#153: [@@js.invoke] attribute to call the global object as a function (@cannorin)
 
 Version 1.0.8
 -------------
