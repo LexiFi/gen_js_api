@@ -181,11 +181,11 @@ let () =
   Location.Error.register_error_of_exn
     (function
       | Error (loc, err) ->
-        let createf ~loc fmt =
-          Format.kasprintf
-            (fun str -> Location.Error.make ~loc ~sub:[] str) fmt
-        in
-        Some (createf ~loc "%a" print_error err)
+          let createf ~loc fmt =
+            Format.kasprintf
+              (fun str -> Location.Error.make ~loc ~sub:[] str) fmt
+          in
+          Some (createf ~loc "%a" print_error err)
       | _ -> None
     )
 
@@ -375,8 +375,8 @@ let neg_variance = function
 
 let no_attributes attributes =
   List.iter (fun attr ->
-    ignore (filter_attr_name "js.dummy" attr)
-  ) attributes;
+      ignore (filter_attr_name "js.dummy" attr)
+    ) attributes;
   attributes = []
 
 let rec parse_arg ~variance ctx lab ~global_attrs ty =
@@ -506,29 +506,29 @@ let auto ~global_attrs s ty =
     Ignore
   else
     Auto begin match ty with
-    | Arrow {ty_args = _; ty_vararg = None; unit_arg = _; ty_res = Name _} when s = "create" -> New None
-    | Arrow {ty_args = _; ty_vararg = None; unit_arg = _; ty_res = Name _} when has_prefix ~prefix:"new_" s -> New (Some (js_name ~capitalize:true ~global_attrs (drop_prefix ~prefix:"new_" s)))
-    | Arrow {ty_args = [_]; ty_vararg = None; unit_arg = false; ty_res = Unit _} when has_prefix ~prefix:"set_" s -> PropSet (js_name ~global_attrs (drop_prefix ~prefix:"set_" s))
-    | Arrow {ty_args = [{lab=Arg; att=_; typ=Name _}; _; _]; ty_vararg = None; unit_arg = false; ty_res = Unit _} when s = "set" -> IndexSet
-    | Arrow {ty_args = [{lab=Arg; att=_; typ=Name _}; _]; ty_vararg = None; unit_arg = false; ty_res = Unit _} when has_prefix ~prefix:"set_" s -> PropSet (js_name ~global_attrs (drop_prefix ~prefix:"set_" s))
-    | Arrow {ty_args = [{lab=Arg; att=_; typ=Name _}]; ty_vararg = None; unit_arg = false; ty_res = Unit _} -> MethCall (js_name ~global_attrs s)
-    | Arrow {ty_args = [{lab=Arg; att=_; typ=Name _}; _]; ty_vararg = None; unit_arg = false; ty_res = _} when s = "get" -> IndexGet
-    | Arrow {ty_args = [{lab=Arg; att=_; typ=Name _}]; ty_vararg = None; unit_arg = false; ty_res = _} -> PropGet (js_name ~global_attrs s)
-    | Arrow {ty_args = []; ty_vararg = None; unit_arg = true; ty_res = _} -> PropGet (js_name ~global_attrs s)
-    | Arrow {ty_args = {lab=Arg; att=_; typ=Name _} :: _; ty_vararg = _; unit_arg = _; ty_res = _} when s = "apply" -> Apply Function
-    | Arrow {ty_args = {lab=Arg; att=_; typ=Name _} :: _; ty_vararg = _; unit_arg = _; ty_res = _} -> MethCall (js_name ~global_attrs s)
-    | _ -> Global (js_name ~global_attrs s)
+      | Arrow {ty_args = _; ty_vararg = None; unit_arg = _; ty_res = Name _} when s = "create" -> New None
+      | Arrow {ty_args = _; ty_vararg = None; unit_arg = _; ty_res = Name _} when has_prefix ~prefix:"new_" s -> New (Some (js_name ~capitalize:true ~global_attrs (drop_prefix ~prefix:"new_" s)))
+      | Arrow {ty_args = [_]; ty_vararg = None; unit_arg = false; ty_res = Unit _} when has_prefix ~prefix:"set_" s -> PropSet (js_name ~global_attrs (drop_prefix ~prefix:"set_" s))
+      | Arrow {ty_args = [{lab=Arg; att=_; typ=Name _}; _; _]; ty_vararg = None; unit_arg = false; ty_res = Unit _} when s = "set" -> IndexSet
+      | Arrow {ty_args = [{lab=Arg; att=_; typ=Name _}; _]; ty_vararg = None; unit_arg = false; ty_res = Unit _} when has_prefix ~prefix:"set_" s -> PropSet (js_name ~global_attrs (drop_prefix ~prefix:"set_" s))
+      | Arrow {ty_args = [{lab=Arg; att=_; typ=Name _}]; ty_vararg = None; unit_arg = false; ty_res = Unit _} -> MethCall (js_name ~global_attrs s)
+      | Arrow {ty_args = [{lab=Arg; att=_; typ=Name _}; _]; ty_vararg = None; unit_arg = false; ty_res = _} when s = "get" -> IndexGet
+      | Arrow {ty_args = [{lab=Arg; att=_; typ=Name _}]; ty_vararg = None; unit_arg = false; ty_res = _} -> PropGet (js_name ~global_attrs s)
+      | Arrow {ty_args = []; ty_vararg = None; unit_arg = true; ty_res = _} -> PropGet (js_name ~global_attrs s)
+      | Arrow {ty_args = {lab=Arg; att=_; typ=Name _} :: _; ty_vararg = _; unit_arg = _; ty_res = _} when s = "apply" -> Apply Function
+      | Arrow {ty_args = {lab=Arg; att=_; typ=Name _} :: _; ty_vararg = _; unit_arg = _; ty_res = _} -> MethCall (js_name ~global_attrs s)
+      | _ -> Global (js_name ~global_attrs s)
     end
 
 let auto_in_object ~global_attrs s typ =
   Auto begin match typ with
-  | Arrow {ty_args = [{lab=Arg; att=_; typ=_}]; ty_vararg = None; unit_arg = false; ty_res = Unit _} when has_prefix ~prefix:"set_" s -> PropSet (js_name ~global_attrs (drop_prefix ~prefix:"set_" s))
-  | Arrow {ty_args = [_]; ty_vararg = None; unit_arg = _; ty_res = _} when s = "get" -> IndexGet
-  | Arrow {ty_args = [_; _]; ty_vararg = None; unit_arg = false; ty_res = Unit _} when s = "set" -> IndexSet
-  | Arrow _ when s = "apply" -> Apply Function
-  | Arrow _ -> MethCall (js_name ~global_attrs s)
-  | Unit _ -> MethCall (js_name ~global_attrs s)
-  | _ -> PropGet (js_name ~global_attrs s)
+    | Arrow {ty_args = [{lab=Arg; att=_; typ=_}]; ty_vararg = None; unit_arg = false; ty_res = Unit _} when has_prefix ~prefix:"set_" s -> PropSet (js_name ~global_attrs (drop_prefix ~prefix:"set_" s))
+    | Arrow {ty_args = [_]; ty_vararg = None; unit_arg = _; ty_res = _} when s = "get" -> IndexGet
+    | Arrow {ty_args = [_; _]; ty_vararg = None; unit_arg = false; ty_res = Unit _} when s = "set" -> IndexSet
+    | Arrow _ when s = "apply" -> Apply Function
+    | Arrow _ -> MethCall (js_name ~global_attrs s)
+    | Unit _ -> MethCall (js_name ~global_attrs s)
+    | _ -> PropGet (js_name ~global_attrs s)
   end
 
 let parse_attr ~global_attrs (s, loc, auto) attribute =
@@ -593,17 +593,17 @@ let rec functor_of_module_type = function
 let rec parse_sig_item ~global_attrs rest s =
   let parse_module_declaration = function
     | {pmd_name = { txt = Some name; _}; pmd_type; pmd_loc = _; pmd_attributes} ->
-      begin match functor_of_module_type pmd_type with
-      | None -> error s.psig_loc Cannot_parse_sigitem
-      | Some (functor_parameters, si, attrs) ->
-          let global_attrs =
-             push_module_attributes name attrs
-               (push_module_attributes name pmd_attributes global_attrs)
-          in
-          (functor_parameters, name, parse_sig ~global_attrs si)
-      end
+        begin match functor_of_module_type pmd_type with
+        | None -> error s.psig_loc Cannot_parse_sigitem
+        | Some (functor_parameters, si, attrs) ->
+            let global_attrs =
+              push_module_attributes name attrs
+                (push_module_attributes name pmd_attributes global_attrs)
+            in
+            (functor_parameters, name, parse_sig ~global_attrs si)
+        end
     | _ ->
-      error s.psig_loc Cannot_parse_sigitem
+        error s.psig_loc Cannot_parse_sigitem
   in
   match s.psig_desc with
   | Psig_value vd when vd.pval_prim = [] ->
@@ -716,7 +716,7 @@ and parse_class_field ~global_attrs = function
       let method_attrs =
         match kind with
         | Auto _ ->
-          [ auto_deprecation_attribute pctf_loc kind ]
+            [ auto_deprecation_attribute pctf_loc kind ]
         | _ -> []
       in
       Method
@@ -896,11 +896,11 @@ let assert_false = Exp.assert_ (Exp.construct (mknoloc (longident_parse "false")
 
 let clear_attr_mapper =
   object
-  inherit Ast_traverse.map
+    inherit Ast_traverse.map
 
-  method! attributes attrs =
-    let f {attr_name = {txt = _; loc}; _} = not (is_registered_loc loc) in
-    List.filter f attrs
+    method! attributes attrs =
+      let f {attr_name = {txt = _; loc}; _} = not (is_registered_loc loc) in
+      List.filter f attrs
   end
 
 let rewrite_typ_decl t =
@@ -1897,49 +1897,49 @@ and mapper =
   lazy (object
     inherit Ast_traverse.map as super
 
-  method! module_expr mexp =
-    let mexp = super # module_expr mexp in
-    match mexp.pmod_desc with
-    | Pmod_extension ({txt = "js"; _}, PSig sg) ->
-        module_expr_rewriter ~loc:mexp.pmod_loc ~attrs:mexp.pmod_attributes sg
-    | _ -> mexp
+    method! module_expr mexp =
+      let mexp = super # module_expr mexp in
+      match mexp.pmod_desc with
+      | Pmod_extension ({txt = "js"; _}, PSig sg) ->
+          module_expr_rewriter ~loc:mexp.pmod_loc ~attrs:mexp.pmod_attributes sg
+      | _ -> mexp
 
-  method! structure_item str =
-    let str = super # structure_item str in
-    let global_attrs = [] in
-    match str.pstr_desc with
-    | Pstr_primitive vd when vd.pval_prim = [] ->
-        begin match parse_valdecl ~global_attrs ~in_sig:false vd with
-        | exception Exit -> str
-        | d -> incl (gen_decls [d])
-        end
-    | Pstr_type (rec_flag, decls) ->
-        let js_decls = List.filter (fun d -> has_attribute "js" d.ptype_attributes) decls in
-        begin match js_decls with
-        | [] -> str
-        | l ->
-            incl (
-              {str with pstr_desc = Pstr_type (rec_flag, List.map (fun d -> if has_attribute "js" d.ptype_attributes then rewrite_typ_decl d else d) decls)}
-              ::
-              type_decl_rewriter ~loc:str.pstr_loc rec_flag l
-            )
-        end
-    | _ ->
-        str
+    method! structure_item str =
+      let str = super # structure_item str in
+      let global_attrs = [] in
+      match str.pstr_desc with
+      | Pstr_primitive vd when vd.pval_prim = [] ->
+          begin match parse_valdecl ~global_attrs ~in_sig:false vd with
+          | exception Exit -> str
+          | d -> incl (gen_decls [d])
+          end
+      | Pstr_type (rec_flag, decls) ->
+          let js_decls = List.filter (fun d -> has_attribute "js" d.ptype_attributes) decls in
+          begin match js_decls with
+          | [] -> str
+          | l ->
+              incl (
+                {str with pstr_desc = Pstr_type (rec_flag, List.map (fun d -> if has_attribute "js" d.ptype_attributes then rewrite_typ_decl d else d) decls)}
+                ::
+                type_decl_rewriter ~loc:str.pstr_loc rec_flag l
+              )
+          end
+      | _ ->
+          str
 
     method! expression e =
-    let e = super # expression e in
-    match e.pexp_desc with
-    | Pexp_extension (attr, PTyp ty) when filter_extension "js.to" attr ->
-        js_to_rewriter ~loc:e.pexp_loc ty
-    | Pexp_extension (attr, PTyp ty) when filter_extension "js.of" attr ->
-        js_of_rewriter ~loc:e.pexp_loc ty
-    | _ ->
-        e
+      let e = super # expression e in
+      match e.pexp_desc with
+      | Pexp_extension (attr, PTyp ty) when filter_extension "js.to" attr ->
+          js_to_rewriter ~loc:e.pexp_loc ty
+      | Pexp_extension (attr, PTyp ty) when filter_extension "js.of" attr ->
+          js_of_rewriter ~loc:e.pexp_loc ty
+      | _ ->
+          e
 
-  method! attribute a =
-    ignore (filter_attr_name "js.dummy" a : bool);
-    super # attribute a
+    method! attribute a =
+      ignore (filter_attr_name "js.dummy" a : bool);
+      super # attribute a
 
   end)
 
@@ -1949,12 +1949,12 @@ let check_loc_mapper =
   object
     inherit Ast_traverse.map
 
-   method! attribute ({attr_name = {txt; loc}; _} as attr) =
-    if is_js_attribute txt then begin
-      if is_registered_loc loc || not !check_attribute || txt = "js.dummy" then ()
-      else error loc (Spurious_attribute txt)
-    end;
-    attr
+    method! attribute ({attr_name = {txt; loc}; _} as attr) =
+      if is_js_attribute txt then begin
+        if is_registered_loc loc || not !check_attribute || txt = "js.dummy" then ()
+        else error loc (Spurious_attribute txt)
+      end;
+      attr
 
   end
 
