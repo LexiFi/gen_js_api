@@ -354,6 +354,7 @@ type classdecl =
 
 type decl =
   | Module of functor_parameter list * string * decl list
+  | RecModule of (module_type * functor_parameter list * string * decl list) list
   | Type of rec_flag * Parsetree.type_declaration list * attributes
   | Val of string * typ * valdef * Location.t * attributes
   | Class of classdecl list
@@ -590,12 +591,8 @@ let rec functor_of_module_type = function
   | _ -> None
 
 let rec parse_sig_item ~global_attrs rest s =
-  match s.psig_desc with
-  | Psig_value vd when vd.pval_prim = [] ->
-      parse_valdecl ~global_attrs ~in_sig:true vd :: rest ~global_attrs
-  | Psig_type (rec_flag, decls) ->
-      Type (rec_flag, decls, global_attrs) :: rest ~global_attrs
-  | Psig_module {pmd_name = { txt = Some name; _}; pmd_type; pmd_loc = _; pmd_attributes} ->
+  let parse_module_declaration = function
+    | {pmd_name = { txt = Some name; _}; pmd_type; pmd_loc = _; pmd_attributes} ->
       begin match functor_of_module_type pmd_type with
       | None -> error s.psig_loc Cannot_parse_sigitem
       | Some (functor_parameters, si, attrs) ->
@@ -603,8 +600,26 @@ let rec parse_sig_item ~global_attrs rest s =
              push_module_attributes name attrs
                (push_module_attributes name pmd_attributes global_attrs)
            in
-           Module (functor_parameters, name, parse_sig ~global_attrs si)) :: rest ~global_attrs
+           (functor_parameters, name, parse_sig ~global_attrs si))
       end
+    | _ ->
+      error s.psig_loc Cannot_parse_sigitem
+  in
+  match s.psig_desc with
+  | Psig_value vd when vd.pval_prim = [] ->
+      parse_valdecl ~global_attrs ~in_sig:true vd :: rest ~global_attrs
+  | Psig_type (rec_flag, decls) ->
+      Type (rec_flag, decls, global_attrs) :: rest ~global_attrs
+  | Psig_module md ->
+      let functor_parameters, name, decls = parse_module_declaration md in
+      Module (functor_parameters, name, decls) :: rest ~global_attrs
+  | Psig_recmodule mds ->
+      let mapper md =
+        let functor_parameters, name, decls = parse_module_declaration md in
+        let module_type = md.pmd_type in
+        (module_type, functor_parameters, name, decls)
+      in
+      RecModule (List.map mapper mds) :: rest ~global_attrs
   | Psig_class cs -> Class (List.map (parse_class_decl ~global_attrs) cs) :: rest ~global_attrs
   | Psig_attribute ({attr_payload = PStr str; _} as attribute) when filter_attr_name "js.implem" attribute -> Implem str :: rest ~global_attrs
   | Psig_attribute attribute ->
@@ -1573,13 +1588,10 @@ and gen_decl = function
       [ Str.type_ rec_flag decls; Str.value rec_flag funs ]
 
   | Module (functor_parameters, s, decls) ->
-      let structure = Mod.structure (gen_decls decls) in
-      let functors =
-        List.fold_left (fun acc param ->
-            Mod.functor_ param acc
-          ) structure (List.rev functor_parameters)
-      in
-      [ Str.module_ (Mb.mk (mknoloc (Some s)) functors) ]
+      [ Str.module_ (gen_module functor_parameters s decls) ]
+
+  | RecModule modules ->
+      [ Str.rec_module (List.map (fun (module_type, functor_parameters, s, decls) -> gen_module ~module_type functor_parameters s decls) modules) ]
 
   | Val (_, _, Ignore, _, _) -> []
 
@@ -1602,6 +1614,20 @@ and gen_decl = function
 
   | Include descr ->
       [ Str.include_ descr ]
+
+and gen_module ?module_type functor_parameters s decls : module_binding =
+  let structure = Mod.structure (gen_decls decls) in
+  let functors =
+    List.fold_left (fun acc param ->
+        Mod.functor_ param acc
+      ) structure (List.rev functor_parameters)
+  in
+  let body =
+    match module_type with
+    | None -> functors
+    | Some mty -> Mod.constraint_ functors mty
+  in
+  Mb.mk (mknoloc (Some s)) body
 
 and gen_classdecl cast_funcs = function
   | Declaration { class_name; class_fields } ->

@@ -4,7 +4,15 @@
  (link_flags -no-check-prims)
  (preprocess
   (pps gen_js_api.ppx))
- (modes js))
+ (modes js)
+ (js_of_ocaml
+  (javascript_files recursive.js)))
+
+(rule
+ (targets recursive.ml)
+ (deps recursive.mli)
+ (action
+  (run gen_js_api %{deps})))
 
 (rule
  (alias runtest)

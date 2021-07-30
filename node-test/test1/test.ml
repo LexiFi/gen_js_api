@@ -249,3 +249,14 @@ let () =
     check (Number.Static.create Number.number "123") (Number.Static.apply Number.number "123");
     assert (Number.Scoped.max_value = Number.Static.max_value Number.number);
     ()
+
+(** Using recursive modules **)
+let () =
+  let open Recursive in
+  let fooA = Foo.create "A" in
+  assert (Foo.describe fooA = "Foo:A");
+  let barA = Foo.to_bar fooA in
+  assert (Bar.describe barA = "Bar:A");
+  let fooA' = Bar.to_foo barA in
+  assert (Foo.describe fooA' = "Foo:A");
+  ()
