@@ -15,12 +15,12 @@ jobs:
           - windows-latest
         node-version:
           - 14.x
-        ocaml-version:
-          - 4.12.0
-          - 4.11.1
-          - 4.10.2
-          - 4.09.1
-          - 4.08.1
+        ocaml-compiler:
+          - 4.12.x
+          - 4.11.x
+          - 4.10.x
+          - 4.09.x
+          - 4.08.x
 
     runs-on: ${{ matrix.os }}
 
@@ -34,15 +34,10 @@ jobs:
           node-version: ${{ matrix.node-version }}
 
       - name: Use OCaml ${{ matrix.ocaml-version }}
-        uses: avsm/setup-ocaml@v1
+        uses: ocaml/setup-ocaml@v2
         with:
-          ocaml-version: ${{ matrix.ocaml-version }}
-
-      - run: opam pin add gen_js_api.dev . --no-action
-
-      - run: opam pin add ojs.dev . --no-action
-
-      - run: opam depext gen_js_api ojs --yes --with-doc --with-test
+          ocaml-compiler: ${{ matrix.ocaml-compiler }}
+          dune-cache: true
 
       - run: opam install . --deps-only --with-doc --with-test
 
