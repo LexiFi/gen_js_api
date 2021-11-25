@@ -52,7 +52,7 @@ Interfaces processed by gen_js_api can currently contain:
     (`f` in the example), its declared type (`tyexpr`), and possible
     `[@@js.xxx]` attributes attached to the declaration in the interface.
 
-    See [this page] (VALUES.md) for supported forms of value declarations.
+    See [this page](VALUES.md) for supported forms of value declarations.
 
 
   - Sub-modules:
