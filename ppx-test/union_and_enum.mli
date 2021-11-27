@@ -10,12 +10,22 @@ type enum_float =
   | Enum_float_other of float [@js.default]
   [@@js.enum]
 
-type enum_number =
+(* float cases should be matched first *)
+type enum_number_1 =
   | Enum_number_0 [@js 0]
   | Enum_number_1 [@js 1]
   | Enum_number_0_1 [@js 0.1]
   | Enum_number_1_1 [@js 1.1]
   | Enum_number_other of float [@js.default]
+  [@@js.enum]
+
+(* float cases should be matched first even if the default case is int*)
+type enum_number_2 =
+  | Enum_number_0 [@js 0]
+  | Enum_number_1 [@js 1]
+  | Enum_number_0_1 [@js 0.1]
+  | Enum_number_1_1 [@js 1.1]
+  | Enum_number_other of int [@js.default]
   [@@js.enum]
 
 type enum_string =

@@ -34,87 +34,112 @@ and enum_float_to_js : enum_float -> Ojs.t =
     | Enum_float_0_1 -> Ojs.float_to_js 0.1
     | Enum_float_1_1 -> Ojs.float_to_js 1.1
     | Enum_float_other x7 -> Ojs.float_to_js x7
-type enum_number =
+type enum_number_1 =
   | Enum_number_0 
   | Enum_number_1 
   | Enum_number_0_1 
   | Enum_number_1_1 
   | Enum_number_other of float 
-let rec enum_number_of_js : Ojs.t -> enum_number =
+let rec enum_number_1_of_js : Ojs.t -> enum_number_1 =
   fun (x13 : Ojs.t) ->
     let x14 = x13 in
-    match Ojs.int_of_js x14 with
-    | 0 -> Enum_number_0
-    | 1 -> Enum_number_1
-    | _ ->
-        (match Ojs.float_of_js x14 with
-         | 0.1 -> Enum_number_0_1
-         | 1.1 -> Enum_number_1_1
-         | x15 -> Enum_number_other x15)
-and enum_number_to_js : enum_number -> Ojs.t =
-  fun (x11 : enum_number) ->
+    match Ojs.float_of_js x14 with
+    | 0.1 -> Enum_number_0_1
+    | 1.1 -> Enum_number_1_1
+    | x15 ->
+        (match Ojs.int_of_js x14 with
+         | 0 -> Enum_number_0
+         | 1 -> Enum_number_1
+         | _ -> Enum_number_other x15)
+and enum_number_1_to_js : enum_number_1 -> Ojs.t =
+  fun (x11 : enum_number_1) ->
     match x11 with
     | Enum_number_0 -> Ojs.int_to_js 0
     | Enum_number_1 -> Ojs.int_to_js 1
     | Enum_number_0_1 -> Ojs.float_to_js 0.1
     | Enum_number_1_1 -> Ojs.float_to_js 1.1
     | Enum_number_other x12 -> Ojs.float_to_js x12
+type enum_number_2 =
+  | Enum_number_0 
+  | Enum_number_1 
+  | Enum_number_0_1 
+  | Enum_number_1_1 
+  | Enum_number_other of int 
+let rec enum_number_2_of_js : Ojs.t -> enum_number_2 =
+  fun (x18 : Ojs.t) ->
+    let x19 = x18 in
+    match Ojs.float_of_js x19 with
+    | 0.1 -> Enum_number_0_1
+    | 1.1 -> Enum_number_1_1
+    | _ ->
+        (match Ojs.int_of_js x19 with
+         | 0 -> Enum_number_0
+         | 1 -> Enum_number_1
+         | x20 -> Enum_number_other x20)
+and enum_number_2_to_js : enum_number_2 -> Ojs.t =
+  fun (x16 : enum_number_2) ->
+    match x16 with
+    | Enum_number_0 -> Ojs.int_to_js 0
+    | Enum_number_1 -> Ojs.int_to_js 1
+    | Enum_number_0_1 -> Ojs.float_to_js 0.1
+    | Enum_number_1_1 -> Ojs.float_to_js 1.1
+    | Enum_number_other x17 -> Ojs.int_to_js x17
 type enum_string =
   | Enum_string_foo 
   | Enum_string_bar 
   | Enum_string_other of string 
 let rec enum_string_of_js : Ojs.t -> enum_string =
-  fun (x18 : Ojs.t) ->
-    let x19 = x18 in
-    match Ojs.string_of_js x19 with
+  fun (x23 : Ojs.t) ->
+    let x24 = x23 in
+    match Ojs.string_of_js x24 with
     | "foo" -> Enum_string_foo
     | "bar" -> Enum_string_bar
-    | x20 -> Enum_string_other x20
+    | x25 -> Enum_string_other x25
 and enum_string_to_js : enum_string -> Ojs.t =
-  fun (x16 : enum_string) ->
-    match x16 with
+  fun (x21 : enum_string) ->
+    match x21 with
     | Enum_string_foo -> Ojs.string_to_js "foo"
     | Enum_string_bar -> Ojs.string_to_js "bar"
-    | Enum_string_other x17 -> Ojs.string_to_js x17
+    | Enum_string_other x22 -> Ojs.string_to_js x22
 type enum_bool =
   | Enum_bool_true 
   | Enum_bool_false 
 let rec enum_bool_of_js : Ojs.t -> enum_bool =
-  fun (x22 : Ojs.t) ->
-    let x23 = x22 in
-    match Ojs.bool_of_js x23 with
+  fun (x27 : Ojs.t) ->
+    let x28 = x27 in
+    match Ojs.bool_of_js x28 with
     | true -> Enum_bool_true
     | false -> Enum_bool_false
 and enum_bool_to_js : enum_bool -> Ojs.t =
-  fun (x21 : enum_bool) ->
-    match x21 with
+  fun (x26 : enum_bool) ->
+    match x26 with
     | Enum_bool_true -> Ojs.bool_to_js true
     | Enum_bool_false -> Ojs.bool_to_js false
 type enum_bool_partial =
   | Enum_bool_true 
 let rec enum_bool_partial_of_js : Ojs.t -> enum_bool_partial =
-  fun (x25 : Ojs.t) ->
-    let x26 = x25 in
-    match Ojs.bool_of_js x26 with
+  fun (x30 : Ojs.t) ->
+    let x31 = x30 in
+    match Ojs.bool_of_js x31 with
     | true -> Enum_bool_true
     | _ -> assert false
 and enum_bool_partial_to_js : enum_bool_partial -> Ojs.t =
-  fun (x24 : enum_bool_partial) ->
-    match x24 with | Enum_bool_true -> Ojs.bool_to_js true
+  fun (x29 : enum_bool_partial) ->
+    match x29 with | Enum_bool_true -> Ojs.bool_to_js true
 type enum_bool_partial2 =
   | Enum_bool_true 
   | Enum_bool_other of bool 
 let rec enum_bool_partial2_of_js : Ojs.t -> enum_bool_partial2 =
-  fun (x29 : Ojs.t) ->
-    let x30 = x29 in
-    match Ojs.bool_of_js x30 with
+  fun (x34 : Ojs.t) ->
+    let x35 = x34 in
+    match Ojs.bool_of_js x35 with
     | true -> Enum_bool_true
-    | x31 -> Enum_bool_other x31
+    | x36 -> Enum_bool_other x36
 and enum_bool_partial2_to_js : enum_bool_partial2 -> Ojs.t =
-  fun (x27 : enum_bool_partial2) ->
-    match x27 with
+  fun (x32 : enum_bool_partial2) ->
+    match x32 with
     | Enum_bool_true -> Ojs.bool_to_js true
-    | Enum_bool_other x28 -> Ojs.bool_to_js x28
+    | Enum_bool_other x33 -> Ojs.bool_to_js x33
 type enum_mixed =
   | Enum_int_0 
   | Enum_int_1 
@@ -127,39 +152,39 @@ type enum_mixed =
   | Enum_bool_true 
   | Enum_bool_false 
 let rec enum_mixed_of_js : Ojs.t -> enum_mixed =
-  fun (x35 : Ojs.t) ->
-    let x36 = x35 in
-    match Ojs.type_of x36 with
+  fun (x40 : Ojs.t) ->
+    let x41 = x40 in
+    match Ojs.type_of x41 with
     | "number" ->
-        (match Ojs.float_of_js x36 with
+        (match Ojs.float_of_js x41 with
          | 0.1 -> Enum_float_0_1
          | 1.1 -> Enum_float_1_1
          | _ ->
-             (match Ojs.int_of_js x36 with
+             (match Ojs.int_of_js x41 with
               | 0 -> Enum_int_0
               | 1 -> Enum_int_1
-              | x37 -> Enum_number_other x37))
+              | x42 -> Enum_number_other x42))
     | "string" ->
-        (match Ojs.string_of_js x36 with
+        (match Ojs.string_of_js x41 with
          | "foo" -> Enum_string_foo
          | "bar" -> Enum_string_bar
-         | x38 -> Enum_string_other x38)
+         | x43 -> Enum_string_other x43)
     | "boolean" ->
-        (match Ojs.bool_of_js x36 with
+        (match Ojs.bool_of_js x41 with
          | true -> Enum_bool_true
          | false -> Enum_bool_false)
     | _ -> assert false
 and enum_mixed_to_js : enum_mixed -> Ojs.t =
-  fun (x32 : enum_mixed) ->
-    match x32 with
+  fun (x37 : enum_mixed) ->
+    match x37 with
     | Enum_int_0 -> Ojs.int_to_js 0
     | Enum_int_1 -> Ojs.int_to_js 1
     | Enum_float_0_1 -> Ojs.float_to_js 0.1
     | Enum_float_1_1 -> Ojs.float_to_js 1.1
-    | Enum_number_other x33 -> Ojs.int_to_js x33
+    | Enum_number_other x38 -> Ojs.int_to_js x38
     | Enum_string_foo -> Ojs.string_to_js "foo"
     | Enum_string_bar -> Ojs.string_to_js "bar"
-    | Enum_string_other x34 -> Ojs.string_to_js x34
+    | Enum_string_other x39 -> Ojs.string_to_js x39
     | Enum_bool_true -> Ojs.bool_to_js true
     | Enum_bool_false -> Ojs.bool_to_js false
 type enum_mixed_partial_bool =
@@ -173,39 +198,39 @@ type enum_mixed_partial_bool =
   | Enum_string_other of string 
   | Enum_bool_true 
 let rec enum_mixed_partial_bool_of_js : Ojs.t -> enum_mixed_partial_bool =
-  fun (x42 : Ojs.t) ->
-    let x43 = x42 in
-    match Ojs.type_of x43 with
+  fun (x47 : Ojs.t) ->
+    let x48 = x47 in
+    match Ojs.type_of x48 with
     | "number" ->
-        (match Ojs.int_of_js x43 with
-         | 0 -> Enum_int_0
-         | 1 -> Enum_int_1
-         | _ ->
-             (match Ojs.float_of_js x43 with
-              | 0.1 -> Enum_float_0_1
-              | 1.1 -> Enum_float_1_1
-              | x44 -> Enum_number_other x44))
+        (match Ojs.float_of_js x48 with
+         | 0.1 -> Enum_float_0_1
+         | 1.1 -> Enum_float_1_1
+         | x49 ->
+             (match Ojs.int_of_js x48 with
+              | 0 -> Enum_int_0
+              | 1 -> Enum_int_1
+              | _ -> Enum_number_other x49))
     | "string" ->
-        (match Ojs.string_of_js x43 with
+        (match Ojs.string_of_js x48 with
          | "foo" -> Enum_string_foo
          | "bar" -> Enum_string_bar
-         | x45 -> Enum_string_other x45)
+         | x50 -> Enum_string_other x50)
     | "boolean" ->
-        (match Ojs.bool_of_js x43 with
+        (match Ojs.bool_of_js x48 with
          | true -> Enum_bool_true
          | _ -> assert false)
     | _ -> assert false
 and enum_mixed_partial_bool_to_js : enum_mixed_partial_bool -> Ojs.t =
-  fun (x39 : enum_mixed_partial_bool) ->
-    match x39 with
+  fun (x44 : enum_mixed_partial_bool) ->
+    match x44 with
     | Enum_int_0 -> Ojs.int_to_js 0
     | Enum_int_1 -> Ojs.int_to_js 1
     | Enum_float_0_1 -> Ojs.float_to_js 0.1
     | Enum_float_1_1 -> Ojs.float_to_js 1.1
-    | Enum_number_other x40 -> Ojs.float_to_js x40
+    | Enum_number_other x45 -> Ojs.float_to_js x45
     | Enum_string_foo -> Ojs.string_to_js "foo"
     | Enum_string_bar -> Ojs.string_to_js "bar"
-    | Enum_string_other x41 -> Ojs.string_to_js x41
+    | Enum_string_other x46 -> Ojs.string_to_js x46
     | Enum_bool_true -> Ojs.bool_to_js true
 type enum_mixed_partial_bool2 =
   | Enum_int_0 
@@ -219,162 +244,162 @@ type enum_mixed_partial_bool2 =
   | Enum_bool_true 
   | Enum_bool_other of bool 
 let rec enum_mixed_partial_bool2_of_js : Ojs.t -> enum_mixed_partial_bool2 =
-  fun (x50 : Ojs.t) ->
-    let x51 = x50 in
-    match Ojs.type_of x51 with
+  fun (x55 : Ojs.t) ->
+    let x56 = x55 in
+    match Ojs.type_of x56 with
     | "number" ->
-        (match Ojs.int_of_js x51 with
-         | 0 -> Enum_int_0
-         | 1 -> Enum_int_1
-         | _ ->
-             (match Ojs.float_of_js x51 with
-              | 0.1 -> Enum_float_0_1
-              | 1.1 -> Enum_float_1_1
-              | x52 -> Enum_number_other x52))
+        (match Ojs.float_of_js x56 with
+         | 0.1 -> Enum_float_0_1
+         | 1.1 -> Enum_float_1_1
+         | x57 ->
+             (match Ojs.int_of_js x56 with
+              | 0 -> Enum_int_0
+              | 1 -> Enum_int_1
+              | _ -> Enum_number_other x57))
     | "string" ->
-        (match Ojs.string_of_js x51 with
+        (match Ojs.string_of_js x56 with
          | "foo" -> Enum_string_foo
          | "bar" -> Enum_string_bar
-         | x53 -> Enum_string_other x53)
+         | x58 -> Enum_string_other x58)
     | "boolean" ->
-        (match Ojs.bool_of_js x51 with
+        (match Ojs.bool_of_js x56 with
          | true -> Enum_bool_true
-         | x54 -> Enum_bool_other x54)
+         | x59 -> Enum_bool_other x59)
     | _ -> assert false
 and enum_mixed_partial_bool2_to_js : enum_mixed_partial_bool2 -> Ojs.t =
-  fun (x46 : enum_mixed_partial_bool2) ->
-    match x46 with
+  fun (x51 : enum_mixed_partial_bool2) ->
+    match x51 with
     | Enum_int_0 -> Ojs.int_to_js 0
     | Enum_int_1 -> Ojs.int_to_js 1
     | Enum_float_0_1 -> Ojs.float_to_js 0.1
     | Enum_float_1_1 -> Ojs.float_to_js 1.1
-    | Enum_number_other x47 -> Ojs.float_to_js x47
+    | Enum_number_other x52 -> Ojs.float_to_js x52
     | Enum_string_foo -> Ojs.string_to_js "foo"
     | Enum_string_bar -> Ojs.string_to_js "bar"
-    | Enum_string_other x48 -> Ojs.string_to_js x48
+    | Enum_string_other x53 -> Ojs.string_to_js x53
     | Enum_bool_true -> Ojs.bool_to_js true
-    | Enum_bool_other x49 -> Ojs.bool_to_js x49
+    | Enum_bool_other x54 -> Ojs.bool_to_js x54
 type dummy1 = Ojs.t
-let rec dummy1_of_js : Ojs.t -> dummy1 = fun (x56 : Ojs.t) -> x56
-and dummy1_to_js : dummy1 -> Ojs.t = fun (x55 : Ojs.t) -> x55
+let rec dummy1_of_js : Ojs.t -> dummy1 = fun (x61 : Ojs.t) -> x61
+and dummy1_to_js : dummy1 -> Ojs.t = fun (x60 : Ojs.t) -> x60
 type dummy2 = Ojs.t
-let rec dummy2_of_js : Ojs.t -> dummy2 = fun (x58 : Ojs.t) -> x58
-and dummy2_to_js : dummy2 -> Ojs.t = fun (x57 : Ojs.t) -> x57
+let rec dummy2_of_js : Ojs.t -> dummy2 = fun (x63 : Ojs.t) -> x63
+and dummy2_to_js : dummy2 -> Ojs.t = fun (x62 : Ojs.t) -> x62
 type dummy3 = Ojs.t
-let rec dummy3_of_js : Ojs.t -> dummy3 = fun (x60 : Ojs.t) -> x60
-and dummy3_to_js : dummy3 -> Ojs.t = fun (x59 : Ojs.t) -> x59
+let rec dummy3_of_js : Ojs.t -> dummy3 = fun (x65 : Ojs.t) -> x65
+and dummy3_to_js : dummy3 -> Ojs.t = fun (x64 : Ojs.t) -> x64
 type dummy4 = Ojs.t
-let rec dummy4_of_js : Ojs.t -> dummy4 = fun (x62 : Ojs.t) -> x62
-and dummy4_to_js : dummy4 -> Ojs.t = fun (x61 : Ojs.t) -> x61
+let rec dummy4_of_js : Ojs.t -> dummy4 = fun (x67 : Ojs.t) -> x67
+and dummy4_to_js : dummy4 -> Ojs.t = fun (x66 : Ojs.t) -> x66
 type dummy5 = Ojs.t
-let rec dummy5_of_js : Ojs.t -> dummy5 = fun (x64 : Ojs.t) -> x64
-and dummy5_to_js : dummy5 -> Ojs.t = fun (x63 : Ojs.t) -> x63
+let rec dummy5_of_js : Ojs.t -> dummy5 = fun (x69 : Ojs.t) -> x69
+and dummy5_to_js : dummy5 -> Ojs.t = fun (x68 : Ojs.t) -> x68
 type dummy6 = Ojs.t
-let rec dummy6_of_js : Ojs.t -> dummy6 = fun (x66 : Ojs.t) -> x66
-and dummy6_to_js : dummy6 -> Ojs.t = fun (x65 : Ojs.t) -> x65
+let rec dummy6_of_js : Ojs.t -> dummy6 = fun (x71 : Ojs.t) -> x71
+and dummy6_to_js : dummy6 -> Ojs.t = fun (x70 : Ojs.t) -> x70
 type union_int =
   | Union_int_0 of dummy1 
   | Union_int_1 of dummy2 
   | Unknown of Ojs.t 
 let rec union_int_of_js : Ojs.t -> union_int =
-  fun (x71 : Ojs.t) ->
-    let x72 = x71 in
-    match Ojs.type_of (Ojs.get_prop_ascii x72 "tag") with
-    | "number" ->
-        (match Ojs.int_of_js (Ojs.get_prop_ascii x72 "tag") with
-         | 0 -> Union_int_0 (dummy1_of_js x72)
-         | 1 -> Union_int_1 (dummy2_of_js x72)
-         | _ -> Unknown x72)
-    | "string" -> Unknown x72
-    | "boolean" -> Unknown x72
-    | _ -> Unknown x72
+  fun (x76 : Ojs.t) ->
+    let x77 = x76 in
+    match Ojs.type_of (Ojs.get_prop_ascii x77 "tag") with
+    | "string" -> Unknown x77
+    | "boolean" -> Unknown x77
+    | _ -> Unknown x77
 and union_int_to_js : union_int -> Ojs.t =
-  fun (x67 : union_int) ->
-    match x67 with
-    | Union_int_0 x68 -> dummy1_to_js x68
-    | Union_int_1 x69 -> dummy2_to_js x69
-    | Unknown x70 -> x70
+  fun (x72 : union_int) ->
+    match x72 with
+    | Union_int_0 x73 -> dummy1_to_js x73
+    | Union_int_1 x74 -> dummy2_to_js x74
+    | Unknown x75 -> x75
 type union_float =
   | Union_float_0_1 of dummy1 
   | Union_float_1_1 of dummy1 
   | Unknown of Ojs.t 
 let rec union_float_of_js : Ojs.t -> union_float =
-  fun (x77 : Ojs.t) ->
-    let x78 = x77 in
-    match Ojs.type_of (Ojs.get_prop_ascii x78 "tag") with
-    | "string" -> Unknown x78
-    | "boolean" -> Unknown x78
-    | _ -> Unknown x78
+  fun (x82 : Ojs.t) ->
+    let x83 = x82 in
+    match Ojs.type_of (Ojs.get_prop_ascii x83 "tag") with
+    | "number" ->
+        (match Ojs.float_of_js (Ojs.get_prop_ascii x83 "tag") with
+         | 0.1 -> Union_float_0_1 (dummy1_of_js x83)
+         | 1.1 -> Union_float_1_1 (dummy1_of_js x83)
+         | _ -> Unknown x83)
+    | "string" -> Unknown x83
+    | "boolean" -> Unknown x83
+    | _ -> Unknown x83
 and union_float_to_js : union_float -> Ojs.t =
-  fun (x73 : union_float) ->
-    match x73 with
-    | Union_float_0_1 x74 -> dummy1_to_js x74
-    | Union_float_1_1 x75 -> dummy1_to_js x75
-    | Unknown x76 -> x76
+  fun (x78 : union_float) ->
+    match x78 with
+    | Union_float_0_1 x79 -> dummy1_to_js x79
+    | Union_float_1_1 x80 -> dummy1_to_js x80
+    | Unknown x81 -> x81
 type union_string =
   | Union_string_foo of dummy3 
   | Union_string_bar of dummy4 
   | Unknown of Ojs.t 
 let rec union_string_of_js : Ojs.t -> union_string =
-  fun (x83 : Ojs.t) ->
-    let x84 = x83 in
-    match Ojs.type_of (Ojs.get_prop_ascii x84 "tag") with
+  fun (x88 : Ojs.t) ->
+    let x89 = x88 in
+    match Ojs.type_of (Ojs.get_prop_ascii x89 "tag") with
     | "string" ->
-        (match Ojs.string_of_js (Ojs.get_prop_ascii x84 "tag") with
-         | "foo" -> Union_string_foo (dummy3_of_js x84)
-         | "bar" -> Union_string_bar (dummy4_of_js x84)
-         | _ -> Unknown x84)
-    | "boolean" -> Unknown x84
-    | _ -> Unknown x84
+        (match Ojs.string_of_js (Ojs.get_prop_ascii x89 "tag") with
+         | "foo" -> Union_string_foo (dummy3_of_js x89)
+         | "bar" -> Union_string_bar (dummy4_of_js x89)
+         | _ -> Unknown x89)
+    | "boolean" -> Unknown x89
+    | _ -> Unknown x89
 and union_string_to_js : union_string -> Ojs.t =
-  fun (x79 : union_string) ->
-    match x79 with
-    | Union_string_foo x80 -> dummy3_to_js x80
-    | Union_string_bar x81 -> dummy4_to_js x81
-    | Unknown x82 -> x82
+  fun (x84 : union_string) ->
+    match x84 with
+    | Union_string_foo x85 -> dummy3_to_js x85
+    | Union_string_bar x86 -> dummy4_to_js x86
+    | Unknown x87 -> x87
 type union_bool =
   | Union_bool_true of dummy5 
   | Union_bool_false of dummy6 
 let rec union_bool_of_js : Ojs.t -> union_bool =
-  fun (x88 : Ojs.t) ->
-    let x89 = x88 in
-    match Ojs.bool_of_js (Ojs.get_prop_ascii x89 "tag") with
-    | true -> Union_bool_true (dummy5_of_js x89)
-    | false -> Union_bool_false (dummy6_of_js x89)
+  fun (x93 : Ojs.t) ->
+    let x94 = x93 in
+    match Ojs.bool_of_js (Ojs.get_prop_ascii x94 "tag") with
+    | true -> Union_bool_true (dummy5_of_js x94)
+    | false -> Union_bool_false (dummy6_of_js x94)
 and union_bool_to_js : union_bool -> Ojs.t =
-  fun (x85 : union_bool) ->
-    match x85 with
-    | Union_bool_true x86 -> dummy5_to_js x86
-    | Union_bool_false x87 -> dummy6_to_js x87
+  fun (x90 : union_bool) ->
+    match x90 with
+    | Union_bool_true x91 -> dummy5_to_js x91
+    | Union_bool_false x92 -> dummy6_to_js x92
 type union_bool_partial =
   | Union_bool_true of dummy5 
 let rec union_bool_partial_of_js : Ojs.t -> union_bool_partial =
-  fun (x92 : Ojs.t) ->
-    let x93 = x92 in
-    match Ojs.bool_of_js (Ojs.get_prop_ascii x93 "tag") with
-    | true -> Union_bool_true (dummy5_of_js x93)
+  fun (x97 : Ojs.t) ->
+    let x98 = x97 in
+    match Ojs.bool_of_js (Ojs.get_prop_ascii x98 "tag") with
+    | true -> Union_bool_true (dummy5_of_js x98)
     | _ -> assert false
 and union_bool_partial_to_js : union_bool_partial -> Ojs.t =
-  fun (x90 : union_bool_partial) ->
-    match x90 with | Union_bool_true x91 -> dummy5_to_js x91
+  fun (x95 : union_bool_partial) ->
+    match x95 with | Union_bool_true x96 -> dummy5_to_js x96
 type union_bool_partial2 =
   | Union_bool_true of dummy5 
   | Unknown of Ojs.t 
 let rec union_bool_partial2_of_js : Ojs.t -> union_bool_partial2 =
-  fun (x97 : Ojs.t) ->
-    let x98 = x97 in
-    match Ojs.type_of (Ojs.get_prop_ascii x98 "tag") with
-    | "string" -> Unknown x98
+  fun (x102 : Ojs.t) ->
+    let x103 = x102 in
+    match Ojs.type_of (Ojs.get_prop_ascii x103 "tag") with
+    | "string" -> Unknown x103
     | "boolean" ->
-        (match Ojs.bool_of_js (Ojs.get_prop_ascii x98 "tag") with
-         | true -> Union_bool_true (dummy5_of_js x98)
-         | _ -> Unknown x98)
-    | _ -> Unknown x98
+        (match Ojs.bool_of_js (Ojs.get_prop_ascii x103 "tag") with
+         | true -> Union_bool_true (dummy5_of_js x103)
+         | _ -> Unknown x103)
+    | _ -> Unknown x103
 and union_bool_partial2_to_js : union_bool_partial2 -> Ojs.t =
-  fun (x94 : union_bool_partial2) ->
-    match x94 with
-    | Union_bool_true x95 -> dummy5_to_js x95
-    | Unknown x96 -> x96
+  fun (x99 : union_bool_partial2) ->
+    match x99 with
+    | Union_bool_true x100 -> dummy5_to_js x100
+    | Unknown x101 -> x101
 type union_mixed =
   | Union_int_0 of dummy1 
   | Union_int_1 of dummy2 
@@ -386,40 +411,40 @@ type union_mixed =
   | Union_bool_false of dummy6 
   | Unknown of Ojs.t 
 let rec union_mixed_of_js : Ojs.t -> union_mixed =
-  fun (x109 : Ojs.t) ->
-    let x110 = x109 in
-    match Ojs.type_of (Ojs.get_prop_ascii x110 "tag") with
+  fun (x114 : Ojs.t) ->
+    let x115 = x114 in
+    match Ojs.type_of (Ojs.get_prop_ascii x115 "tag") with
     | "number" ->
-        (match Ojs.int_of_js (Ojs.get_prop_ascii x110 "tag") with
-         | 0 -> Union_int_0 (dummy1_of_js x110)
-         | 1 -> Union_int_1 (dummy2_of_js x110)
+        (match Ojs.float_of_js (Ojs.get_prop_ascii x115 "tag") with
+         | 0.1 -> Union_float_0_1 (dummy1_of_js x115)
+         | 1.1 -> Union_float_1_1 (dummy1_of_js x115)
          | _ ->
-             (match Ojs.float_of_js (Ojs.get_prop_ascii x110 "tag") with
-              | 0.1 -> Union_float_0_1 (dummy1_of_js x110)
-              | 1.1 -> Union_float_1_1 (dummy1_of_js x110)
-              | _ -> Unknown x110))
+             (match Ojs.int_of_js (Ojs.get_prop_ascii x115 "tag") with
+              | 0 -> Union_int_0 (dummy1_of_js x115)
+              | 1 -> Union_int_1 (dummy2_of_js x115)
+              | _ -> Unknown x115))
     | "string" ->
-        (match Ojs.string_of_js (Ojs.get_prop_ascii x110 "tag") with
-         | "foo" -> Union_string_foo (dummy3_of_js x110)
-         | "bar" -> Union_string_bar (dummy4_of_js x110)
-         | _ -> Unknown x110)
+        (match Ojs.string_of_js (Ojs.get_prop_ascii x115 "tag") with
+         | "foo" -> Union_string_foo (dummy3_of_js x115)
+         | "bar" -> Union_string_bar (dummy4_of_js x115)
+         | _ -> Unknown x115)
     | "boolean" ->
-        (match Ojs.bool_of_js (Ojs.get_prop_ascii x110 "tag") with
-         | true -> Union_bool_true (dummy5_of_js x110)
-         | false -> Union_bool_false (dummy6_of_js x110))
-    | _ -> Unknown x110
+        (match Ojs.bool_of_js (Ojs.get_prop_ascii x115 "tag") with
+         | true -> Union_bool_true (dummy5_of_js x115)
+         | false -> Union_bool_false (dummy6_of_js x115))
+    | _ -> Unknown x115
 and union_mixed_to_js : union_mixed -> Ojs.t =
-  fun (x99 : union_mixed) ->
-    match x99 with
-    | Union_int_0 x100 -> dummy1_to_js x100
-    | Union_int_1 x101 -> dummy2_to_js x101
-    | Union_float_0_1 x102 -> dummy1_to_js x102
-    | Union_float_1_1 x103 -> dummy1_to_js x103
-    | Union_string_foo x104 -> dummy3_to_js x104
-    | Union_string_bar x105 -> dummy4_to_js x105
-    | Union_bool_true x106 -> dummy5_to_js x106
-    | Union_bool_false x107 -> dummy6_to_js x107
-    | Unknown x108 -> x108
+  fun (x104 : union_mixed) ->
+    match x104 with
+    | Union_int_0 x105 -> dummy1_to_js x105
+    | Union_int_1 x106 -> dummy2_to_js x106
+    | Union_float_0_1 x107 -> dummy1_to_js x107
+    | Union_float_1_1 x108 -> dummy1_to_js x108
+    | Union_string_foo x109 -> dummy3_to_js x109
+    | Union_string_bar x110 -> dummy4_to_js x110
+    | Union_bool_true x111 -> dummy5_to_js x111
+    | Union_bool_false x112 -> dummy6_to_js x112
+    | Unknown x113 -> x113
 type union_mixed_partial_bool =
   | Union_int_0 of dummy1 
   | Union_int_1 of dummy2 
@@ -430,36 +455,36 @@ type union_mixed_partial_bool =
   | Union_bool_true of dummy5 
   | Unknown of Ojs.t 
 let rec union_mixed_partial_bool_of_js : Ojs.t -> union_mixed_partial_bool =
-  fun (x120 : Ojs.t) ->
-    let x121 = x120 in
-    match Ojs.type_of (Ojs.get_prop_ascii x121 "tag") with
+  fun (x125 : Ojs.t) ->
+    let x126 = x125 in
+    match Ojs.type_of (Ojs.get_prop_ascii x126 "tag") with
     | "number" ->
-        (match Ojs.int_of_js (Ojs.get_prop_ascii x121 "tag") with
-         | 0 -> Union_int_0 (dummy1_of_js x121)
-         | 1 -> Union_int_1 (dummy2_of_js x121)
+        (match Ojs.float_of_js (Ojs.get_prop_ascii x126 "tag") with
+         | 0.1 -> Union_float_0_1 (dummy1_of_js x126)
+         | 1.1 -> Union_float_1_1 (dummy1_of_js x126)
          | _ ->
-             (match Ojs.float_of_js (Ojs.get_prop_ascii x121 "tag") with
-              | 0.1 -> Union_float_0_1 (dummy1_of_js x121)
-              | 1.1 -> Union_float_1_1 (dummy1_of_js x121)
-              | _ -> Unknown x121))
+             (match Ojs.int_of_js (Ojs.get_prop_ascii x126 "tag") with
+              | 0 -> Union_int_0 (dummy1_of_js x126)
+              | 1 -> Union_int_1 (dummy2_of_js x126)
+              | _ -> Unknown x126))
     | "string" ->
-        (match Ojs.string_of_js (Ojs.get_prop_ascii x121 "tag") with
-         | "foo" -> Union_string_foo (dummy3_of_js x121)
-         | "bar" -> Union_string_bar (dummy4_of_js x121)
-         | _ -> Unknown x121)
+        (match Ojs.string_of_js (Ojs.get_prop_ascii x126 "tag") with
+         | "foo" -> Union_string_foo (dummy3_of_js x126)
+         | "bar" -> Union_string_bar (dummy4_of_js x126)
+         | _ -> Unknown x126)
     | "boolean" ->
-        (match Ojs.bool_of_js (Ojs.get_prop_ascii x121 "tag") with
-         | true -> Union_bool_true (dummy5_of_js x121)
-         | _ -> Unknown x121)
-    | _ -> Unknown x121
+        (match Ojs.bool_of_js (Ojs.get_prop_ascii x126 "tag") with
+         | true -> Union_bool_true (dummy5_of_js x126)
+         | _ -> Unknown x126)
+    | _ -> Unknown x126
 and union_mixed_partial_bool_to_js : union_mixed_partial_bool -> Ojs.t =
-  fun (x111 : union_mixed_partial_bool) ->
-    match x111 with
-    | Union_int_0 x112 -> dummy1_to_js x112
-    | Union_int_1 x113 -> dummy2_to_js x113
-    | Union_float_0_1 x114 -> dummy1_to_js x114
-    | Union_float_1_1 x115 -> dummy1_to_js x115
-    | Union_string_foo x116 -> dummy3_to_js x116
-    | Union_string_bar x117 -> dummy4_to_js x117
-    | Union_bool_true x118 -> dummy5_to_js x118
-    | Unknown x119 -> x119
+  fun (x116 : union_mixed_partial_bool) ->
+    match x116 with
+    | Union_int_0 x117 -> dummy1_to_js x117
+    | Union_int_1 x118 -> dummy2_to_js x118
+    | Union_float_0_1 x119 -> dummy1_to_js x119
+    | Union_float_1_1 x120 -> dummy1_to_js x120
+    | Union_string_foo x121 -> dummy3_to_js x121
+    | Union_string_bar x122 -> dummy4_to_js x122
+    | Union_bool_true x123 -> dummy5_to_js x123
+    | Unknown x124 -> x124

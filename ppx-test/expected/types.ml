@@ -463,11 +463,11 @@ module T :
           let x145 = x144 in
           match Ojs.type_of x145 with
           | "number" ->
-              (match Ojs.int_of_js x145 with
-               | 42 -> Bar
+              (match Ojs.float_of_js x145 with
+               | 4.2 -> Baz
                | _ ->
-                   (match Ojs.float_of_js x145 with
-                    | 4.2 -> Baz
+                   (match Ojs.int_of_js x145 with
+                    | 42 -> Bar
                     | _ -> assert false))
           | "string" ->
               (match Ojs.string_of_js x145 with
@@ -717,10 +717,6 @@ module T :
         fun (x207 : Ojs.t) ->
           let x208 = x207 in
           match Ojs.type_of (Ojs.get_prop_ascii x208 "discr") with
-          | "number" ->
-              (match Ojs.int_of_js (Ojs.get_prop_ascii x208 "discr") with
-               | 0 -> A
-               | _ -> D x208)
           | "string" ->
               (match Ojs.string_of_js (Ojs.get_prop_ascii x208 "discr") with
                | "42" -> B (Ojs.int_of_js x208)
