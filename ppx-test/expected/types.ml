@@ -313,7 +313,7 @@ module T :
       | OO 
       | OtherS of string 
       | OtherI of int 
-    type poly = [ `foo  | `bar  | `Baz  | `I of int  | `S of string ]
+    type poly = [ `foo  | `bar  | `baz  | `Qux  | `I of int  | `S of string ]
     type sum =
       | A 
       | B of int 
@@ -511,25 +511,35 @@ module T :
           | OO -> Ojs.float_to_js 1.5
           | OtherS x147 -> Ojs.string_to_js x147
           | OtherI x148 -> Ojs.int_to_js x148
-      type poly = [ `foo  | `bar  | `Baz  | `I of int  | `S of string ]
+      type poly =
+        [ `foo  | `bar  | `baz  | `Qux  | `I of int  | `S of string ]
       let rec poly_of_js : Ojs.t -> poly =
         fun (x156 : Ojs.t) ->
           let x157 = x156 in
           match Ojs.type_of x157 with
           | "number" ->
-              (match Ojs.int_of_js x157 with | 42 -> `bar | x158 -> `I x158)
+              (match Ojs.float_of_js x157 with
+               | 4.2 -> `baz
+               | _ ->
+                   (match Ojs.int_of_js x157 with
+                    | 42 -> `bar
+                    | x158 -> `I x158))
           | "string" ->
               (match Ojs.string_of_js x157 with
                | "foo" -> `foo
-               | "Baz" -> `Baz
+               | "Qux" -> `Qux
                | x159 -> `S x159)
           | _ -> assert false
       and poly_to_js : poly -> Ojs.t =
-        fun (x153 : [ `foo  | `bar  | `Baz  | `I of int  | `S of string ]) ->
+        fun
+          (x153 :
+            [ `foo  | `bar  | `baz  | `Qux  | `I of int  | `S of string ])
+          ->
           match x153 with
           | `foo -> Ojs.string_to_js "foo"
           | `bar -> Ojs.int_to_js 42
-          | `Baz -> Ojs.string_to_js "Baz"
+          | `baz -> Ojs.float_to_js 4.2
+          | `Qux -> Ojs.string_to_js "Qux"
           | `I x154 -> Ojs.int_to_js x154
           | `S x155 -> Ojs.string_to_js x155
       type sum =

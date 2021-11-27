@@ -96,7 +96,7 @@ module T  = [%js:
     | OtherI of int [@js.default]
       [@@js.enum]
 
-    type poly = [`foo | `bar [@js 42] | `Baz | `I of int [@js.default] | `S of string[@js.default]] [@js.enum]
+    type poly = [`foo | `bar [@js 42] | `baz [@js 4.2] | `Qux | `I of int [@js.default] | `S of string[@js.default]] [@js.enum]
 
     type sum =
         | A

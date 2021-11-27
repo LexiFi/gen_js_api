@@ -232,32 +232,35 @@ constructors) can be used to bind to "enums" in JavaScript.  By
 default, constructors are mapped to the JS string equal to their OCaml
 name, but a custom translation can be provided with a `[@js]`
 attribute.  This custom translation can be a string or an integer
-literal.
+literal or a float literal.
 
 ```ocaml
 type t =
   | Foo [@js "foo"]
   | Bar [@js 42]
-  | Baz
+  | Baz [@js 4.2]
+  | Qux
     [@@js.enum]
 
-type t = [`foo | `bar [@js 42] | `Baz] [@@js.enum]
+type t = [`foo | `bar [@js 42] | `baz [@js 4.2] | `Qux] [@@js.enum]
 ```
 
 
 It is possible to specify constructors with one argument of
-type either int or string, used to represent "all other cases" of JS values.
+type (int or float or string), used to represent "all other cases" of JS values.
 
 ```ocaml
 type status =
   | OK [@js 1]
   | KO [@js 2]
+  | OO [@js 1.5]
   | OtherS of string [@js.default]
   | OtherI of int [@js.default]
     [@@js.enum]
 ```
 
 There cannot be two default constructors with the same argument type.
+Also, there cannot be default constructors of type int and float at the same time.
 
 Sum types mapped to records with a discriminator field
 ------------------------------------------------------
@@ -390,7 +393,7 @@ This generalisation of the `[@js.enum]` attribute can only be used on
 polymorphic variant used in contravariant context (i.e. to describe
 mapping from OCaml to JavaScript, not the other way around).  With
 this calling convention, first the representation of the constructor
-(which can be either an integer or a string, which is derived
+(which can be an integer or a float or a string, which is derived
 automatically if not specified with a `[@js]` attribute) is passed,
 followed by the n arguments of the constructor.
 
