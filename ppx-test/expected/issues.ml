@@ -75,17 +75,12 @@ module Issue124 :
         fun (x15 : Ojs.t) ->
           let x16 = x15 in
           match Ojs.type_of (Ojs.get_prop_ascii x16 "type") with
-          | "number" ->
-              (match Ojs.int_of_js (Ojs.get_prop_ascii x16 "type") with
-               | _ -> Unknown x16)
           | "string" ->
               (match Ojs.string_of_js (Ojs.get_prop_ascii x16 "type") with
                | "t" -> T (t_of_js x16)
                | "wrapped_t" -> WrappedT (wrapped_of_js t_of_js x16)
                | _ -> Unknown x16)
-          | "boolean" ->
-              (match Ojs.bool_of_js (Ojs.get_prop_ascii x16 "type") with
-               | _ -> Unknown x16)
+          | "boolean" -> Unknown x16
           | _ -> Unknown x16
       and u_to_js : u -> Ojs.t =
         fun (x10 : u) ->

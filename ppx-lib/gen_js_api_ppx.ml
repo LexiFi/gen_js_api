@@ -36,6 +36,7 @@ type error =
   | Unknown_union_method
   | Non_constant_constructor_in_enum
   | Multiple_default_case
+  | Duplicate_number_case of float option
   | Invalid_variadic_type_arg
   | No_input
   | Multiple_inputs
@@ -154,6 +155,10 @@ let print_error ppf = function
       Format.fprintf ppf "Constructors in enums cannot take arguments"
   | Multiple_default_case ->
       Format.fprintf ppf "At most one default constructor is supported in variants"
+  | Duplicate_number_case (Some f) ->
+      Format.fprintf ppf "Multiple constructors would match the same number value (%f)" f
+  | Duplicate_number_case None ->
+      Format.fprintf ppf "There are multiple default constructors for number type"
   | Invalid_variadic_type_arg ->
       Format.fprintf ppf "A variadic function argument must be of type list"
   | No_input ->
@@ -221,6 +226,7 @@ let get_js_constr ~global_attrs name attributes =
       begin match (expr_of_payload payload).pexp_desc with
       | Pexp_constant (Pconst_string (s, _, _)) -> `String s
       | Pexp_constant (Pconst_integer (n, _)) -> `Int (int_of_string n)
+      | Pexp_constant (Pconst_float (f, _)) -> `Float (float_of_string f)
       | Pexp_construct (ident_loc, _) ->
           begin match ident_loc.txt with
           | Lident "true"  -> `Bool true
@@ -738,8 +744,10 @@ let longident_parse x = Longident.parse x [@@ocaml.warning "-deprecated"]
 let var x = Exp.ident (mknoloc (longident_parse x))
 let str s = Exp.constant (Pconst_string (s, Location.none, None))
 let int n = Exp.constant (Pconst_integer (string_of_int n, None))
+let float f = Exp.constant (Pconst_float (string_of_float f, None))
 let bool b = Exp.construct (mknoloc (longident_parse (if b then "true" else "false"))) None
 let pat_int n = Pat.constant (Pconst_integer (string_of_int n, None))
+let pat_float f = Pat.constant (Pconst_float (string_of_float f, None))
 let pat_str s = Pat.constant (Pconst_string (s, Location.none, None))
 let pat_bool b = Pat.construct (mknoloc (longident_parse (if b then "true" else "false"))) None
 
@@ -912,9 +920,10 @@ let rewrite_typ_decl t =
 let string_typ = Name ("string", [])
 let int_typ = Name ("int", [])
 let bool_typ = Name ("bool", [])
+let float_typ = Name ("float", [])
 
 let is_discriminator_type = function
-  | Name (("string"|"int"|"bool"), []) -> true
+  | Name (("string"|"int"|"float"|"bool"), []) -> true
   | _ -> false
 
 let is_simple_enum params =
@@ -956,6 +965,28 @@ let get_variant_kind loc attrs =
         end
   end else error loc (Not_supported_here "Sum types without js.* attribute")
 
+type variant_cases =
+  {
+    int_default: case option;
+    int_cases: case list;
+    int_values: int list;
+    float_default: case option;
+    float_cases: case list;
+    float_values: float list;
+    string_default: case option;
+    string_cases: case list;
+    bool_default: case option;
+    bool_cases: case list;
+  }
+
+let empty_variant_cases =
+  {
+    int_default = None; int_cases = []; int_values = [];
+    float_default = None; float_cases = []; float_values = [];
+    string_default = None; string_cases = [];
+    bool_default = None; bool_cases = []
+  }
+
 let rec js2ml ty exp =
   match ty with
   | Js ->
@@ -992,12 +1023,13 @@ and js2ml_of_variant ~variant loc ~global_attrs attrs constrs exp =
     else fun x arg -> Exp.construct (mknoloc (Longident.Lident x)) arg
   in
   let f exp =
-    let gen_cases (int_default, int_cases, string_default, string_cases, bool_default, bool_cases) {mlconstr; arg; attributes; location} =
+    let gen_cases (cases: variant_cases) {mlconstr; arg; attributes; location} =
       let case x =
         match get_js_constr ~global_attrs mlconstr attributes with
-        | `String s -> int_default, int_cases, string_default, Exp.case (pat_str s) x :: string_cases, bool_default, bool_cases
-        | `Int n -> int_default, Exp.case (pat_int n) x :: int_cases, string_default, string_cases, bool_default, bool_cases
-        | `Bool b -> int_default, int_cases, string_default, string_cases, bool_default, Exp.case (pat_bool b) x :: bool_cases
+        | `String s -> { cases with string_cases = Exp.case (pat_str s) x :: cases.string_cases }
+        | `Int n -> { cases with int_cases = Exp.case (pat_int n) x :: cases.int_cases; int_values = n :: cases.int_values }
+        | `Float f -> { cases with float_cases = Exp.case(pat_float f) x :: cases.float_cases; float_values = f :: cases.float_values }
+        | `Bool b -> { cases with bool_cases = Exp.case (pat_bool b) x :: cases.bool_cases }
       in
       let get_arg key typ = js2ml typ (ojs_get exp key) in
       match arg with
@@ -1020,20 +1052,22 @@ and js2ml_of_variant ~variant loc ~global_attrs attrs constrs exp =
                   match variant_kind with
                   | `Enum ->
                       let x = fresh() in
-                      cont (Exp.case (Pat.var (mknoloc x)) (mkval mlconstr (Some (var x))))
+                      cont (Some (Exp.case (Pat.var (mknoloc x)) (mkval mlconstr (Some (var x)))))
                   | `Sum _ | `Union _ ->
-                      cont (Exp.case (Pat.any ()) (mkval mlconstr (Some (js2ml arg_typ exp))))
+                      cont (Some (Exp.case (Pat.any ()) (mkval mlconstr (Some (js2ml arg_typ exp)))))
                 end else error attribute.attr_loc Multiple_default_case
           in
           begin match variant_kind with
           | `Enum when arg_typ = int_typ ->
-              process_default [int_default] (fun int_default -> Some int_default, int_cases, string_default, string_cases, bool_default, bool_cases)
+              process_default [cases.int_default] (fun int_default -> { cases with int_default })
           | `Enum when arg_typ = string_typ ->
-              process_default [string_default] (fun string_default -> int_default, int_cases, Some string_default, string_cases, bool_default, bool_cases)
+              process_default [cases.string_default] (fun string_default -> { cases with string_default })
           | `Enum when arg_typ = bool_typ ->
-              process_default [bool_default] (fun bool_default -> int_default, int_cases, string_default, string_cases, Some bool_default, bool_cases)
+              process_default [cases.bool_default] (fun bool_default -> { cases with bool_default })
+          | `Enum when arg_typ = float_typ ->
+              process_default [cases.float_default] (fun float_default -> { cases with float_default })
           | `Sum _ | `Union _ when arg_typ = Js ->
-              process_default [int_default; string_default; bool_default] (fun default -> Some default, int_cases, Some default, string_cases, Some default, bool_cases)
+              process_default [cases.int_default; cases.float_default; cases.string_default; cases.bool_default] (fun default -> { cases with int_default = default; float_default = default; string_default = default; bool_default = default })
           | _ -> otherwise()
           end
       | Nary args_typ ->
@@ -1054,7 +1088,22 @@ and js2ml_of_variant ~variant loc ~global_attrs attrs constrs exp =
           | `Union _ -> error location Constructor_in_union
           end
     in
-    let (int_default, int_cases, string_default, string_cases, bool_default, bool_cases) = List.fold_left gen_cases (None, [], None, [], None, []) constrs in
+
+    let { int_default; int_cases; float_default; float_cases; string_default; string_cases; bool_default; bool_cases; _ } =
+      let cases = List.fold_left gen_cases empty_variant_cases constrs in
+
+      (* check if there are any duplicate cases of number *)
+      let _ =
+        let module NumberSet = Stdlib.Set.Make (struct type t = float let compare = Stdlib.Float.compare end) in
+        let int_values = NumberSet.of_list (List.map float_of_int cases.int_values) in
+        let float_values = NumberSet.of_list cases.float_values in
+        match NumberSet.min_elt_opt (NumberSet.inter int_values float_values) with
+        | Some dup -> error loc (Duplicate_number_case (Some dup))
+        | None -> ()
+      in
+
+      cases
+    in
 
     (* if both `true` and `false` are present, there is no need to generate the default cases for bool values *)
     let bool_default, generate_fail_pattern_for_bool =
@@ -1066,15 +1115,20 @@ and js2ml_of_variant ~variant loc ~global_attrs attrs constrs exp =
       else bool_default, true
     in
 
-    let gen_match ~fail_pattern e default other_cases =
+    let gen_match ~fail_pattern ?fail_body e default other_cases =
       match default, other_cases with
       | None, [] -> None
+      | Some default, [] when default.pc_lhs.ppat_desc = Ppat_any ->
+          Some default.pc_rhs
       | Some default, _ ->
           let cases = List.rev (default :: other_cases) in
           Some (Exp.match_ e cases)
       | None, _ :: _ ->
           let cases =
-            if fail_pattern then (Exp.case (Pat.any()) assert_false) :: other_cases else other_cases
+            if fail_pattern then
+              let body = match fail_body with Some body -> body | None -> assert_false in
+              (Exp.case (Pat.any ()) body) :: other_cases
+            else other_cases
           in
           Some (Exp.match_ e (List.rev cases))
     in
@@ -1085,24 +1139,40 @@ and js2ml_of_variant ~variant loc ~global_attrs attrs constrs exp =
       | `Union No_discriminator -> error loc Union_without_discriminator
       | `Union (On_field kind) -> ojs_get exp kind
     in
-    let int_match = gen_match ~fail_pattern:true (js2ml int_typ discriminator) int_default int_cases in
+    let number_match =
+      let get_int_match int_default fail_body = gen_match ~fail_pattern:true ?fail_body (js2ml int_typ discriminator) int_default int_cases in
+      let get_float_match float_default fail_body = gen_match ~fail_pattern:true ?fail_body (js2ml float_typ discriminator) float_default float_cases in
+      let int_match = get_int_match int_default None in
+      let float_match = get_float_match float_default None in
+      match int_match, float_match with
+      | Some m, None | None, Some m -> Some m
+      | None, None -> None
+      | Some _, Some _ ->
+        match int_default, float_default with
+        | None, None -> get_int_match None float_match
+        | Some _, None -> get_float_match None int_match
+        | None, Some _ -> get_int_match None float_match
+        | Some d1, Some d2 ->
+          if d1 = d2 then get_int_match None float_match
+          else error loc (Duplicate_number_case None)
+    in
     let string_match = gen_match ~fail_pattern:true (js2ml string_typ discriminator) string_default string_cases in
     let bool_match = gen_match ~fail_pattern:generate_fail_pattern_for_bool (js2ml bool_typ discriminator) bool_default bool_cases in
-    match int_match, string_match, bool_match with
+    match number_match, string_match, bool_match with
     | None, None, None -> assert false
-    | Some int_match, None, None -> int_match
+    | Some number_match, None, None -> number_match
     | None, Some string_match, None -> string_match
     | None, None, Some bool_match -> bool_match
     | _ ->
-        let case_int = Option.map (Exp.case (pat_str "number")) int_match in
+        let case_number = Option.map (Exp.case (pat_str "number")) number_match in
         let case_string = Option.map (Exp.case (pat_str "string")) string_match in
         let case_bool = Option.map (Exp.case (pat_str "boolean")) bool_match in
         let case_default =
-          match variant_kind, int_default, string_default, bool_default with
-          | `Enum, _, _, _
-          | _, None, None, None -> Exp.case (Pat.any ()) assert_false
-          | (`Sum _ | `Union _), _, _, _ ->
-              let defaults = List.filter_map Fun.id [int_default; string_default; bool_default] in
+          match variant_kind, int_default, float_default, string_default, bool_default with
+          | `Enum, _, _, _, _
+          | _, None, None, None, None -> Exp.case (Pat.any ()) assert_false
+          | (`Sum _ | `Union _), _, _, _, _ ->
+              let defaults = List.filter_map Fun.id [int_default; float_default; string_default; bool_default] in
               match defaults with
               | def :: rest when List.for_all ((=) def) rest -> def
               | _ -> assert false
@@ -1111,7 +1181,7 @@ and js2ml_of_variant ~variant loc ~global_attrs attrs constrs exp =
           List.fold_left
             (fun state -> function Some x -> x :: state | None -> state)
             [case_default]
-            [case_bool; case_string; case_int]
+            [case_bool; case_string; case_number]
         in
         Exp.match_ (ojs "type_of" [discriminator]) cases
   in
@@ -1183,6 +1253,7 @@ and ml2js ty exp =
 and ml2js_discriminator ~global_attrs mlconstr attributes =
   match get_js_constr ~global_attrs mlconstr attributes with
   | `Int n -> ml2js int_typ (int n)
+  | `Float f -> ml2js float_typ (float f)
   | `String s -> ml2js string_typ (str s)
   | `Bool b -> ml2js bool_typ (bool b)
 

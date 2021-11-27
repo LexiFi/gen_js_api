@@ -84,17 +84,19 @@ module T  = [%js:
     type enum =
       | Foo [@js "foo"]
       | Bar [@js 42]
-      | Baz
+      | Baz [@js 4.2]
+      | Qux
         [@@js.enum]
 
     type status =
     | OK [@js 1]
     | KO [@js 2]
+    | OO [@js 1.5]
     | OtherS of string [@js.default]
     | OtherI of int [@js.default]
       [@@js.enum]
 
-    type poly = [`foo | `bar [@js 42] | `Baz | `I of int [@js.default] | `S of string[@js.default] ] [@js.enum]
+    type poly = [`foo | `bar [@js 42] | `Baz | `I of int [@js.default] | `S of string[@js.default]] [@js.enum]
 
     type sum =
         | A

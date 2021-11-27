@@ -306,9 +306,11 @@ module T :
       | Foo 
       | Bar 
       | Baz 
+      | Qux 
     type status =
       | OK 
       | KO 
+      | OO 
       | OtherS of string 
       | OtherI of int 
     type poly = [ `foo  | `bar  | `Baz  | `I of int  | `S of string ]
@@ -455,16 +457,22 @@ module T :
         | Foo 
         | Bar 
         | Baz 
+        | Qux 
       let rec enum_of_js : Ojs.t -> enum =
         fun (x144 : Ojs.t) ->
           let x145 = x144 in
           match Ojs.type_of x145 with
           | "number" ->
-              (match Ojs.int_of_js x145 with | 42 -> Bar | _ -> assert false)
+              (match Ojs.int_of_js x145 with
+               | 42 -> Bar
+               | _ ->
+                   (match Ojs.float_of_js x145 with
+                    | 4.2 -> Baz
+                    | _ -> assert false))
           | "string" ->
               (match Ojs.string_of_js x145 with
                | "foo" -> Foo
-               | "Baz" -> Baz
+               | "Qux" -> Qux
                | _ -> assert false)
           | _ -> assert false
       and enum_to_js : enum -> Ojs.t =
@@ -472,10 +480,12 @@ module T :
           match x143 with
           | Foo -> Ojs.string_to_js "foo"
           | Bar -> Ojs.int_to_js 42
-          | Baz -> Ojs.string_to_js "Baz"
+          | Baz -> Ojs.float_to_js 4.2
+          | Qux -> Ojs.string_to_js "Qux"
       type status =
         | OK 
         | KO 
+        | OO 
         | OtherS of string 
         | OtherI of int 
       let rec status_of_js : Ojs.t -> status =
@@ -483,10 +493,13 @@ module T :
           let x150 = x149 in
           match Ojs.type_of x150 with
           | "number" ->
-              (match Ojs.int_of_js x150 with
-               | 1 -> OK
-               | 2 -> KO
-               | x152 -> OtherI x152)
+              (match Ojs.float_of_js x150 with
+               | 1.5 -> OO
+               | _ ->
+                   (match Ojs.int_of_js x150 with
+                    | 1 -> OK
+                    | 2 -> KO
+                    | x152 -> OtherI x152))
           | "string" ->
               (match Ojs.string_of_js x150 with | x151 -> OtherS x151)
           | _ -> assert false
@@ -495,6 +508,7 @@ module T :
           match x146 with
           | OK -> Ojs.int_to_js 1
           | KO -> Ojs.int_to_js 2
+          | OO -> Ojs.float_to_js 1.5
           | OtherS x147 -> Ojs.string_to_js x147
           | OtherI x148 -> Ojs.int_to_js x148
       type poly = [ `foo  | `bar  | `Baz  | `I of int  | `S of string ]
@@ -530,9 +544,6 @@ module T :
         fun (x167 : Ojs.t) ->
           let x168 = x167 in
           match Ojs.type_of (Ojs.get_prop_ascii x168 "kind") with
-          | "number" ->
-              (match Ojs.int_of_js (Ojs.get_prop_ascii x168 "kind") with
-               | _ -> Unknown x168)
           | "string" ->
               (match Ojs.string_of_js (Ojs.get_prop_ascii x168 "kind") with
                | "A" -> A
@@ -551,9 +562,7 @@ module T :
                          (Ojs.string_of_js (Ojs.get_prop_ascii x168 "name"))
                      }
                | _ -> Unknown x168)
-          | "boolean" ->
-              (match Ojs.bool_of_js (Ojs.get_prop_ascii x168 "kind") with
-               | _ -> Unknown x168)
+          | "boolean" -> Unknown x168
           | _ -> Unknown x168
       and sum_to_js : sum -> Ojs.t =
         fun (x160 : sum) ->
@@ -589,9 +598,6 @@ module T :
         fun (x177 : Ojs.t) ->
           let x178 = x177 in
           match Ojs.type_of (Ojs.get_prop_ascii x178 "kind") with
-          | "number" ->
-              (match Ojs.int_of_js (Ojs.get_prop_ascii x178 "kind") with
-               | _ -> Unknown x178)
           | "string" ->
               (match Ojs.string_of_js (Ojs.get_prop_ascii x178 "kind") with
                | "A" -> A
@@ -611,9 +617,7 @@ module T :
                      }
                | "F" -> E (Ojs.int_of_js (Ojs.get_prop_ascii x178 "fArg"))
                | _ -> Unknown x178)
-          | "boolean" ->
-              (match Ojs.bool_of_js (Ojs.get_prop_ascii x178 "kind") with
-               | _ -> Unknown x178)
+          | "boolean" -> Unknown x178
           | _ -> Unknown x178
       and t_to_js : t -> Ojs.t =
         fun (x169 : t) ->
@@ -669,18 +673,13 @@ module T :
         fun (x195 : Ojs.t) ->
           let x196 = x195 in
           match Ojs.type_of (Ojs.get_prop_ascii x196 "discr") with
-          | "number" ->
-              (match Ojs.int_of_js (Ojs.get_prop_ascii x196 "discr") with
-               | _ -> D x196)
           | "string" ->
               (match Ojs.string_of_js (Ojs.get_prop_ascii x196 "discr") with
                | "A" -> A
                | "B" -> B (Ojs.int_of_js x196)
                | "C" -> C (Ojs.int_of_js x196)
                | _ -> D x196)
-          | "boolean" ->
-              (match Ojs.bool_of_js (Ojs.get_prop_ascii x196 "discr") with
-               | _ -> D x196)
+          | "boolean" -> D x196
           | _ -> D x196
       and discr_union_to_js : discr_union -> Ojs.t =
         fun (x191 : discr_union) ->
@@ -694,18 +693,13 @@ module T :
         fun (x201 : Ojs.t) ->
           let x202 = x201 in
           match Ojs.type_of (Ojs.get_prop_ascii x202 "discr") with
-          | "number" ->
-              (match Ojs.int_of_js (Ojs.get_prop_ascii x202 "discr") with
-               | _ -> `D x202)
           | "string" ->
               (match Ojs.string_of_js (Ojs.get_prop_ascii x202 "discr") with
                | "A" -> `A
                | "B" -> `B (Ojs.int_of_js x202)
                | "C" -> `C (Ojs.int_of_js x202)
                | _ -> `D x202)
-          | "boolean" ->
-              (match Ojs.bool_of_js (Ojs.get_prop_ascii x202 "discr") with
-               | _ -> `D x202)
+          | "boolean" -> `D x202
           | _ -> `D x202
       and discr_poly_union_to_js : discr_poly_union -> Ojs.t =
         fun (x197 : [ `A  | `B of int  | `C of int  | `D of Ojs.t ]) ->
@@ -732,9 +726,7 @@ module T :
                | "42" -> B (Ojs.int_of_js x208)
                | "C" -> C (Ojs.int_of_js x208)
                | _ -> D x208)
-          | "boolean" ->
-              (match Ojs.bool_of_js (Ojs.get_prop_ascii x208 "discr") with
-               | _ -> D x208)
+          | "boolean" -> D x208
           | _ -> D x208
       and discr_union_value_to_js : discr_union_value -> Ojs.t =
         fun (x203 : discr_union_value) ->
