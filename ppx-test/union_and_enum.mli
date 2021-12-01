@@ -16,16 +16,16 @@ type enum_number_1 =
   | Enum_number_1 [@js 1]
   | Enum_number_0_1 [@js 0.1]
   | Enum_number_1_1 [@js 1.1]
-  | Enum_number_other of float [@js.default]
+  | Enum_number_other of int [@js.default]
   [@@js.enum]
 
-(* float cases should be matched first even if the default case is int*)
+(* float cases should be matched first even if the default case is float *)
 type enum_number_2 =
   | Enum_number_0 [@js 0]
   | Enum_number_1 [@js 1]
   | Enum_number_0_1 [@js 0.1]
   | Enum_number_1_1 [@js 1.1]
-  | Enum_number_other of int [@js.default]
+  | Enum_number_other of float [@js.default]
   [@@js.enum]
 
 type enum_string =
@@ -107,7 +107,7 @@ type union_int =
 
 type union_float =
   | Union_float_0_1 of dummy1 [@js 0.1]
-  | Union_float_1_1 of dummy1 [@js 1.1]
+  | Union_float_1_1 of dummy2 [@js 1.1]
   | Unknown of Ojs.t [@js.default]
   [@@js.union on_field "tag"]
 
@@ -139,7 +139,7 @@ type union_mixed =
   | Union_int_0 of dummy1 [@js 0]
   | Union_int_1 of dummy2 [@js 1]
   | Union_float_0_1 of dummy1 [@js 0.1]
-  | Union_float_1_1 of dummy1 [@js 1.1]
+  | Union_float_1_1 of dummy2 [@js 1.1]
   | Union_string_foo of dummy3 [@js "foo"]
   | Union_string_bar of dummy4 [@js "bar"]
   | Union_bool_true of dummy5 [@js true]
@@ -152,7 +152,7 @@ type union_mixed_partial_bool =
   | Union_int_0 of dummy1 [@js 0]
   | Union_int_1 of dummy2 [@js 1]
   | Union_float_0_1 of dummy1 [@js 0.1]
-  | Union_float_1_1 of dummy1 [@js 1.1]
+  | Union_float_1_1 of dummy2 [@js 1.1]
   | Union_string_foo of dummy3 [@js "foo"]
   | Union_string_bar of dummy4 [@js "bar"]
   | Union_bool_true of dummy5 [@js true]
