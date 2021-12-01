@@ -1115,7 +1115,7 @@ and js2ml_of_variant ~variant loc ~global_attrs attrs constrs exp =
       else bool_default, true
     in
 
-    let gen_match ~fail_pattern ?fail_case e default other_cases =
+    let gen_match ~fail_pattern e default other_cases =
       match default, other_cases with
       | None, [] -> None
       | Some default, [] when default.pc_lhs.ppat_desc = Ppat_any ->
@@ -1125,10 +1125,7 @@ and js2ml_of_variant ~variant loc ~global_attrs attrs constrs exp =
           Some (Exp.match_ e cases)
       | None, _ :: _ ->
           let cases =
-            if fail_pattern then
-              match fail_case with
-              | None -> (Exp.case (Pat.any ()) assert_false) :: other_cases
-              | Some case -> case :: other_cases
+            if fail_pattern then (Exp.case (Pat.any ()) assert_false) :: other_cases
             else other_cases
           in
           Some (Exp.match_ e (List.rev cases))
@@ -1142,25 +1139,25 @@ and js2ml_of_variant ~variant loc ~global_attrs attrs constrs exp =
     in
     let number_match =
       let default_expr exprOpt = Option.map (fun expr -> Exp.case (Pat.any ()) expr) exprOpt in
-      let get_int_match int_default fail_case = gen_match ~fail_pattern:true ?fail_case (js2ml int_typ discriminator) int_default int_cases in
-      let get_float_match float_default fail_case = gen_match ~fail_pattern:true ?fail_case (js2ml float_typ discriminator) float_default float_cases in
-      let int_match = get_int_match int_default None in
-      let float_match = get_float_match float_default None in
+      let get_int_match int_default = gen_match ~fail_pattern:true (js2ml int_typ discriminator) int_default int_cases in
+      let get_float_match float_default = gen_match ~fail_pattern:true (js2ml float_typ discriminator) float_default float_cases in
+      let int_match = get_int_match int_default in
+      let float_match = get_float_match float_default in
       match int_match, float_match with
       | Some m, None | None, Some m -> Some m
       | None, None -> None
       | Some _, Some _ ->
         match int_default, float_default with
-        | _, None -> get_float_match None (default_expr int_match)
+        | _, None -> get_float_match (default_expr int_match)
         | None, Some d ->
           let case =
-            match get_int_match None (default_expr (Some d.pc_rhs)) with
+            match get_int_match (default_expr (Some d.pc_rhs)) with
             | None -> d
             | Some int_match -> { d with pc_rhs = int_match }
           in
-          get_float_match None (Some case)
+          get_float_match (Some case)
         | Some d1, Some d2 ->
-          if d1 = d2 then get_float_match None (default_expr int_match)
+          if d1 = d2 then get_float_match (default_expr int_match)
           else error loc (Duplicate_number_case None)
     in
     let string_match = gen_match ~fail_pattern:true (js2ml string_typ discriminator) string_default string_cases in

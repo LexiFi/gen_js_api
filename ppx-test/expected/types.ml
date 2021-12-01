@@ -554,6 +554,7 @@ module T :
         fun (x167 : Ojs.t) ->
           let x168 = x167 in
           match Ojs.type_of (Ojs.get_prop_ascii x168 "kind") with
+          | "number" -> Unknown x168
           | "string" ->
               (match Ojs.string_of_js (Ojs.get_prop_ascii x168 "kind") with
                | "A" -> A
@@ -608,6 +609,7 @@ module T :
         fun (x177 : Ojs.t) ->
           let x178 = x177 in
           match Ojs.type_of (Ojs.get_prop_ascii x178 "kind") with
+          | "number" -> Unknown x178
           | "string" ->
               (match Ojs.string_of_js (Ojs.get_prop_ascii x178 "kind") with
                | "A" -> A
@@ -683,6 +685,7 @@ module T :
         fun (x195 : Ojs.t) ->
           let x196 = x195 in
           match Ojs.type_of (Ojs.get_prop_ascii x196 "discr") with
+          | "number" -> D x196
           | "string" ->
               (match Ojs.string_of_js (Ojs.get_prop_ascii x196 "discr") with
                | "A" -> A
@@ -703,6 +706,7 @@ module T :
         fun (x201 : Ojs.t) ->
           let x202 = x201 in
           match Ojs.type_of (Ojs.get_prop_ascii x202 "discr") with
+          | "number" -> `D x202
           | "string" ->
               (match Ojs.string_of_js (Ojs.get_prop_ascii x202 "discr") with
                | "A" -> `A
@@ -727,6 +731,10 @@ module T :
         fun (x207 : Ojs.t) ->
           let x208 = x207 in
           match Ojs.type_of (Ojs.get_prop_ascii x208 "discr") with
+          | "number" ->
+              (match Ojs.int_of_js (Ojs.get_prop_ascii x208 "discr") with
+               | 0 -> A
+               | _ -> D x208)
           | "string" ->
               (match Ojs.string_of_js (Ojs.get_prop_ascii x208 "discr") with
                | "42" -> B (Ojs.int_of_js x208)
