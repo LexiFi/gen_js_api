@@ -1,11 +1,13 @@
 Changelog
 =========
 
-Upcoming
---------
+Version 1.0.9
+-------------
 
-- GPR#153: Support recursive modulesa (@cannorin)
-- GPR#153: [@@js.invoke] attribute to call the global object as a function (@cannorin)
+- GPR#161: Fix broken link to VALUES.md (@joelburget)
+- GPR#154: Upgrade to ocaml/setup-ocaml@v2 (@smorimoto)
+- GPR#153: Support recursive modules (@cannorin)
+- GPR#152: [@@js.invoke] attribute to call the global object as a function (@cannorin)
 
 Version 1.0.8
 -------------
