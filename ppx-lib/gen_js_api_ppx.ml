@@ -36,7 +36,7 @@ type error =
   | Unknown_union_method
   | Non_constant_constructor_in_enum
   | Multiple_default_case
-  | Duplicate_number_case of float option
+  | Duplicate_case_value of location * location
   | Invalid_variadic_type_arg
   | No_input
   | Multiple_inputs
@@ -155,10 +155,10 @@ let print_error ppf = function
       Format.fprintf ppf "Constructors in enums cannot take arguments"
   | Multiple_default_case ->
       Format.fprintf ppf "At most one default constructor is supported in variants"
-  | Duplicate_number_case (Some f) ->
-      Format.fprintf ppf "Multiple constructors would match the same number value (%f)" f
-  | Duplicate_number_case None ->
-      Format.fprintf ppf "There are multiple default constructors for number type"
+  | Duplicate_case_value (loc1, loc2)  ->
+      let line1, line2 = loc1.loc_start.pos_lnum, loc2.loc_start.pos_lnum in
+      let line1, line2 = if line1 < line2 then line1, line2 else line2, line1 in
+      Format.fprintf ppf "This case value is used twice at lines %d and %d" line1 line2
   | Invalid_variadic_type_arg ->
       Format.fprintf ppf "A variadic function argument must be of type list"
   | No_input ->
@@ -225,8 +225,8 @@ let get_js_constr ~global_attrs name attributes =
   | Some payload ->
       begin match (expr_of_payload payload).pexp_desc with
       | Pexp_constant (Pconst_string (s, _, _)) -> `String s
-      | Pexp_constant (Pconst_integer (n, _)) -> `Int (int_of_string n)
-      | Pexp_constant (Pconst_float (f, _)) -> `Float (float_of_string f)
+      | Pexp_constant (Pconst_integer (n, _)) -> `Int n
+      | Pexp_constant (Pconst_float (f, _)) -> `Float f
       | Pexp_construct (ident_loc, _) ->
           begin match ident_loc.txt with
           | Lident "true"  -> `Bool true
@@ -743,11 +743,12 @@ let longident_parse x = Longident.parse x [@@ocaml.warning "-deprecated"]
 
 let var x = Exp.ident (mknoloc (longident_parse x))
 let str s = Exp.constant (Pconst_string (s, Location.none, None))
-let int n = Exp.constant (Pconst_integer (string_of_int n, None))
-let float f = Exp.constant (Pconst_float (string_of_float f, None))
+let int_of_repr n = Exp.constant (Pconst_integer (n, None))
+let int n = int_of_repr (string_of_int n)
+let float_of_repr f = Exp.constant (Pconst_float (f, None))
 let bool b = Exp.construct (mknoloc (longident_parse (if b then "true" else "false"))) None
-let pat_int n = Pat.constant (Pconst_integer (string_of_int n, None))
-let pat_float f = Pat.constant (Pconst_float (string_of_float f, None))
+let pat_int n = Pat.constant (Pconst_integer (n, None))
+let pat_float f = Pat.constant (Pconst_float (f, None))
 let pat_str s = Pat.constant (Pconst_string (s, Location.none, None))
 let pat_bool b = Pat.construct (mknoloc (longident_parse (if b then "true" else "false"))) None
 
@@ -968,21 +969,29 @@ let get_variant_kind loc attrs =
 type variant_cases =
   {
     int_default: case option;
-    int_cases: case list;
-    int_values: int list;
+    int_cases: float case_value list;
     float_default: case option;
-    float_cases: case list;
-    float_values: float list;
+    float_cases: float case_value list;
     string_default: case option;
-    string_cases: case list;
+    string_cases: string case_value list;
     bool_default: case option;
-    bool_cases: case list;
+    bool_cases: bool case_value list;
   }
+
+and 'a case_value = {
+  value: 'a;
+  case: case;
+  loc: location;
+}
+
+let case_value ~loc ~value pat x =
+  let case = Exp.case pat x in
+  { value; case; loc }
 
 let empty_variant_cases =
   {
-    int_default = None; int_cases = []; int_values = [];
-    float_default = None; float_cases = []; float_values = [];
+    int_default = None; int_cases = [];
+    float_default = None; float_cases = [];
     string_default = None; string_cases = [];
     bool_default = None; bool_cases = []
   }
@@ -1025,11 +1034,12 @@ and js2ml_of_variant ~variant loc ~global_attrs attrs constrs exp =
   let f exp =
     let gen_cases (cases: variant_cases) {mlconstr; arg; attributes; location} =
       let case x =
+        let loc = location in
         match get_js_constr ~global_attrs mlconstr attributes with
-        | `String s -> { cases with string_cases = Exp.case (pat_str s) x :: cases.string_cases }
-        | `Int n -> { cases with int_cases = Exp.case (pat_int n) x :: cases.int_cases; int_values = n :: cases.int_values }
-        | `Float f -> { cases with float_cases = Exp.case(pat_float f) x :: cases.float_cases; float_values = f :: cases.float_values }
-        | `Bool b -> { cases with bool_cases = Exp.case (pat_bool b) x :: cases.bool_cases }
+        | `String s -> { cases with string_cases = case_value ~loc ~value:s (pat_str s) x :: cases.string_cases }
+        | `Int n -> { cases with int_cases = case_value ~loc ~value:(float_of_string n) (pat_int n) x :: cases.int_cases }
+        | `Float f -> { cases with float_cases = case_value ~loc ~value:(float_of_string f) (pat_float f) x :: cases.float_cases }
+        | `Bool b -> { cases with bool_cases = case_value ~loc ~value:b (pat_bool b) x :: cases.bool_cases }
       in
       let get_arg key typ = js2ml typ (ojs_get exp key) in
       match arg with
@@ -1094,28 +1104,38 @@ and js2ml_of_variant ~variant loc ~global_attrs attrs constrs exp =
 
       (* check if there are any duplicate cases of number *)
       let _ =
-        let module NumberSet = Stdlib.Set.Make (struct type t = float let compare = Stdlib.Float.compare end) in
-        let int_values = NumberSet.of_list (List.map float_of_int cases.int_values) in
-        let float_values = NumberSet.of_list cases.float_values in
-        match NumberSet.min_elt_opt (NumberSet.inter int_values float_values) with
-        | Some dup -> error loc (Duplicate_number_case (Some dup))
-        | None -> ()
+        let {
+          string_cases; float_cases; int_cases; bool_cases;
+          int_default = _; float_default = _; bool_default = _; string_default = _
+        } = cases in
+        let check_duplicates l =
+          let compare_values x y = Stdlib.compare x.value y.value in
+          let l = List.sort compare_values l in
+          let rec has_dup = function
+            | [] | [ _ ] -> ()
+            | x :: ((y :: _) as l) ->
+              if compare_values x y = 0 then
+                error loc (Duplicate_case_value (x.loc, y.loc))
+              else
+                has_dup l
+          in
+          has_dup l
+        in
+        check_duplicates string_cases;
+        check_duplicates bool_cases;
+        check_duplicates (float_cases @ int_cases);
       in
-
       cases
     in
 
     (* if both `true` and `false` are present, there is no need to generate the default cases for bool values *)
     let bool_default, generate_fail_pattern_for_bool =
-      let check b = function
-        | {pc_guard = None; pc_lhs={ppat_desc=Ppat_construct ({txt=Lident s;_}, None); _}; _} -> s = b
-        | _ -> false
-      in
-      if List.exists (check "true") bool_cases && List.exists (check "false") bool_cases then None, false
+      if List.exists (fun {value; _} -> value) bool_cases && List.exists (fun {value; _} -> not value) bool_cases then None, false
       else bool_default, true
     in
 
     let gen_match ~fail_pattern e default other_cases =
+      let other_cases = List.map (fun {case;_} -> case) other_cases in
       match default, other_cases with
       | None, [] -> None
       | Some default, [] when default.pc_lhs.ppat_desc = Ppat_any ->
@@ -1158,7 +1178,7 @@ and js2ml_of_variant ~variant loc ~global_attrs attrs constrs exp =
           get_float_match (Some case)
         | Some d1, Some d2 ->
           if d1 = d2 then get_float_match (default_expr int_match)
-          else error loc (Duplicate_number_case None)
+          else error loc Multiple_default_case
     in
     let string_match = gen_match ~fail_pattern:true (js2ml string_typ discriminator) string_default string_cases in
     let bool_match = gen_match ~fail_pattern:generate_fail_pattern_for_bool (js2ml bool_typ discriminator) bool_default bool_cases in
@@ -1256,8 +1276,8 @@ and ml2js ty exp =
 
 and ml2js_discriminator ~global_attrs mlconstr attributes =
   match get_js_constr ~global_attrs mlconstr attributes with
-  | `Int n -> ml2js int_typ (int n)
-  | `Float f -> ml2js float_typ (float f)
+  | `Int n -> ml2js int_typ (int_of_repr n)
+  | `Float f -> ml2js float_typ (float_of_repr f)
   | `String s -> ml2js string_typ (str s)
   | `Bool b -> ml2js bool_typ (bool b)
 
