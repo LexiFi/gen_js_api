@@ -1,7 +1,7 @@
 (library
  (public_name ojs)
  (synopsis "Runtime support for gen_js_api")
- (libraries)
+ (libraries js_of_ocaml-compiler.runtime)
  (wrapped false)
  (foreign_stubs
   (language c)
