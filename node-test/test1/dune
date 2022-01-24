@@ -1,7 +1,6 @@
 (executable
  (name test)
  (libraries ojs node)
- (link_flags -no-check-prims)
  (preprocess
   (pps gen_js_api.ppx))
  (modes js)
