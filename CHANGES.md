@@ -1,6 +1,12 @@
 Changelog
 =========
 
+Version 1.1.0
+-------------
+
+- GPR#164:  Switch to js_of_ocaml.4.0 (@hhugo) 
+- GPR#165:  Allow n-ary constructors in [@js.union] (@cannorin)
+
 Version 1.0.9
 -------------
 
