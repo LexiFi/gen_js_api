@@ -32,7 +32,7 @@ type error =
   | Implicit_name of string
   | Not_supported_here of string
   | Record_expected of string
-  | Constructor_in_union
+  | Record_constructor_in_union
   | Unknown_union_method
   | Non_constant_constructor_in_enum
   | Multiple_default_case
@@ -171,8 +171,8 @@ let print_error ppf = function
       Format.fprintf ppf "Spurious %s attribute" label
   | Sum_kind_args ->
       Format.fprintf ppf "Incompatible label name for 'kind' and constructor arguments."
-  | Constructor_in_union ->
-      Format.fprintf ppf "Constructors in unions must be constant or unary."
+  | Record_constructor_in_union ->
+      Format.fprintf ppf "Constructors in unions must not be an inline record."
   | Unknown_union_method ->
       Format.fprintf ppf "Unknown method to discriminate unions."
   | Union_without_discriminator ->
@@ -1088,14 +1088,14 @@ and js2ml_of_variant ~variant loc ~global_attrs attrs constrs exp =
               check_label loc args_field;
               let get_args key i typ = js2ml typ (ojs "array_get" [ojs_get exp key; int i]) in
               case (mkval mlconstr (Some (Exp.tuple (List.mapi (get_args args_field) args_typ))))
-          | `Union _ -> error location Constructor_in_union
+          | `Union _ -> case (mkval mlconstr (Some (js2ml (Tuple args_typ) exp))) (* treat it as a tuple of the constructor arguments *)
           end
       | Record args ->
           begin match variant_kind with
           | `Enum -> error location Non_constant_constructor_in_enum
           | `Sum _ ->
               case (mkval mlconstr (Some (Exp.record (List.map (fun (loc, mlname, jsname, typ) -> check_label loc jsname; mlname, get_arg jsname typ) args) None)))
-          | `Union _ -> error location Constructor_in_union
+          | `Union _ -> error location Record_constructor_in_union
           end
     in
 
@@ -1301,7 +1301,7 @@ and ml2js_of_variant ~variant loc ~global_attrs attrs constrs exp =
       | `Enum, _ :: _ -> error location Non_constant_constructor_in_enum
       | `Sum kind, _ -> ojs "obj" [Exp.array ((Exp.tuple [str kind; discriminator]) :: args)]
       | `Union _, [] -> ojs_null
-      | `Union _, _ :: _ -> error location Constructor_in_union
+      | `Union _, _ :: _ -> error location Record_constructor_in_union
     in
     match arg with
     | Constant -> Exp.case (mkpat mlconstr None) (mkobj [])
@@ -1320,21 +1320,27 @@ and ml2js_of_variant ~variant loc ~global_attrs attrs constrs exp =
         in
         Exp.case (mkpat mlconstr (Some (Pat.var (mknoloc x)))) value
     | Nary args_typ ->
-        let loc, args_field = get_string_attribute_default "js.arg" (location, "arg") attributes in
-        check_label loc args_field;
-        let xis = List.mapi (fun i typ -> i, typ, fresh()) args_typ in
-        let n_args = List.length xis in
-        Exp.case
-          (mkpat mlconstr (Some (Pat.tuple (List.map (fun (_, _, xi) -> Pat.var (mknoloc xi)) xis))))
-          (let args = fresh() in
-           Exp.let_ Nonrecursive
-             [Vb.mk (Pat.var (mknoloc args)) (ojs "array_make" [int n_args])]
-             (List.fold_left
-                (fun e (i, typi, xi) ->
-                   Exp.sequence
-                     (ojs "array_set" [var args; int i; ml2js typi (var xi)]) e)
-                (mkobj [pair args_field Js (var args)])
-                xis))
+        begin match variant_kind with
+        | `Enum | `Sum _ ->
+          let loc, args_field = get_string_attribute_default "js.arg" (location, "arg") attributes in
+          check_label loc args_field;
+          let xis = List.mapi (fun i typ -> i, typ, fresh()) args_typ in
+          let n_args = List.length xis in
+          Exp.case
+            (mkpat mlconstr (Some (Pat.tuple (List.map (fun (_, _, xi) -> Pat.var (mknoloc xi)) xis))))
+            (let args = fresh() in
+            Exp.let_ Nonrecursive
+              [Vb.mk (Pat.var (mknoloc args)) (ojs "array_make" [int n_args])]
+              (List.fold_left
+                  (fun e (i, typi, xi) ->
+                    Exp.sequence
+                      (ojs "array_set" [var args; int i; ml2js typi (var xi)]) e)
+                  (mkobj [pair args_field Js (var args)])
+                  xis))
+        | `Union _ -> (* treat it as a tuple of the constructor arguments *)
+          let x = fresh() in
+          Exp.case (mkpat mlconstr (Some (Pat.var (mknoloc x)))) (ml2js (Tuple args_typ) (var x))
+        end
     | Record args ->
         let x = fresh() in
         Exp.case

@@ -339,13 +339,12 @@ convention, one can use polymorphic variants:
 val f: t -> ([`Str of string | `Obj of t | `Nothing] [@js.union]) -> ...
 ```
 
-A limited form of (polymorphic) variants is supported: only constant
-constructors or unary constructors are supported.
-
 When the `[@js.union]` attribute is used without any other option,
 only the ML to JS function is generated. The ML to JS conversion
-function simply maps constant constructors to the `null` value and
-unary constructors to the value of the constructor argument.
+function simply maps constant constructors to the `null` value,
+unary constructors to the value of the constructor argument,
+and n-ary constructors to the array of the constructor argument values
+(i.e. treated as a tuple).
 
 For generating the converse function, one needs to have a way to
 distinguish JS values in the union type. At the moment, union types

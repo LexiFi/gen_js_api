@@ -65,3 +65,13 @@ module Issue144 = [%js:
 module Issue146 = [%js:
   val f: ?arg:([`Foo [@js 42]] [@js.enum]) -> unit -> int [@@js.global "f"]
 ]
+module PR165 = [%js:
+  module Markdown : sig
+    type t
+  end
+
+  module [@js.scope "ParameterInformation"] ParameterInformation : sig
+    type t
+    val create: label:([`String of string | `Tuple of (int * int)] [@js.union]) -> ?documentation:([`String of string | `Markdown of Markdown.t] [@js.union]) -> unit -> t [@@js.create]
+  end
+]
