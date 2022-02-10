@@ -87,7 +87,7 @@ Usage (with ocamlfind)
  - Linking the bytecode program:
 
    ```
-   ocamlfind ocamlc -o my_prog -no-check-prims -package gen_js_api -linkpkg ...
+   ocamlfind ocamlc -o my_prog -package gen_js_api -linkpkg ...
    ```
 
  - Compiling into JavaScript:

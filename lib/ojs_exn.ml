@@ -2,20 +2,15 @@
 (* See the attached LICENSE file.                                         *)
 (* Copyright 2015 by LexiFi.                                              *)
 
-type t = Ojs.t
+type t = Jsoo_runtime.Error.t
 
-let name x = Ojs.string_of_js (Ojs.get_prop_ascii x "name")
-let message x = Ojs.string_of_js (Ojs.get_prop_ascii x "message")
-let stack x = Ojs.option_of_js Ojs.string_of_js (Ojs.get_prop_ascii x "stack")
-let to_string x = Ojs.string_of_js (Ojs.call x "toString" [||])
+external coerce : t -> Ojs.t = "%identity"
+let name x = Ojs.string_of_js (Ojs.get_prop_ascii (coerce x) "name")
+let message x = Ojs.string_of_js (Ojs.get_prop_ascii (coerce x) "message")
+let stack x = Ojs.option_of_js Ojs.string_of_js (Ojs.get_prop_ascii (coerce x) "stack")
+let to_string x = Ojs.string_of_js (Ojs.call (coerce x) "toString" [||])
 
-exception Error of t
-
-let () = Callback.register_exception "jsError" (Error (Ojs.obj [||]))
-
-(* The js_of_ocaml runtime expects to have this registered.
-   So it's probably a bad idea to use both this Ojs_exn module
-   and the js_of_ocaml standard library. *)
+exception Error = Jsoo_runtime.Error.Exn
 
 let () =
   Printexc.register_printer (function
