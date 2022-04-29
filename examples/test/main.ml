@@ -281,7 +281,13 @@ let () =
   Console3.log 1;
   Console3.log2 1 "two";
   Console3.log3 1 "two" [];
-  Console3.log4 1 "two" [] [|4|];
+  Console3.log4 1 "two" [] [|4|]
+
+let () =
+  Console4.log  (module Ojs.Int) 1;
+  Console4.log2 (module Ojs.Int) (module Ojs.String) 1 "two";
+  Console4.log3 (module Ojs.Int) (module Ojs.String) (module Ojs.List(Ojs.Int)) 1 "two" [3]
+
 end
 
 include [%js:
