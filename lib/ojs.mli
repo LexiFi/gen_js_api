@@ -155,3 +155,12 @@ module type T =
     val t_to_js : t -> js
     val t_of_js : js -> t
   end
+
+(* Ojs.T instances for built-in types *)
+module Int : T with type t = int
+module String : T with type t = string
+module Bool : T with type t = bool
+module Float : T with type t = float
+module Array (A: T) : T with type t = A.t array
+module List (A: T) : T with type t = A.t list
+module Option (A: T) : T with type t = A.t option
