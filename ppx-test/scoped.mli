@@ -20,3 +20,5 @@ module M : sig
   val global: t
   val invoke: unit -> unit [@@js.invoke]
 end[@js.scope "scope"]
+
+val d: unit -> unit [@@js.scope ("a", "b", "c")] [@@js.global]

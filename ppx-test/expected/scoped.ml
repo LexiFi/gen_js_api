@@ -88,3 +88,10 @@ module M =
         Ojs.unit_of_js
           (Ojs.apply (Ojs.get_prop_ascii Ojs.global "scope") [||])
   end
+let (d : unit -> unit) =
+  fun () ->
+    ignore
+      (Ojs.call
+         (Ojs.get_prop_ascii
+            (Ojs.get_prop_ascii (Ojs.get_prop_ascii Ojs.global "a") "b") "c")
+         "d" [||])

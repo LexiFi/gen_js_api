@@ -1526,6 +1526,14 @@ let global_object ~global_attrs =
         begin match get_expr_attribute "js.scope" [hd] with
         | None -> traverse tl
         | Some {pexp_desc=Pexp_constant (Pconst_string (prop, _, _)); _} -> ojs_get (traverse tl) prop
+        | Some {pexp_desc=Pexp_tuple path; _} ->
+          let init = traverse tl in
+          let folder state pexp =
+            match pexp.pexp_desc with
+            | Pexp_constant (Pconst_string (prop, _, _)) -> ojs_get state prop
+            | _ -> pexp (* global object *)
+          in
+          List.fold_left folder init path
         | Some global_object -> global_object
         end
   in
