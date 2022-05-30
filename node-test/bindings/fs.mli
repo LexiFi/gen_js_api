@@ -1,4 +1,4 @@
-[@@@js.scope Imports.fs_promises]
+[@@@js.scope (Imports.fs, "promises")]
 
 module Dirent : sig
   type t = Ojs.t
