@@ -1,6 +1,10 @@
 Changelog
 =========
 
+Upcoming 
+--------
+- GPR#167: Fix CI (@cannorin)
+
 Version 1.1.0
 -------------
 
