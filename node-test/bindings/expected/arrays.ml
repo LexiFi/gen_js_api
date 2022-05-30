@@ -29,53 +29,56 @@ module StringArray =
 module JsArray2 =
   struct
     type 'a t = Ojs.t
-    let rec t_of_js : 'a . (Ojs.t -> 'a) -> Ojs.t -> 'a t = fun (type __a) ->
-      fun (__a_of_js : Ojs.t -> __a) -> fun (x10 : Ojs.t) -> x10
-    and t_to_js : 'a . ('a -> Ojs.t) -> 'a t -> Ojs.t = fun (type __a) ->
-      fun (__a_to_js : __a -> Ojs.t) -> fun (x9 : Ojs.t) -> x9
+    let rec t_of_js : 'a . (Ojs.t -> 'a) -> Ojs.t -> 'a t =
+      fun (type __a) ->
+        fun (__a_of_js : Ojs.t -> __a) -> fun (x10 : Ojs.t) -> x10
+    and t_to_js : 'a . ('a -> Ojs.t) -> 'a t -> Ojs.t =
+      fun (type __a) ->
+        fun (__a_to_js : __a -> Ojs.t) -> fun (x9 : Ojs.t) -> x9
     let (create : unit -> 'a t) =
       fun () ->
         t_of_js Obj.magic
           (Ojs.new_obj (Ojs.get_prop_ascii Ojs.global "Array") [||])
-    let (create' : (module Ojs.T with type t = 'a) -> 'a list -> 'a t) = fun
-      (type a) ->
-      fun ((module A)  : (module Ojs.T with type t = a)) ->
-        fun (x12 : a list) ->
-          t_of_js A.t_of_js
-            (Ojs.new_obj_arr (Ojs.get_prop_ascii Ojs.global "Array")
-               (let x13 =
-                  Ojs.new_obj (Ojs.get_prop_ascii Ojs.global "Array") [||] in
-                List.iter
-                  (fun (x14 : a) ->
-                     ignore (Ojs.call x13 "push" [|(A.t_to_js x14)|])) x12;
-                x13))
-    let (push : (module Ojs.T with type t = 'a) -> 'a t -> 'a -> unit) = fun
-      (type a) ->
-      fun ((module A)  : (module Ojs.T with type t = a)) ->
-        fun (x17 : a t) ->
-          fun (x16 : a) ->
-            ignore
-              (Ojs.call (t_to_js A.t_to_js x17) "push" [|(A.t_to_js x16)|])
-    let (pop : (module Ojs.T with type t = 'a) -> 'a t -> 'a option) = fun
-      (type a) ->
-      fun ((module A)  : (module Ojs.T with type t = a)) ->
-        fun (x19 : a t) ->
-          Ojs.option_of_js A.t_of_js
-            (Ojs.call (t_to_js A.t_to_js x19) "pop" [||])
+    let (create' : (module Ojs.T with type t = 'a) -> 'a list -> 'a t) =
+      fun (type a) ->
+        fun ((module A)  : (module Ojs.T with type t = a)) ->
+          fun (x12 : a list) ->
+            t_of_js A.t_of_js
+              (Ojs.new_obj_arr (Ojs.get_prop_ascii Ojs.global "Array")
+                 (let x13 =
+                    Ojs.new_obj (Ojs.get_prop_ascii Ojs.global "Array") [||] in
+                  List.iter
+                    (fun (x14 : a) ->
+                       ignore (Ojs.call x13 "push" [|(A.t_to_js x14)|])) x12;
+                  x13))
+    let (push : (module Ojs.T with type t = 'a) -> 'a t -> 'a -> unit) =
+      fun (type a) ->
+        fun ((module A)  : (module Ojs.T with type t = a)) ->
+          fun (x17 : a t) ->
+            fun (x16 : a) ->
+              ignore
+                (Ojs.call (t_to_js A.t_to_js x17) "push" [|(A.t_to_js x16)|])
+    let (pop : (module Ojs.T with type t = 'a) -> 'a t -> 'a option) =
+      fun (type a) ->
+        fun ((module A)  : (module Ojs.T with type t = a)) ->
+          fun (x19 : a t) ->
+            Ojs.option_of_js A.t_of_js
+              (Ojs.call (t_to_js A.t_to_js x19) "pop" [||])
     let (get : (module Ojs.T with type t = 'a) -> 'a t -> int -> 'a option) =
       fun (type a) ->
-      fun ((module A)  : (module Ojs.T with type t = a)) ->
-        fun (x22 : a t) ->
-          fun (x24 : int) ->
-            Ojs.option_of_js A.t_of_js
-              (Ojs.array_get (t_to_js A.t_to_js x22) x24)
+        fun ((module A)  : (module Ojs.T with type t = a)) ->
+          fun (x22 : a t) ->
+            fun (x24 : int) ->
+              Ojs.option_of_js A.t_of_js
+                (Ojs.array_get (t_to_js A.t_to_js x22) x24)
     let (set : (module Ojs.T with type t = 'a) -> 'a t -> int -> 'a -> unit)
-      = fun (type a) ->
-      fun ((module A)  : (module Ojs.T with type t = a)) ->
-        fun (x26 : a t) ->
-          fun (x28 : int) ->
-            fun (x29 : a) ->
-              Ojs.array_set (t_to_js A.t_to_js x26) x28 (A.t_to_js x29)
+      =
+      fun (type a) ->
+        fun ((module A)  : (module Ojs.T with type t = a)) ->
+          fun (x26 : a t) ->
+            fun (x28 : int) ->
+              fun (x29 : a) ->
+                Ojs.array_set (t_to_js A.t_to_js x26) x28 (A.t_to_js x29)
     let (join : string t -> string -> string) =
       fun (x31 : string t) ->
         fun (x30 : string) ->
