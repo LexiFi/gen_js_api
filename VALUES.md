@@ -347,6 +347,22 @@ An experimental feature also allows to pass an expression of type `Ojs.t` as
 a payload to replace the global object. The intended use case is to allow
 dynamic loading of modules.
 
+There is also a tuple notation `[@js.scope (s1, ..., sn)]` that helps
+writing nested scopes. It is equivalent to `[@js.scope sn]...[@js.scope s1]`.
+
+For instance, the following annotated modules will generate the same code:
+```ocaml
+  module NestedScope0 : sig
+    val f: string -> unit [@@js.global "outer.inner.f"]
+  end
+  module [@js.scope ("outer", "inner")] NestedScope1 : sig
+    val f: string -> unit [@@js.global]
+  end
+  module NestedScope2 : sig
+    val f: string -> unit [@@js.global]
+  end [@js.scope "inner"] [@js.scope "outer"]
+```
+
 Automatic binding (Deprecated since 1.0.7)
 ------------------------------------------
 
