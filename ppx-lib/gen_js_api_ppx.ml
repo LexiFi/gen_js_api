@@ -368,7 +368,7 @@ type decl =
              ty: typ;
              decl: valdef;
              loc: Location.t;
-             packages: (label * label) list; (** reversed order, (local_name, module_name) *)
+             packages: (string * string) list; (** reversed order, (local_name, module_name) *)
              global_attrs: attributes }
   | Class of classdecl list
   | Implem of Parsetree.structure
@@ -394,8 +394,8 @@ let no_attributes attributes =
 
 type type_context =
   {
-    type_params: label list;
-    packages: (label * label) list; (** reversed order, (local_name, module_name) *)
+    type_params: string list;
+    packages: (string * string) list; (** reversed order, (local_name, module_name) *)
   }
 
 let empty_type_context = { type_params = []; packages = [] }
