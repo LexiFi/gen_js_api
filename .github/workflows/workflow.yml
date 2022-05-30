@@ -10,9 +10,10 @@ jobs:
       fail-fast: false
       matrix:
         os:
-          # - macos-latest: disabled for now
           - ubuntu-latest
-          - windows-latest
+          # disabled for now:
+          # - macos-latest
+          # - windows-latest
         node-version:
           - 14.x
         ocaml-compiler:
