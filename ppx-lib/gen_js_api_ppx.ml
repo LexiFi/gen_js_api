@@ -739,7 +739,7 @@ and parse_class_field ~global_attrs = function
 
 (** Code generation *)
 
-let longident_parse x = Longident.parse x [@@ocaml.warning "-deprecated"]
+let longident_parse x = Longident.parse x [@@ocaml.alert "-deprecated"]
 
 let var x = Exp.ident (mknoloc (longident_parse x))
 let str s = Exp.constant (Pconst_string (s, Location.none, None))
