@@ -37,7 +37,8 @@ jobs:
         uses: ocaml/setup-ocaml@v2
         with:
           ocaml-compiler: ${{ matrix.ocaml-compiler }}
-          dune-cache: true
+          opam-pin: false
+          dune-cache: ${{ matrix.os != 'windows-latest' }}
 
       - run: opam install . --deps-only --with-doc --with-test
 
