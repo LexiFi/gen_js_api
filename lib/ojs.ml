@@ -133,3 +133,40 @@ module type T = sig
   val t_to_js : t -> js
   val t_of_js : js -> t
 end
+
+(* Ojs.T instances for built-in types *)
+module Int = struct
+  type t = int
+  let t_to_js = int_to_js
+  let t_of_js = int_of_js
+ end
+module String = struct
+  type t = string
+  let t_to_js = string_to_js
+  let t_of_js = string_of_js
+end
+module Bool = struct
+  type t = bool
+  let t_to_js = bool_to_js
+  let t_of_js = bool_of_js
+end
+module Float = struct
+  type t = float
+  let t_to_js = float_to_js
+  let t_of_js = float_of_js
+end
+module Array (A: T) = struct
+  type t = A.t array
+  let t_to_js = array_to_js A.t_to_js
+  let t_of_js = array_of_js A.t_of_js
+end
+module List (A: T) = struct
+  type t = A.t list
+  let t_to_js = list_to_js A.t_to_js
+  let t_of_js = list_of_js A.t_of_js
+end
+module Option (A: T) = struct
+  type t = A.t option
+  let t_to_js = option_to_js A.t_to_js
+  let t_of_js = option_of_js A.t_of_js
+end

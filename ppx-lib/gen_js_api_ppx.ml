@@ -249,6 +249,8 @@ type typ =
                  constrs:constructor list }
   | Tuple of typ list
   | Typ_var of string
+  | Packaged_type of { local_name:  string; (* `a` specified by `(type a)`*)
+                       module_name: string  (* `A` as in `(module A : Ojs.T with type t = a)` *) }
 
 and lab =
   | Arg
@@ -362,7 +364,12 @@ type decl =
   | Module of functor_parameter list * string * decl list
   | RecModule of (module_type * functor_parameter list * string * decl list) list
   | Type of rec_flag * Parsetree.type_declaration list * attributes
-  | Val of string * typ * valdef * Location.t * attributes
+  | Val of { name:string;
+             ty: typ;
+             decl: valdef;
+             loc: Location.t;
+             packages: (string * string) list; (** reversed order, (local_name, module_name) *)
+             global_attrs: attributes }
   | Class of classdecl list
   | Implem of Parsetree.structure
   | Open of Parsetree.open_description
@@ -385,7 +392,15 @@ let no_attributes attributes =
     ) attributes;
   attributes = []
 
-let rec parse_arg ~variance ctx lab ~global_attrs ty =
+type type_context =
+  {
+    type_params: string list;
+    packages: (string * string) list; (** reversed order, (local_name, module_name) *)
+  }
+
+let empty_type_context = { type_params = []; packages = [] }
+
+let rec parse_arg ~variance (ctx: type_context) lab ~global_attrs ty =
   let lab =
     match lab with
     | Nolabel -> Arg
@@ -448,13 +463,16 @@ and parse_typ ~variance ctx ~global_attrs ty =
       Tuple typs
 
   | Ptyp_var label ->
-      if List.mem label ctx then
+      if List.mem label ctx.type_params then
         if variance < 0 then
           error ty.ptyp_loc (Contravariant_type_parameter label)
         else
           Name (local_type_of_type_var label, [])
       else
-        Typ_var label
+        begin match List.assoc_opt label ctx.packages with
+        | Some module_name -> Packaged_type { local_name = label; module_name }
+        | None -> Typ_var label
+        end
 
   | _ ->
       error ty.ptyp_loc Cannot_parse_type
@@ -569,12 +587,31 @@ let parse_attr ~global_attrs (s, loc, auto) attribute =
   | exception Not_found -> None
   | _, f -> Some (f ())
 
+let extract_packages_for_valdecl ty =
+  let is_ojs_T (ojs_T: Longident.t) (t: Longident.t) =
+    match Longident.flatten_exn ojs_T, Longident.flatten_exn t with
+    | ["Ojs"; "T"], ["t"] -> true
+    | _ -> false
+  in
+  let rec go acc ty =
+    match ty.ptyp_desc with
+    | Ptyp_arrow (Nolabel, { ptyp_desc = Ptyp_package ({ txt = ojs_T; _ }, [{ txt = t; _}, { ptyp_desc = Ptyp_var tyvar; _ }]); ptyp_attributes; _ }, rest)
+      when is_ojs_T ojs_T t && has_attribute "js" ptyp_attributes ->
+        let module_name =
+          String.mapi (fun i c -> if i = 0 then Char.uppercase_ascii c else c) tyvar
+        in
+        go ((tyvar, module_name) :: acc) rest
+    | _ -> ty, acc
+  in
+  go [] ty
+
 let parse_valdecl ~global_attrs ~in_sig vd =
   let attributes = vd.pval_attributes in
   let global_attrs = attributes @ global_attrs in
   let s = vd.pval_name.txt in
   let loc = vd.pval_loc in
-  let ty = parse_typ [] ~global_attrs vd.pval_type in
+  let ty, packages = extract_packages_for_valdecl vd.pval_type in
+  let ty = parse_typ { empty_type_context with packages } ~global_attrs ty in
   let auto () = auto ~global_attrs s ty in
   let defs = choose (parse_attr ~global_attrs (s, loc, auto)) attributes in
   let r =
@@ -584,7 +621,7 @@ let parse_valdecl ~global_attrs ~in_sig vd =
     | [] -> raise Exit
     | _ -> error loc Multiple_binding_declarations
   in
-  Val (s, ty, r, loc, global_attrs)
+  Val { name = s; ty; decl = r; packages; loc; global_attrs }
 
 let rec functor_of_module_type = function
   | {pmty_desc = Pmty_signature si; pmty_attributes; _} -> Some ([], si, pmty_attributes)
@@ -684,7 +721,7 @@ and parse_class_decl ~global_attrs = function
         | _ -> error pci_loc Cannot_parse_classdecl
       in
       let class_arrow =
-        match parse_typ [] ~global_attrs (convert_typ pci_expr) with
+        match parse_typ empty_type_context ~global_attrs (convert_typ pci_expr) with
         | Arrow ({ty_args = _; ty_vararg = _; unit_arg = _; ty_res = Name (_, [])} as params) -> params
         | (Name (_, []) as ty_res) -> {ty_args = []; ty_vararg = None; unit_arg = false; ty_res}
         | _ -> error pci_loc Cannot_parse_classdecl
@@ -700,7 +737,7 @@ and parse_class_decl ~global_attrs = function
 
 and parse_class_field ~global_attrs = function
   | {pctf_desc = Pctf_method ({txt = method_name; _}, Public, Concrete, typ); pctf_loc; pctf_attributes} ->
-      let ty = parse_typ [] ~global_attrs typ in
+      let ty = parse_typ empty_type_context ~global_attrs typ in
       let auto () = auto_in_object ~global_attrs method_name ty in
       let defs = choose (parse_attr ~global_attrs (method_name, pctf_loc, auto)) pctf_attributes in
       let kind =
@@ -871,7 +908,36 @@ let set_path global_object s v =
   let o, x = select_path global_object s in
   ojs_set o x v
 
-let def s ty body =
+let def ?packages s ty body =
+  let ty, body =
+    match packages with
+    | None | Some [] -> ty, body
+    | Some packages ->
+      (* append module arguments *)
+      let folder1 (ty, body) (local_name, module_name) =
+        let package is_local =
+          let t =
+            if is_local then Typ.constr (mknoloc (Lident local_name)) []
+            else Typ.var local_name
+          in
+          Typ.package (mknoloc (Ldot (Lident "Ojs", "T"))) [mknoloc (Lident "t"), t] in
+        let ty = Typ.arrow Nolabel (package false) ty in
+        let body =
+          let arg =
+            Pat.constraint_
+              (Pat.unpack (mknoloc (Some module_name)))
+              (package true)
+          in
+          Exp.fun_ Nolabel None arg body
+        in
+        ty, body
+      in
+      (* append locally abstract types *)
+      let folder2 (ty, body) (local_name, _) =
+        ty, Exp.newtype (mknoloc local_name) body
+      in
+      List.fold_left folder2 (List.fold_left folder1 (ty, body) packages) packages
+  in
   Str.value Nonrecursive [ Vb.mk (Pat.constraint_ (Pat.var (mknoloc s)) ty) body ]
 
 let builtin_type = function
@@ -1019,6 +1085,8 @@ let rec js2ml ty exp =
       let_exp_in exp f
   | Typ_var _ ->
       app (var ("Obj.magic")) (nolabel ([exp])) false
+  | Packaged_type { module_name; _ } ->
+      app (var (module_name ^ ".t_of_js")) (nolabel [exp]) false
 
 and js2ml_of_variant ~variant loc ~global_attrs attrs constrs exp =
   let variant_kind = get_variant_kind loc attrs in
@@ -1273,6 +1341,8 @@ and ml2js ty exp =
       end
   | Typ_var _ ->
       app (var ("Obj.magic")) (nolabel ([exp])) false
+  | Packaged_type { module_name; _ } ->
+      app (var (module_name ^ ".t_to_js")) (nolabel [exp]) false
 
 and ml2js_discriminator ~global_attrs mlconstr attributes =
   match get_js_constr ~global_attrs mlconstr attributes with
@@ -1465,9 +1535,9 @@ and js2ml_unit ty_res res =
   | Unit _ -> exp_ignore res
   | _ -> js2ml ty_res res
 
-and gen_typ = function
+and gen_typ ?(packaged_type_as_type_var = false) = function
   | Name (s, tyl) ->
-      Typ.constr (mknoloc (longident_parse s)) (List.map gen_typ tyl)
+      Typ.constr (mknoloc (longident_parse s)) (List.map (gen_typ ~packaged_type_as_type_var) tyl)
   | Js -> ojs_typ
   | Unit _ ->
       Typ.constr (mknoloc (Lident "unit")) []
@@ -1478,21 +1548,25 @@ and gen_typ = function
         | Some {lab; att; typ} -> ty_args @ [{lab; att; typ=Name ("list", [typ])}]
       in
       let tl = if unit_arg then tl @ [{lab=Arg;att=[];typ=Unit none}] else tl in
-      List.fold_right (fun {lab; att=_; typ} t2 -> Typ.arrow (arg_label lab) (gen_typ typ) t2) tl (gen_typ ty_res)
+      List.fold_right (fun {lab; att=_; typ} t2 ->
+        Typ.arrow (arg_label lab) (gen_typ ~packaged_type_as_type_var typ) t2) tl (gen_typ ~packaged_type_as_type_var ty_res)
   | Variant {location = _; global_attrs = _; attributes = _; constrs} ->
       let f {mlconstr; arg; attributes = _; location = _} =
         let mlconstr = mknoloc mlconstr in
         match arg with
         | Constant -> Rf.mk (Rtag (mlconstr, true, []))
-        | Unary typ -> Rf.mk (Rtag (mlconstr, false, [gen_typ typ]))
-        | Nary typs -> Rf.mk (Rtag (mlconstr, false, [gen_typ (Tuple typs)]))
+        | Unary typ -> Rf.mk (Rtag (mlconstr, false, [gen_typ ~packaged_type_as_type_var typ]))
+        | Nary typs -> Rf.mk (Rtag (mlconstr, false, [gen_typ ~packaged_type_as_type_var (Tuple typs)]))
         | Record _ -> assert false
       in
       let rows = List.map f constrs in
       Typ.variant rows Closed None
   | Tuple typs ->
-      Typ.tuple (List.map gen_typ typs)
+      Typ.tuple (List.map (gen_typ ~packaged_type_as_type_var) typs)
   | Typ_var label -> Typ.var label
+  | Packaged_type { local_name; _ } ->
+    if packaged_type_as_type_var then Typ.var local_name
+    else Typ.constr (mknoloc (Lident local_name)) []
 
 and mkfun ?typ ?eta f =
   let s = fresh () in
@@ -1556,6 +1630,7 @@ and gen_funs ~global_attrs p =
       ) p.ptype_params
   in
   let ctx = List.map (fun lwl -> lwl.txt) ctx_withloc in
+  let full_ctx = { empty_type_context with type_params = ctx } in
   let loc = p.ptype_loc in
   let exception Skip_mapping_generation in
   let local_type = Name (name, List.map (fun txt -> Name (local_type_of_type_var txt, [])) ctx) in
@@ -1603,7 +1678,7 @@ and gen_funs ~global_attrs p =
         let ty, eta =
           match p.ptype_manifest with
           | None -> Js, true
-          | Some ty -> parse_typ ctx ~global_attrs { ty with ptyp_attributes = decl_attrs @ ty.ptyp_attributes }, false
+          | Some ty -> parse_typ full_ctx ~global_attrs { ty with ptyp_attributes = decl_attrs @ ty.ptyp_attributes }, false
         in
         lazy (js2ml_fun ~eta ty),
         lazy (ml2js_fun ~eta ty),
@@ -1616,12 +1691,12 @@ and gen_funs ~global_attrs p =
             | Pcstr_tuple args ->
                 begin match args with
                 | [] -> Constant
-                | [x] -> Unary (parse_typ ctx ~global_attrs x)
-                | _ :: _ :: _ -> Nary (List.map (parse_typ ctx ~global_attrs) args)
+                | [x] -> Unary (parse_typ full_ctx ~global_attrs x)
+                | _ :: _ :: _ -> Nary (List.map (parse_typ full_ctx ~global_attrs) args)
                 end
             | Pcstr_record args ->
                 let global_attrs = c.pcd_attributes @ global_attrs in
-                Record (List.map (process_fields ctx ~global_attrs) args)
+                Record (List.map (process_fields full_ctx ~global_attrs) args)
           in
           { mlconstr; arg; attributes = c.pcd_attributes; location = c.pcd_loc }
         in
@@ -1631,7 +1706,7 @@ and gen_funs ~global_attrs p =
         []
     | Ptype_record lbls ->
         let global_attrs = decl_attrs @ global_attrs in
-        let lbls = List.map (process_fields ctx ~global_attrs) lbls in
+        let lbls = List.map (process_fields full_ctx ~global_attrs) lbls in
         let of_js x (_loc, ml, js, ty) = ml, js2ml ty (ojs_get x js) in
         let to_js x (_loc, ml, js, ty) = Exp.tuple [str js; ml2js ty (Exp.field x ml)] in
         lazy (mkfun ~typ:Js (fun x -> Exp.record (List.map (of_js x) lbls) None)),
@@ -1702,12 +1777,12 @@ and gen_decl = function
   | RecModule modules ->
       [ Str.rec_module (List.map (fun (module_type, functor_parameters, s, decls) -> gen_module ~module_type functor_parameters s decls) modules) ]
 
-  | Val (_, _, Ignore, _, _) -> []
+  | Val { decl = Ignore; _ } -> []
 
-  | Val (s, ty, decl, loc, global_attrs) ->
+  | Val { name = s; ty; decl; packages; loc; global_attrs } ->
       let global_object = global_object ~global_attrs in
       let d = gen_def ~global_object loc decl ty in
-      [ def s (gen_typ ty) d ]
+      [ def ~packages s (gen_typ ~packaged_type_as_type_var:true ty) d ]
 
   | Class decls ->
       let cast_funcs = List.concat (List.map gen_class_cast decls) in
@@ -1980,13 +2055,13 @@ and module_expr_rewriter ~loc ~attrs sg =
 
 and js_to_rewriter ~loc ty =
   let e' = with_default_loc {loc with loc_ghost = true }
-      (fun () -> js2ml_fun (parse_typ [] ~global_attrs:[] ty))
+      (fun () -> js2ml_fun (parse_typ empty_type_context ~global_attrs:[] ty))
   in
   { e' with pexp_loc = loc }
 
 and js_of_rewriter ~loc ty =
   let e' = with_default_loc {loc with loc_ghost = true}
-      (fun () -> ml2js_fun (parse_typ [] ~global_attrs:[] ty))
+      (fun () -> ml2js_fun (parse_typ empty_type_context ~global_attrs:[] ty))
   in
   { e' with pexp_loc = loc  }
 

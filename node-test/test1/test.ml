@@ -260,3 +260,42 @@ let () =
   let fooA' = Bar.to_foo barA in
   assert (Foo.describe fooA' = "Foo:A");
   ()
+
+(** Using first class modules **)
+include [%js:
+  val to_string: (module[@js] Ojs.T with type t = 'a) -> 'a -> string [@@js.call "toString"]
+]
+let () =
+  let check (type a) (module A : Ojs.T with type t = a) (value: a) (expected: string) =
+    let str = to_string (module A) value in
+    assert (str = expected)
+  in
+  check (module Ojs.Int) 42 "42";
+  check (module Ojs.Float) 4.2 "4.2";
+  check (module Ojs.String) "hello" "hello";
+  check (module Ojs.List(Ojs.Int)) [4;2] "4,2";
+  check (module Ojs.List(Ojs.String)) ["hello"; "world"] "hello,world";
+  ()
+let () =
+  let open Arrays.JsArray2 in
+  let a = create () in
+  for k = 0 to 10 do
+    push (module Ojs.String) a (string_of_int k);
+  done;
+
+  let sa = join a "," in
+  List.iteri (fun k x ->
+    assert (string_of_int k = x)
+  ) (String.split_on_char ',' sa);
+
+  let b =
+    let orig = List.init 11 string_of_int in
+    create' (module Ojs.String) orig
+  in
+  let sb = join b "," in
+  assert (sa = sb);
+
+  assert (get (module Ojs.String) a 0 = Some "0");
+  set (module Ojs.String) a 1 "foo";
+  assert (get (module Ojs.String) a 1 = Some "foo");
+  ()

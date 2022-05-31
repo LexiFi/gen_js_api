@@ -414,8 +414,8 @@ module JsArray : sig
   val t_to_js: ('a -> Ojs.t) -> 'a t -> Ojs.t
 
   val create: int -> 'a t [@@js.new "Array"]
-  val push: 'a t -> 'a -> unit
-  val pop: 'a t -> 'a option
+  val push: 'a t -> 'a -> unit [@@js.call]
+  val pop: 'a t -> 'a option [@@js.call]
 end
 ```
 
@@ -434,5 +434,45 @@ To properly do this, we would want the strings contained in the data structure
 to be converted /to JS types, this would require conversion functions not
 ignoring their first argument that are manually implemented.
 
-See the [section on manually created bindings](LOW_LEVEL_BINDING.md) for more
-information.
+One approach is to use functors instead:
+```ocaml
+(* Ojs.T is defined as follows:
+
+  module type T = sig
+    type t
+    val t_to_js : t -> Ojs.t
+    val t_of_js : Ojs.t -> t
+  end
+*)
+
+module JsArray (E: Ojs.T): sig
+  type t
+  val t_to_js: t -> Ojs.t
+  val t_of_js: Ojs.t -> t
+
+  val create: unit -> t [@@js.new "Array"]
+  val push: t -> E.t -> unit [@@js.call]
+  val pop: t -> E.t option [@@js.call]
+end
+
+module StringArray : sig
+  include (module type of JsArray(Ojs.String))
+
+  val join: t -> string -> string [@@js.call]
+end
+```
+By moving the type parameters to the functor arguments, you can enforce the
+value conversion between JS types and OCaml types.
+
+You can also use [first-class modules](VALUES.md#first-class-modules) for value bindings,
+which will be used to convert the polymorphic values and thus making the binding safe:
+```ocaml
+module[@js.scope "console"] Console: sig
+  val log: (module[@js] Ojs.T with type t = 'a) -> 'a -> unit [@@js.global]
+end
+```
+
+You can also create safe bindings manually with the low level functions
+provided by `Ojs` module. See the [section on manually created bindings](LOW_LEVEL_BINDING.md)
+for more information.
+

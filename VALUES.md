@@ -363,6 +363,71 @@ For instance, the following annotated modules will generate the same code:
   end [@js.scope "inner"] [@js.scope "outer"]
 ```
 
+First-class modules
+-------------------
+
+As introduced in [Type variables](TYPES.md#type-variables), you can use
+first-class modules to enforce JS/OCaml value conversion on polymorphic functions.
+
+```ocaml
+module[@js.scope "console"] Console: sig
+  val log: (module[@js] Ojs.T with type t = 'a) -> 'a -> unit [@@js.global]
+end
+```
+
+There are several restrictions when using first-class modules:
+
+* First-class modules must be annotated with `@js`.
+  - This attribute indicates that it should only be used to convert values
+    and should not be passed directly to the JS function.
+
+* First-class modules must come before any other normal types.
+  - The following is invalid because the first-class module comes after a normal type `'a`:
+    ```ocaml
+    val log: 'a -> (module[@js] Ojs.T with type t = 'a) -> unit [@@js.global]
+    ```
+
+* A first-class module to convert a type variable `'x` must be in the form of
+  `(module[@js] Ojs.T with type t = 'x)`.
+  - The following is invalid because it has a different form (though the meaning is equivalent):
+    ```ocaml
+    module type MyOjsT = Ojs.T
+
+    val log: (module[@js] MyOjsT with type t = 'a]) -> 'a -> unit [@@js.global]
+    ```
+
+* First-class modules can't be used outside of value bindings.
+  - The following is invalid because it is used in a type alias:
+    ```ocaml
+    type 'a logger = (module[@js] Ojs.T with type t = 'a) -> 'a -> unit
+
+    val log: 'a logger [@@js.global]
+    ```
+
+To use bindings with first-class modules, you just have to pass the enclosing modules of the types:
+```ocaml
+module[@js.scope "Person"] Person : sig
+  type t
+
+  (* these functions must be present *)
+  val t_to_js: t -> Ojs.t
+  val t_of_js: Ojs.t -> t
+
+  val create: string -> t [@@js.create]
+end
+
+let p = Person.create "Foo";;
+
+Console.log (module Person) p;; (* Person { name: 'Foo' } *)
+```
+
+For built-in types, there are pre-defined modules available in the `Ojs` module:
+```ocaml
+Console.log (module Ojs.String) "hello, world!";;
+Console.log (module Ojs.Int) 42;;
+Console.log (module Ojs.List(Ojs.String)) ["hello"; "world!"];;
+```
+
 Automatic binding (Deprecated since 1.0.7)
 ------------------------------------------
 

@@ -213,6 +213,19 @@ module Console3: sig
   val log4: 'a -> 'b -> 'c -> 'd -> unit [@@js.global "console.log"]
 end
 
+module Console4: sig
+  val log: (module[@js] Ojs.T with type t = 'a) -> 'a -> unit [@@js.global "console.log"]
+  val log2:
+    (module[@js] Ojs.T with type t = 'a) ->
+    (module[@js] Ojs.T with type t = 'b) ->
+    'a -> 'b -> unit [@@js.global "console.log"]
+  val log3:
+    (module[@js] Ojs.T with type t = 'a) ->
+    (module[@js] Ojs.T with type t = 'b) ->
+    (module[@js] Ojs.T with type t = 'c) ->
+    'a -> 'b -> 'c -> unit [@@js.global "console.log"]
+end
+
 module Location: sig
   val hash: unit -> string
   val set_hash: string -> unit

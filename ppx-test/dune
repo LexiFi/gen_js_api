@@ -115,8 +115,8 @@
   (diff expected/issues_mli.ml issues_mli.ml)))
 
 (rule
- (targets recursive_module.ml)
- (deps recursive_module.mli)
+ (targets recursive_modules.ml)
+ (deps recursive_modules.mli)
  (action
   (run gen_js_api %{deps} -o %{targets})))
 
@@ -124,7 +124,19 @@
  (alias runtest)
  (package gen_js_api)
  (action
-  (diff expected/recursive_module.ml recursive_module.ml)))
+  (diff expected/recursive_modules.ml recursive_modules.ml)))
+
+(rule
+ (targets first_class_modules.ml)
+ (deps first_class_modules.mli)
+ (action
+  (run gen_js_api %{deps} -o %{targets})))
+
+(rule
+ (alias runtest)
+ (package gen_js_api)
+ (action
+  (diff expected/first_class_modules.ml first_class_modules.ml)))
 
 (library
  (name test_library)
@@ -132,7 +144,10 @@
  (preprocess
   (pps gen_js_api.ppx))
  (modes byte)
- (modules binding_automatic binding_manual extension issues types))
+ (modules
+  binding_automatic binding_explicitly_automatic binding_manual binding
+  extension first_class_modules issues_mli issues
+  recursive_modules scoped types union_and_enum))
 
 (rule
  (alias runtest)
