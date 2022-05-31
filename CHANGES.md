@@ -4,6 +4,7 @@ Changelog
 Upcoming 
 --------
 - GPR#167: Fix CI (@cannorin)
+- GPR#166: Support first class modules to treat type variables safely (@cannorin)
 
 Version 1.1.0
 -------------
