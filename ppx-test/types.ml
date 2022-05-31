@@ -130,4 +130,16 @@ module T  = [%js:
     type discr_union_value =
       A [@js 0] | B of int [@js "42"] | C of int | D of Ojs.t [@js.default] [@@js.union on_field "discr"]
 
+    module NestedScope0 : sig
+      val f: string -> unit [@@js.global "outer.inner.f"]
+    end
+
+    module [@js.scope ("outer", "inner")] NestedScope1 : sig
+      val f: string -> unit [@@js.global]
+    end
+
+    module NestedScope2 : sig
+     val f: string -> unit [@@js.global]
+    end [@js.scope "inner"] [@js.scope "outer"]
+
 ]
