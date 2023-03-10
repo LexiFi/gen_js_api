@@ -1,6 +1,6 @@
 (lang dune 2.7)
 (name gen_js_api)
-(version 1.1.1)
+(version 1.1.2)
 
 (maintainers "Alain Frisch <alain.frisch@lexifi.com>")
 (authors
@@ -39,5 +39,5 @@ gen_js_api is to be used with the js_of_ocaml compiler.
   (ppxlib (>= 0.26))
   (js_of_ocaml-compiler :with-test)
   (conf-npm :with-test)
-  (ojs (= 1.1.1)))
+  (ojs (= :version)))
 )
