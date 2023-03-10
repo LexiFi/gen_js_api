@@ -117,7 +117,10 @@ external new_obj_arr: t -> t -> t = "caml_ojs_new_arr"
 
 let empty_obj () = new_obj (get_prop_ascii global "Object") [||]
 
-external iter_properties: t -> (string -> unit) -> unit = "caml_ojs_iterate_properties"
+external iter_properties_untyped : t -> t -> unit = "caml_ojs_iterate_properties"
+let iter_properties x f =
+  iter_properties_untyped x (fun_to_js 1 (fun x -> f (string_of_js x)))
+
 let apply_arr o arr = call o "apply" [| null; arr |]
 let call_arr o s arr = call (get_prop o (string_to_js s)) "apply" [| o; arr |]
 
