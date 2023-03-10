@@ -1,6 +1,11 @@
 Changelog
 =========
 
+Version 1.1.2
+-------------
+
+- GPR#170: Make Ojs.iter_properties compatible with jsoo/effects (@vouillon)
+
 Version 1.1.1
 -------------
 - GPR#167: Fix CI (@cannorin)
