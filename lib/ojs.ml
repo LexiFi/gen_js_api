@@ -91,7 +91,7 @@ let list_to_js f l =
   array_to_js f (Array.of_list l)
 
 let option_of_js f x =
-  if equals x null || x == undefined then None
+  if equals x null then None
   else Some (f x)
 
 let option_to_js f = function
