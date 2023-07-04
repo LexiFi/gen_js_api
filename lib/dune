@@ -3,9 +3,5 @@
  (synopsis "Runtime support for gen_js_api")
  (libraries js_of_ocaml-compiler.runtime)
  (wrapped false)
- (foreign_stubs
-  (language c)
-  (names ojs_runtime_stubs))
  (modes byte)
- (js_of_ocaml
-  (javascript_files ojs_runtime.js)))
+)

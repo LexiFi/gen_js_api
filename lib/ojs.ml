@@ -13,7 +13,12 @@
 *)
 
 
-type t
+type t = Jsoo_runtime.Js.t
+
+external pure_js_expr: string -> t = "caml_pure_js_expr"
+let global = pure_js_expr "joo_global_object"
+let null = pure_js_expr "null"
+let undefined = pure_js_expr "undefined"
 
 external t_of_js: t -> t = "%identity"
 external t_to_js: t -> t = "%identity"
@@ -52,13 +57,7 @@ let type_of x = string_of_js (internal_type_of x)
 external internal_instance_of: t -> t -> t = "caml_js_instanceof"
 let instance_of x ~constr = bool_of_js (internal_instance_of x constr)
 
-external pure_js_expr: string -> t = "caml_pure_js_expr"
-let null = pure_js_expr "null"
-let undefined = pure_js_expr "undefined"
-
 external equals: t -> t -> bool = "caml_js_equals"
-
-let global = pure_js_expr "joo_global_object"
 
 external new_obj: t -> t array -> t = "caml_js_new"
 
@@ -107,7 +106,7 @@ class obj (x:t) =
   end
 
 external fun_to_js: int -> (t -> 'a) -> t = "caml_js_wrap_callback_strict"
-external fun_to_js_args: (t -> 'a) -> t = "caml_ojs_wrap_fun_arguments"
+external fun_to_js_args: (t -> 'a) -> t = "caml_js_wrap_callback_arguments"
 
 let has_property o x =
   type_of o = "object" && o != null
@@ -117,9 +116,14 @@ external new_obj_arr: t -> t -> t = "caml_ojs_new_arr"
 
 let empty_obj () = new_obj (get_prop_ascii global "Object") [||]
 
-external iter_properties_untyped : t -> t -> unit = "caml_ojs_iterate_properties"
-let iter_properties x f =
-  iter_properties_untyped x (fun_to_js 1 (fun x -> f (string_of_js x)))
+
+let getOwnPropertyNames obj =
+  Jsoo_runtime.Js.meth_call
+  (Jsoo_runtime.Js.get global (string_to_js "Object"))
+  "getOwnPropertyNames" [| obj |]
+  |> array_of_js string_of_js
+
+let iter_properties obj f = Array.iter f (getOwnPropertyNames obj)
 
 let apply_arr o arr = call o "apply" [| null; arr |]
 let call_arr o s arr = call (get_prop o (string_to_js s)) "apply" [| o; arr |]

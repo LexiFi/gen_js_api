@@ -4,8 +4,16 @@
 
 (** Binding with JS values. *)
 
-type t
+type t = Jsoo_runtime.Js.t
 (** The universal type representing arbitrary JS values. *)
+
+(** {2 Constants } *)
+
+val null: t
+
+val undefined: t
+
+val global: t
 
 (** {2 Mapper for built-in types} *)
 
@@ -42,111 +50,10 @@ val option_to_js: ('a -> t) -> 'a option -> t
 val unit_of_js: t -> unit
 val unit_to_js: unit -> t
 
-
-(** {2 Wrap OCaml functions as JS functions} *)
-
-external fun_to_js: int -> (t -> 'a) -> t = "caml_js_wrap_callback_strict"
-(** Wrap an OCaml function of known arity (>=1) into a JS function.
-    Extra arguments are discarded and missing argument are filled with
-    'undefined'.
-*)
-
-external fun_to_js_args: (t -> 'a) -> t = "caml_ojs_wrap_fun_arguments"
-(** Wrap an OCaml function taking JS arguments as a JS array. *)
-
-
-(** {2 JS objects} *)
-
-external get: t -> string -> t = "caml_js_get"
-  [@@ocaml.deprecated "Use Ojs.get_prop_ascii instead."]
-
-external set: t -> string -> t -> unit = "caml_js_set"
-  [@@ocaml.deprecated "Use Ojs.set_prop_ascii instead."]
-
-external delete: t -> string -> unit = "caml_js_delete"
-  [@@ocaml.deprecated "Use Ojs.delete_prop_ascii instead."]
-
-external get_prop_ascii: t -> string -> t = "caml_js_get"
-  (** Get the property from an object (only works if the property key is a plain ascii string). *)
-
-external set_prop_ascii: t -> string -> t -> unit = "caml_js_set"
-  (** Set an object property (only works if the property key is a plain ascii string). *)
-
-external delete_prop_ascii: t -> string -> unit = "caml_js_delete"
-  (** Delete an object property (only works if the property key is a plain ascii string). *)
-
-external get_prop: t -> t -> t = "caml_js_get"
-  (** Get the property from an object. *)
-
-external set_prop: t -> t -> t -> unit = "caml_js_set"
-  (** Set an object property. *)
-
-external delete_prop: t -> t -> unit = "caml_js_delete"
-  (** Delete an object property. *)
-
-external obj: (string * t) array -> t = "caml_js_object"
-
-val empty_obj: unit -> t
-
-val has_property: t -> string -> bool
-val iter_properties: t -> (string -> unit) -> unit
-
-(** {2 Calling JS functions} *)
-
-external call: t -> string -> t array -> t = "caml_js_meth_call"
-(** Call a method on an object (binding 'this' to the object). *)
-
-external apply: t -> t array -> t = "caml_js_fun_call"
-(** Call a function. *)
-
-external new_obj: t -> t array -> t = "caml_js_new"
-(** Call a constructor *)
-
-val call_arr: t -> string -> t -> t
-(** Variant of [Ojs.call] where the arguments are passed as an already
-    built JS array. *)
-
-val apply_arr: t -> t -> t
-(** Variant of [Ojs.apply] where the arguments are passed as an already
-    built JS array. *)
-
-external new_obj_arr: t -> t -> t = "caml_ojs_new_arr"
-(** Variant of [Ojs.new_obj] where the arguments are passed as an already
-    built JS array. *)
-
-(** {2 Arrays} *)
-
-val array_make: int -> t
-val array_get: t -> int -> t
-val array_set: t -> int -> t -> unit
-
-(** {2 Misc} *)
-
-val global: t
-val null: t
-
-external variable: string -> t = "caml_js_var"
-
-val type_of: t -> string
-
-val instance_of: t -> constr:t -> bool
-
 class obj: t ->
   object
     method to_js: t
   end
-
-val is_null: t -> bool
-
-val obj_type: t -> string
-(** Returns:
-    "[object Array]"
-    "[object Object]"
-    "[object Number]"
-    "[object String]"
-    "[object Null]"
-    "[object Boolean]"
-*)
 
 module type T =
   sig
@@ -164,3 +71,98 @@ module Float : T with type t = float
 module Array (A: T) : T with type t = A.t array
 module List (A: T) : T with type t = A.t list
 module Option (A: T) : T with type t = A.t option
+
+(** {2 Deprecated Functions } *)
+
+external fun_to_js: int -> (t -> 'a) -> t = "caml_js_wrap_callback_strict"
+  [@@ocaml.deprecated "Use Jsoo_runtime.Js.callback_with_arity instead."]
+
+external fun_to_js_args: (t -> 'a) -> t = "caml_js_wrap_callback_arguments"
+  [@@ocaml.deprecated "Use Jsoo_runtime.Js.callback_with_arguments instead."]
+
+external get: t -> string -> t = "caml_js_get"
+  [@@ocaml.deprecated "Use Ojs.get_prop_ascii instead."]
+
+external set: t -> string -> t -> unit = "caml_js_set"
+  [@@ocaml.deprecated "Use Ojs.set_prop_ascii instead."]
+
+external delete: t -> string -> unit = "caml_js_delete"
+  [@@ocaml.deprecated "Use Ojs.delete_prop_ascii instead."]
+
+external get_prop_ascii: t -> string -> t = "caml_js_get"
+  [@@ocaml.deprecated "Use Jsoo_runtime.Js.get instead."]
+  (** Get the property from an object (only works if the property key is a plain ascii string). *)
+
+external set_prop_ascii: t -> string -> t -> unit = "caml_js_set"
+  [@@ocaml.deprecated "Use Jsoo_runtime.Js.set instead."]
+  (** Set an object property (only works if the property key is a plain ascii string). *)
+
+external delete_prop_ascii: t -> string -> unit = "caml_js_delete"
+  [@@ocaml.deprecated "Use Jsoo_runtime.Js.delete instead."]
+  (** Delete an object property (only works if the property key is a plain ascii string). *)
+
+external get_prop: t -> t -> t = "caml_js_get"
+  [@@ocaml.deprecated "Use Jsoo_runtime.Js.get instead."]
+  (** Get the property from an object. *)
+
+external set_prop: t -> t -> t -> unit = "caml_js_set"
+  [@@ocaml.deprecated "Use Jsoo_runtime.Js.set instead."]
+  (** Set an object property. *)
+
+external delete_prop: t -> t -> unit = "caml_js_delete"
+  [@@ocaml.deprecated "Use Jsoo_runtime.Js.delete instead."]
+  (** Delete an object property. *)
+
+external obj: (string * t) array -> t = "caml_js_object"
+  [@@ocaml.deprecated "Use Jsoo_runtime.Js.obj instead."]
+
+val empty_obj: unit -> t
+  [@@ocaml.deprecated "Use Jsoo_runtime.Js.obj instead."]
+
+val has_property: t -> string -> bool
+  [@@ocaml.deprecated "Please do not use. It will be removed."]
+
+val iter_properties: t -> (string -> unit) -> unit
+  [@@ocaml.deprecated "Please do not use. It will be removed."]
+
+external call: t -> string -> t array -> t = "caml_js_meth_call"
+  [@@ocaml.deprecated  "Use Jsoo_runtime.Js.meth_call instead."]
+
+external apply: t -> t array -> t = "caml_js_fun_call"
+  [@@ocaml.deprecated  "Use Jsoo_runtime.Js.fun_call instead."]
+
+external new_obj: t -> t array -> t = "caml_js_new"
+  [@@ocaml.deprecated  "Use Jsoo_runtime.Js.new_obj instead."]
+
+val call_arr: t -> string -> t -> t
+  [@@ocaml.deprecated  "Use Jsoo_runtime.Js.meth_call instead."]
+
+val apply_arr: t -> t -> t
+  [@@ocaml.deprecated  "Use Jsoo_runtime.Js.fun_call instead."]
+
+external new_obj_arr: t -> t -> t = "caml_ojs_new_arr"
+  [@@ocaml.deprecated  "Use Jsoo_runtime.Js.new_obj_arr."]
+
+val array_make: int -> t
+  [@@ocaml.deprecated  "Use another binding of the global Array module."]
+
+val array_get: t -> int -> t
+  [@@ocaml.deprecated  "Use another binding of the global Array module."]
+
+val array_set: t -> int -> t -> unit
+  [@@ocaml.deprecated  "Use another binding of the global Array module."]
+
+external variable: string -> t = "caml_js_var"
+  [@@ocaml.deprecated "For compatibility only."]
+
+val type_of: t -> string
+  [@@ocaml.deprecated "Use Jsoo_runtime.Js.typeof instead."]
+
+val instance_of: t -> constr:t -> bool
+  [@@ocaml.deprecated "Use Jsoo_runtime.Js.instanceof instead."]
+
+val is_null: t -> bool
+  [@@ocaml.deprecated "Please do not use. It will be removed."]
+
+val obj_type: t -> string
+  [@@ocaml.deprecated "Please do not use. It will be removed."]
