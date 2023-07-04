@@ -7,8 +7,10 @@ module Console =
         fun ((module A)  : (module Ojs.T with type t = a)) ->
           fun (x1 : a) ->
             ignore
-              (Ojs.call (Ojs.get_prop_ascii Ojs.global "console") "log"
-                 [|(A.t_to_js x1)|])
+              (Jsoo_runtime.Js.meth_call
+                 (Jsoo_runtime.Js.get
+                    (Jsoo_runtime.Js.pure_js_expr "joo_global_object")
+                    (Obj.magic "console")) "log" [|(A.t_to_js x1)|])
     let (log2 :
       (module Ojs.T with type t = 'a) ->
         (module Ojs.T with type t = 'b) -> 'a -> 'b -> unit)
@@ -20,7 +22,10 @@ module Console =
               fun (x2 : a) ->
                 fun (x3 : b) ->
                   ignore
-                    (Ojs.call (Ojs.get_prop_ascii Ojs.global "console") "log"
+                    (Jsoo_runtime.Js.meth_call
+                       (Jsoo_runtime.Js.get
+                          (Jsoo_runtime.Js.pure_js_expr "joo_global_object")
+                          (Obj.magic "console")) "log"
                        [|(A.t_to_js x2);(B.t_to_js x3)|])
     let (log3 :
       (module Ojs.T with type t = 'a) ->
@@ -37,7 +42,10 @@ module Console =
                     fun (x5 : b) ->
                       fun (x6 : c) ->
                         ignore
-                          (Ojs.call (Ojs.get_prop_ascii Ojs.global "console")
+                          (Jsoo_runtime.Js.meth_call
+                             (Jsoo_runtime.Js.get
+                                (Jsoo_runtime.Js.pure_js_expr
+                                   "joo_global_object") (Obj.magic "console"))
                              "log"
                              [|(A.t_to_js x4);(B.t_to_js x5);(C.t_to_js x6)|])
   end
@@ -51,7 +59,9 @@ module Console2 =
         fun ((module A)  : (module Ojs.T with type t = a)) ->
           fun (x10 : t) ->
             fun (x9 : a) ->
-              ignore (Ojs.call (t_to_js x10) "log" [|(A.t_to_js x9)|])
+              ignore
+                (Jsoo_runtime.Js.meth_call (t_to_js x10) "log"
+                   [|(A.t_to_js x9)|])
     let (log2 :
       (module Ojs.T with type t = 'a) ->
         (module Ojs.T with type t = 'b) -> t -> 'a -> 'b -> unit)
@@ -64,7 +74,7 @@ module Console2 =
                 fun (x11 : a) ->
                   fun (x12 : b) ->
                     ignore
-                      (Ojs.call (t_to_js x13) "log"
+                      (Jsoo_runtime.Js.meth_call (t_to_js x13) "log"
                          [|(A.t_to_js x11);(B.t_to_js x12)|])
     let (log3 :
       (module Ojs.T with type t = 'a) ->
@@ -82,7 +92,7 @@ module Console2 =
                       fun (x15 : b) ->
                         fun (x16 : c) ->
                           ignore
-                            (Ojs.call (t_to_js x17) "log"
+                            (Jsoo_runtime.Js.meth_call (t_to_js x17) "log"
                                [|(A.t_to_js x14);(B.t_to_js x15);(C.t_to_js
                                                                     x16)|])
   end
@@ -95,9 +105,11 @@ module Console3 =
             fun ((module A)  : (module Ojs.T with type t = a)) ->
               fun (x18 : a) ->
                 Ojs.unit_of_js
-                  (Ojs.apply
-                     (Ojs.get_prop_ascii
-                        (Ojs.get_prop_ascii Ojs.global "console") "log")
+                  (Jsoo_runtime.Js.fun_call
+                     (Jsoo_runtime.Js.get
+                        (Jsoo_runtime.Js.get
+                           (Jsoo_runtime.Js.pure_js_expr "joo_global_object")
+                           (Obj.magic "console")) (Obj.magic "log"))
                      [|(A.t_to_js x18)|])
         let (_2 :
           (module Ojs.T with type t = 'a) ->
@@ -110,9 +122,12 @@ module Console3 =
                   fun (x19 : a) ->
                     fun (x20 : b) ->
                       Ojs.unit_of_js
-                        (Ojs.apply
-                           (Ojs.get_prop_ascii
-                              (Ojs.get_prop_ascii Ojs.global "console") "log")
+                        (Jsoo_runtime.Js.fun_call
+                           (Jsoo_runtime.Js.get
+                              (Jsoo_runtime.Js.get
+                                 (Jsoo_runtime.Js.pure_js_expr
+                                    "joo_global_object")
+                                 (Obj.magic "console")) (Obj.magic "log"))
                            [|(A.t_to_js x19);(B.t_to_js x20)|])
         let (_3 :
           (module Ojs.T with type t = 'a) ->
@@ -129,10 +144,13 @@ module Console3 =
                         fun (x22 : b) ->
                           fun (x23 : c) ->
                             Ojs.unit_of_js
-                              (Ojs.apply
-                                 (Ojs.get_prop_ascii
-                                    (Ojs.get_prop_ascii Ojs.global "console")
-                                    "log")
+                              (Jsoo_runtime.Js.fun_call
+                                 (Jsoo_runtime.Js.get
+                                    (Jsoo_runtime.Js.get
+                                       (Jsoo_runtime.Js.pure_js_expr
+                                          "joo_global_object")
+                                       (Obj.magic "console"))
+                                    (Obj.magic "log"))
                                  [|(A.t_to_js x21);(B.t_to_js x22);(C.t_to_js
                                                                     x23)|])
       end
@@ -151,40 +169,62 @@ module Array =
         fun ((module A)  : (module Ojs.T with type t = a)) ->
           fun (x26 : a list) ->
             t_of_js A.t_of_js
-              (Ojs.new_obj_arr (Ojs.get_prop_ascii Ojs.global "Array")
+              (Jsoo_runtime.Js.new_obj_arr
+                 (Jsoo_runtime.Js.get
+                    (Jsoo_runtime.Js.pure_js_expr "joo_global_object")
+                    (Obj.magic "Array"))
                  (let x27 =
-                    Ojs.new_obj (Ojs.get_prop_ascii Ojs.global "Array") [||] in
+                    Jsoo_runtime.Js.new_obj
+                      (Jsoo_runtime.Js.get
+                         (Jsoo_runtime.Js.pure_js_expr "joo_global_object")
+                         (Obj.magic "Array")) [||] in
                   List.iter
                     (fun (x28 : a) ->
-                       ignore (Ojs.call x27 "push" [|(A.t_to_js x28)|])) x26;
+                       ignore
+                         (Jsoo_runtime.Js.meth_call x27 "push"
+                            [|(A.t_to_js x28)|])) x26;
                   x27))
     let (create' : (module Ojs.T with type t = 'a) -> 'a list -> 'a t) =
       fun (type a) ->
         fun ((module A)  : (module Ojs.T with type t = a)) ->
           fun (x30 : a list) ->
             t_of_js A.t_of_js
-              (Ojs.call (Ojs.get_prop_ascii Ojs.global "Array") "apply"
-                 [|Ojs.null;((let x31 =
-                                Ojs.new_obj
-                                  (Ojs.get_prop_ascii Ojs.global "Array")
-                                  [||] in
-                              List.iter
-                                (fun (x32 : a) ->
-                                   ignore
-                                     (Ojs.call x31 "push" [|(A.t_to_js x32)|]))
-                                x30;
-                              x31))|])
+              (Jsoo_runtime.Js.meth_call
+                 (Jsoo_runtime.Js.get
+                    (Jsoo_runtime.Js.pure_js_expr "joo_global_object")
+                    (Obj.magic "Array")) "apply"
+                 [|(Jsoo_runtime.Js.pure_js_expr "null");((let x31 =
+                                                             Jsoo_runtime.Js.new_obj
+                                                               (Jsoo_runtime.Js.get
+                                                                  (Jsoo_runtime.Js.pure_js_expr
+                                                                    "joo_global_object")
+                                                                  (Obj.magic
+                                                                    "Array"))
+                                                               [||] in
+                                                           List.iter
+                                                             (fun (x32 : a)
+                                                                ->
+                                                                ignore
+                                                                  (Jsoo_runtime.Js.meth_call
+                                                                    x31
+                                                                    "push"
+                                                                    [|(
+                                                                    A.t_to_js
+                                                                    x32)|]))
+                                                             x30;
+                                                           x31))|])
     let (push : (module Ojs.T with type t = 'a) -> 'a t -> 'a -> unit) =
       fun (type a) ->
         fun ((module A)  : (module Ojs.T with type t = a)) ->
           fun (x35 : a t) ->
             fun (x34 : a) ->
               ignore
-                (Ojs.call (t_to_js A.t_to_js x35) "push" [|(A.t_to_js x34)|])
+                (Jsoo_runtime.Js.meth_call (t_to_js A.t_to_js x35) "push"
+                   [|(A.t_to_js x34)|])
     let (pop : (module Ojs.T with type t = 'a) -> 'a t -> 'a option) =
       fun (type a) ->
         fun ((module A)  : (module Ojs.T with type t = a)) ->
           fun (x37 : a t) ->
             Ojs.option_of_js A.t_of_js
-              (Ojs.call (t_to_js A.t_to_js x37) "pop" [||])
+              (Jsoo_runtime.Js.meth_call (t_to_js A.t_to_js x37) "pop" [||])
   end

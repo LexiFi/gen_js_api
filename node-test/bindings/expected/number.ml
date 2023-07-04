@@ -9,13 +9,18 @@ let (toString : t -> ?radix:int -> unit -> float) =
       fun () ->
         Ojs.float_of_js
           (let x7 = t_to_js x6 in
-           Ojs.call (Ojs.get_prop_ascii x7 "toString") "apply"
+           Jsoo_runtime.Js.meth_call
+             (Jsoo_runtime.Js.get x7 (Obj.magic "toString")) "apply"
              [|x7;((let x4 =
-                      Ojs.new_obj (Ojs.get_prop_ascii Ojs.global "Array")
-                        [||] in
+                      Jsoo_runtime.Js.new_obj
+                        (Jsoo_runtime.Js.get
+                           (Jsoo_runtime.Js.pure_js_expr "joo_global_object")
+                           (Obj.magic "Array")) [||] in
                     (match x3 with
                      | Some x5 ->
-                         ignore (Ojs.call x4 "push" [|(Ojs.int_to_js x5)|])
+                         ignore
+                           (Jsoo_runtime.Js.meth_call x4 "push"
+                              [|(Ojs.int_to_js x5)|])
                      | None -> ());
                     x4))|])
 let (toFixed : t -> ?fractionDigits:int -> unit -> float) =
@@ -24,13 +29,18 @@ let (toFixed : t -> ?fractionDigits:int -> unit -> float) =
       fun () ->
         Ojs.float_of_js
           (let x12 = t_to_js x11 in
-           Ojs.call (Ojs.get_prop_ascii x12 "toFixed") "apply"
+           Jsoo_runtime.Js.meth_call
+             (Jsoo_runtime.Js.get x12 (Obj.magic "toFixed")) "apply"
              [|x12;((let x9 =
-                       Ojs.new_obj (Ojs.get_prop_ascii Ojs.global "Array")
-                         [||] in
+                       Jsoo_runtime.Js.new_obj
+                         (Jsoo_runtime.Js.get
+                            (Jsoo_runtime.Js.pure_js_expr "joo_global_object")
+                            (Obj.magic "Array")) [||] in
                      (match x8 with
                       | Some x10 ->
-                          ignore (Ojs.call x9 "push" [|(Ojs.int_to_js x10)|])
+                          ignore
+                            (Jsoo_runtime.Js.meth_call x9 "push"
+                               [|(Ojs.int_to_js x10)|])
                       | None -> ());
                      x9))|])
 let (toExponential : t -> ?fractionDigits:int -> unit -> float) =
@@ -39,14 +49,18 @@ let (toExponential : t -> ?fractionDigits:int -> unit -> float) =
       fun () ->
         Ojs.float_of_js
           (let x17 = t_to_js x16 in
-           Ojs.call (Ojs.get_prop_ascii x17 "toExponential") "apply"
+           Jsoo_runtime.Js.meth_call
+             (Jsoo_runtime.Js.get x17 (Obj.magic "toExponential")) "apply"
              [|x17;((let x14 =
-                       Ojs.new_obj (Ojs.get_prop_ascii Ojs.global "Array")
-                         [||] in
+                       Jsoo_runtime.Js.new_obj
+                         (Jsoo_runtime.Js.get
+                            (Jsoo_runtime.Js.pure_js_expr "joo_global_object")
+                            (Obj.magic "Array")) [||] in
                      (match x13 with
                       | Some x15 ->
                           ignore
-                            (Ojs.call x14 "push" [|(Ojs.int_to_js x15)|])
+                            (Jsoo_runtime.Js.meth_call x14 "push"
+                               [|(Ojs.int_to_js x15)|])
                       | None -> ());
                      x14))|])
 let (toPrecision : t -> ?precision:int -> unit -> float) =
@@ -55,49 +69,69 @@ let (toPrecision : t -> ?precision:int -> unit -> float) =
       fun () ->
         Ojs.float_of_js
           (let x22 = t_to_js x21 in
-           Ojs.call (Ojs.get_prop_ascii x22 "toPrecision") "apply"
+           Jsoo_runtime.Js.meth_call
+             (Jsoo_runtime.Js.get x22 (Obj.magic "toPrecision")) "apply"
              [|x22;((let x19 =
-                       Ojs.new_obj (Ojs.get_prop_ascii Ojs.global "Array")
-                         [||] in
+                       Jsoo_runtime.Js.new_obj
+                         (Jsoo_runtime.Js.get
+                            (Jsoo_runtime.Js.pure_js_expr "joo_global_object")
+                            (Obj.magic "Array")) [||] in
                      (match x18 with
                       | Some x20 ->
                           ignore
-                            (Ojs.call x19 "push" [|(Ojs.int_to_js x20)|])
+                            (Jsoo_runtime.Js.meth_call x19 "push"
+                               [|(Ojs.int_to_js x20)|])
                       | None -> ());
                      x19))|])
 let (valueOf : t -> float) =
-  fun (x23 : t) -> Ojs.float_of_js (Ojs.call (t_to_js x23) "valueOf" [||])
+  fun (x23 : t) ->
+    Ojs.float_of_js (Jsoo_runtime.Js.meth_call (t_to_js x23) "valueOf" [||])
 module Scoped =
   struct
     let (create : 'any -> t) =
       fun (x24 : 'any) ->
         t_of_js
-          (Ojs.new_obj (Ojs.get_prop_ascii Ojs.global "Number")
-             [|(Obj.magic x24)|])
+          (Jsoo_runtime.Js.new_obj
+             (Jsoo_runtime.Js.get
+                (Jsoo_runtime.Js.pure_js_expr "joo_global_object")
+                (Obj.magic "Number")) [|(Obj.magic x24)|])
     let (invoke : 'any -> float) =
       fun (x25 : 'any) ->
         Ojs.float_of_js
-          (Ojs.apply (Ojs.get_prop_ascii Ojs.global "Number")
-             [|(Obj.magic x25)|])
+          (Jsoo_runtime.Js.fun_call
+             (Jsoo_runtime.Js.get
+                (Jsoo_runtime.Js.pure_js_expr "joo_global_object")
+                (Obj.magic "Number")) [|(Obj.magic x25)|])
     let (min_value : float) =
       Ojs.float_of_js
-        (Ojs.get_prop_ascii (Ojs.get_prop_ascii Ojs.global "Number")
-           "MIN_VALUE")
+        (Jsoo_runtime.Js.get
+           (Jsoo_runtime.Js.get
+              (Jsoo_runtime.Js.pure_js_expr "joo_global_object")
+              (Obj.magic "Number")) (Obj.magic "MIN_VALUE"))
     let (max_value : float) =
       Ojs.float_of_js
-        (Ojs.get_prop_ascii (Ojs.get_prop_ascii Ojs.global "Number")
-           "MAX_VALUE")
+        (Jsoo_runtime.Js.get
+           (Jsoo_runtime.Js.get
+              (Jsoo_runtime.Js.pure_js_expr "joo_global_object")
+              (Obj.magic "Number")) (Obj.magic "MAX_VALUE"))
     let (nan : float) =
       Ojs.float_of_js
-        (Ojs.get_prop_ascii (Ojs.get_prop_ascii Ojs.global "Number") "NaN")
+        (Jsoo_runtime.Js.get
+           (Jsoo_runtime.Js.get
+              (Jsoo_runtime.Js.pure_js_expr "joo_global_object")
+              (Obj.magic "Number")) (Obj.magic "NaN"))
     let (negative_infinity : float) =
       Ojs.float_of_js
-        (Ojs.get_prop_ascii (Ojs.get_prop_ascii Ojs.global "Number")
-           "NEGATIVE_INFINITY")
+        (Jsoo_runtime.Js.get
+           (Jsoo_runtime.Js.get
+              (Jsoo_runtime.Js.pure_js_expr "joo_global_object")
+              (Obj.magic "Number")) (Obj.magic "NEGATIVE_INFINITY"))
     let (positive_infinity : float) =
       Ojs.float_of_js
-        (Ojs.get_prop_ascii (Ojs.get_prop_ascii Ojs.global "Number")
-           "POSITIVE_INFINITY")
+        (Jsoo_runtime.Js.get
+           (Jsoo_runtime.Js.get
+              (Jsoo_runtime.Js.pure_js_expr "joo_global_object")
+              (Obj.magic "Number")) (Obj.magic "POSITIVE_INFINITY"))
   end
 module Static =
   struct
@@ -110,28 +144,34 @@ module Static =
     let (create : t -> 'any -> number) =
       fun (x31 : t) ->
         fun (x30 : 'any) ->
-          number_of_js (Ojs.new_obj (t_to_js x31) [|(Obj.magic x30)|])
+          number_of_js
+            (Jsoo_runtime.Js.new_obj (t_to_js x31) [|(Obj.magic x30)|])
     let (apply : t -> 'any -> float) =
       fun (x33 : t) ->
         fun (x32 : 'any) ->
-          Ojs.float_of_js (Ojs.apply (t_to_js x33) [|(Obj.magic x32)|])
+          Ojs.float_of_js
+            (Jsoo_runtime.Js.fun_call (t_to_js x33) [|(Obj.magic x32)|])
     let (min_value : t -> float) =
       fun (x34 : t) ->
-        Ojs.float_of_js (Ojs.get_prop_ascii (t_to_js x34) "MIN_VALUE")
+        Ojs.float_of_js
+          (Jsoo_runtime.Js.get (t_to_js x34) (Obj.magic "MIN_VALUE"))
     let (max_value : t -> float) =
       fun (x35 : t) ->
-        Ojs.float_of_js (Ojs.get_prop_ascii (t_to_js x35) "MAX_VALUE")
+        Ojs.float_of_js
+          (Jsoo_runtime.Js.get (t_to_js x35) (Obj.magic "MAX_VALUE"))
     let (nan : t -> float) =
       fun (x36 : t) ->
-        Ojs.float_of_js (Ojs.get_prop_ascii (t_to_js x36) "NaN")
+        Ojs.float_of_js (Jsoo_runtime.Js.get (t_to_js x36) (Obj.magic "NaN"))
     let (negative_infinity : t -> float) =
       fun (x37 : t) ->
         Ojs.float_of_js
-          (Ojs.get_prop_ascii (t_to_js x37) "NEGATIVE_INFINITY")
+          (Jsoo_runtime.Js.get (t_to_js x37) (Obj.magic "NEGATIVE_INFINITY"))
     let (positive_infinity : t -> float) =
       fun (x38 : t) ->
         Ojs.float_of_js
-          (Ojs.get_prop_ascii (t_to_js x38) "POSITIVE_INFINITY")
+          (Jsoo_runtime.Js.get (t_to_js x38) (Obj.magic "POSITIVE_INFINITY"))
   end
 let (number : Static.t) =
-  Static.t_of_js (Ojs.get_prop_ascii Ojs.global "Number")
+  Static.t_of_js
+    (Jsoo_runtime.Js.get (Jsoo_runtime.Js.pure_js_expr "joo_global_object")
+       (Obj.magic "Number"))

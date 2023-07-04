@@ -3,13 +3,17 @@
 let (log : 'a -> unit) =
   fun (x1 : 'a) ->
     ignore
-      (Ojs.call (Ojs.get_prop_ascii Ojs.global "console") "log"
-         [|(Obj.magic x1)|])
+      (Jsoo_runtime.Js.meth_call
+         (Jsoo_runtime.Js.get
+            (Jsoo_runtime.Js.pure_js_expr "joo_global_object")
+            (Obj.magic "console")) "log" [|(Obj.magic x1)|])
 let (error : 'a -> unit) =
   fun (x2 : 'a) ->
     ignore
-      (Ojs.call (Ojs.get_prop_ascii Ojs.global "console") "error"
-         [|(Obj.magic x2)|])
+      (Jsoo_runtime.Js.meth_call
+         (Jsoo_runtime.Js.get
+            (Jsoo_runtime.Js.pure_js_expr "joo_global_object")
+            (Obj.magic "console")) "error" [|(Obj.magic x2)|])
 module T =
   struct
     let (log : (module Ojs.T with type t = 'a) -> 'a -> unit) =
@@ -17,13 +21,17 @@ module T =
         fun ((module A)  : (module Ojs.T with type t = a)) ->
           fun (x3 : a) ->
             ignore
-              (Ojs.call (Ojs.get_prop_ascii Ojs.global "console") "log"
-                 [|(A.t_to_js x3)|])
+              (Jsoo_runtime.Js.meth_call
+                 (Jsoo_runtime.Js.get
+                    (Jsoo_runtime.Js.pure_js_expr "joo_global_object")
+                    (Obj.magic "console")) "log" [|(A.t_to_js x3)|])
     let (error : (module Ojs.T with type t = 'a) -> 'a -> unit) =
       fun (type a) ->
         fun ((module A)  : (module Ojs.T with type t = a)) ->
           fun (x4 : a) ->
             ignore
-              (Ojs.call (Ojs.get_prop_ascii Ojs.global "console") "error"
-                 [|(A.t_to_js x4)|])
+              (Jsoo_runtime.Js.meth_call
+                 (Jsoo_runtime.Js.get
+                    (Jsoo_runtime.Js.pure_js_expr "joo_global_object")
+                    (Obj.magic "console")) "error" [|(A.t_to_js x4)|])
   end

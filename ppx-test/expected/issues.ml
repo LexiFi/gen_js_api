@@ -17,14 +17,19 @@ module Issue117 :
           let (log : 'a -> unit) =
             fun (x3 : 'a) ->
               ignore
-                (Ojs.call (Ojs.get_prop_ascii Ojs.global "console") "log"
-                   [|(Obj.magic x3)|])
+                (Jsoo_runtime.Js.meth_call
+                   (Jsoo_runtime.Js.get
+                      (Jsoo_runtime.Js.pure_js_expr "joo_global_object")
+                      (Obj.magic "console")) "log" [|(Obj.magic x3)|])
           let (log2 : 'a -> 'b -> unit) =
             fun (x4 : 'a) ->
               fun (x5 : 'b) ->
                 ignore
-                  (Ojs.call (Ojs.get_prop_ascii Ojs.global "console")
-                     "jsLog2" [|(Obj.magic x4);(Obj.magic x5)|])
+                  (Jsoo_runtime.Js.meth_call
+                     (Jsoo_runtime.Js.get
+                        (Jsoo_runtime.Js.pure_js_expr "joo_global_object")
+                        (Obj.magic "console")) "jsLog2"
+                     [|(Obj.magic x4);(Obj.magic x5)|])
         end
     end)[@merlin.hide ]) 
 module Issue124 :
@@ -75,10 +80,15 @@ module Issue124 :
       let rec u_of_js : Ojs.t -> u =
         fun (x15 : Ojs.t) ->
           let x16 = x15 in
-          match Ojs.type_of (Ojs.get_prop_ascii x16 "type") with
+          match Ojs.string_of_js
+                  (Jsoo_runtime.Js.typeof
+                     (Jsoo_runtime.Js.get x16 (Obj.magic "type")))
+          with
           | "number" -> Unknown x16
           | "string" ->
-              (match Ojs.string_of_js (Ojs.get_prop_ascii x16 "type") with
+              (match Ojs.string_of_js
+                       (Jsoo_runtime.Js.get x16 (Obj.magic "type"))
+               with
                | "t" -> T (t_of_js x16)
                | "wrapped_t" -> WrappedT (wrapped_of_js t_of_js x16)
                | _ -> Unknown x16)
@@ -120,7 +130,7 @@ module Issue109 : sig type t = [ `S of string  | `I of int ] end =
       let rec t_of_js : Ojs.t -> t =
         fun (x35 : Ojs.t) ->
           let x36 = x35 in
-          match Ojs.type_of x36 with
+          match Ojs.string_of_js (Jsoo_runtime.Js.typeof x36) with
           | "number" -> (match Ojs.int_of_js x36 with | x38 -> `I x38)
           | "string" -> (match Ojs.string_of_js x36 with | x37 -> `S x37)
           | _ -> assert false
@@ -157,7 +167,8 @@ module Issue144 : sig type t val f : t -> args:int -> int end =
         fun (x46 : t) ->
           fun ~args:(x47 : int) ->
             Ojs.int_of_js
-              (Ojs.apply (Ojs.call (t_to_js x46) "f" [||])
+              (Jsoo_runtime.Js.fun_call
+                 (Jsoo_runtime.Js.meth_call (t_to_js x46) "f" [||])
                  [|(Ojs.int_to_js x47)|])
     end)[@merlin.hide ]) 
 module Issue146 : sig val f : ?arg:[ `Foo ] -> unit -> int end =
@@ -168,16 +179,19 @@ module Issue146 : sig val f : ?arg:[ `Foo ] -> unit -> int end =
         fun ?arg:(x48 : [ `Foo ] option) ->
           fun () ->
             Ojs.int_of_js
-              (let x51 = Ojs.global in
-               Ojs.call (Ojs.get_prop_ascii x51 "f") "apply"
+              (let x51 = Jsoo_runtime.Js.pure_js_expr "joo_global_object" in
+               Jsoo_runtime.Js.meth_call
+                 (Jsoo_runtime.Js.get x51 (Obj.magic "f")) "apply"
                  [|x51;((let x49 =
-                           Ojs.new_obj
-                             (Ojs.get_prop_ascii Ojs.global "Array") 
+                           Jsoo_runtime.Js.new_obj
+                             (Jsoo_runtime.Js.get
+                                (Jsoo_runtime.Js.pure_js_expr
+                                   "joo_global_object") (Obj.magic "Array"))
                              [||] in
                          (match x48 with
                           | Some x50 ->
                               ignore
-                                (Ojs.call x49 "push"
+                                (Jsoo_runtime.Js.meth_call x49 "push"
                                    [|((match x50 with
                                        | `Foo -> Ojs.int_to_js 42))|])
                           | None -> ());
@@ -223,25 +237,38 @@ module PR165 :
                 ->
                 fun () ->
                   t_of_js
-                    (Ojs.new_obj_arr
-                       (Ojs.get_prop_ascii Ojs.global "ParameterInformation")
+                    (Jsoo_runtime.Js.new_obj_arr
+                       (Jsoo_runtime.Js.get
+                          (Jsoo_runtime.Js.pure_js_expr "joo_global_object")
+                          (Obj.magic "ParameterInformation"))
                        (let x58 =
-                          Ojs.new_obj (Ojs.get_prop_ascii Ojs.global "Array")
+                          Jsoo_runtime.Js.new_obj
+                            (Jsoo_runtime.Js.get
+                               (Jsoo_runtime.Js.pure_js_expr
+                                  "joo_global_object") (Obj.magic "Array"))
                             [||] in
                         ignore
-                          (Ojs.call x58 "push"
+                          (Jsoo_runtime.Js.meth_call x58 "push"
                              [|((match x56 with
                                  | `String x62 -> Ojs.string_to_js x62
                                  | `Tuple x63 ->
                                      let (x64, x65) = x63 in
-                                     let x66 = Ojs.array_make 2 in
-                                     (Ojs.array_set x66 0 (Ojs.int_to_js x64);
-                                      Ojs.array_set x66 1 (Ojs.int_to_js x65);
+                                     let x66 =
+                                       Jsoo_runtime.Js.new_obj
+                                         (Jsoo_runtime.Js.get
+                                            (Jsoo_runtime.Js.pure_js_expr
+                                               "joo_global_object")
+                                            (Obj.magic "Array"))
+                                         [|(Ojs.int_to_js 2)|] in
+                                     (Jsoo_runtime.Js.set x66
+                                        (Ojs.int_to_js 0) (Ojs.int_to_js x64);
+                                      Jsoo_runtime.Js.set x66
+                                        (Ojs.int_to_js 1) (Ojs.int_to_js x65);
                                       x66)))|]);
                         (match x57 with
                          | Some x59 ->
                              ignore
-                               (Ojs.call x58 "push"
+                               (Jsoo_runtime.Js.meth_call x58 "push"
                                   [|((match x59 with
                                       | `String x60 -> Ojs.string_to_js x60
                                       | `Markdown x61 -> Markdown.t_to_js x61))|])

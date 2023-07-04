@@ -9,6 +9,7 @@ module Issue144 =
       fun (x3 : t) ->
         fun ~args:(x4 : int) ->
           Ojs.int_of_js
-            (Ojs.apply (Ojs.call (t_to_js x3) "f" [||])
+            (Jsoo_runtime.Js.fun_call
+               (Jsoo_runtime.Js.meth_call (t_to_js x3) "f" [||])
                [|(Ojs.int_to_js x4)|])
   end

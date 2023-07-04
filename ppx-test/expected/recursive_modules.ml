@@ -16,13 +16,17 @@ module rec
     let (create : string -> t) =
       fun (x3 : string) ->
         t_of_js
-          (Ojs.new_obj (Ojs.get_prop_ascii Ojs.global "Foo")
-             [|(Ojs.string_to_js x3)|])
+          (Jsoo_runtime.Js.new_obj
+             (Jsoo_runtime.Js.get
+                (Jsoo_runtime.Js.pure_js_expr "joo_global_object")
+                (Obj.magic "Foo")) [|(Ojs.string_to_js x3)|])
     let (describe : t -> string) =
       fun (x4 : t) ->
-        Ojs.string_of_js (Ojs.call (t_to_js x4) "describe" [||])
+        Ojs.string_of_js
+          (Jsoo_runtime.Js.meth_call (t_to_js x4) "describe" [||])
     let (to_bar : t -> Bar.t) =
-      fun (x5 : t) -> Bar.t_of_js (Ojs.call (t_to_js x5) "toBar" [||])
+      fun (x5 : t) ->
+        Bar.t_of_js (Jsoo_runtime.Js.meth_call (t_to_js x5) "toBar" [||])
   end
  and
   Bar:sig
@@ -40,11 +44,15 @@ module rec
     let (create : string -> t) =
       fun (x8 : string) ->
         t_of_js
-          (Ojs.new_obj (Ojs.get_prop_ascii Ojs.global "Bar")
-             [|(Ojs.string_to_js x8)|])
+          (Jsoo_runtime.Js.new_obj
+             (Jsoo_runtime.Js.get
+                (Jsoo_runtime.Js.pure_js_expr "joo_global_object")
+                (Obj.magic "Bar")) [|(Ojs.string_to_js x8)|])
     let (describe : t -> string) =
       fun (x9 : t) ->
-        Ojs.string_of_js (Ojs.call (t_to_js x9) "describe" [||])
+        Ojs.string_of_js
+          (Jsoo_runtime.Js.meth_call (t_to_js x9) "describe" [||])
     let (to_foo : t -> Foo.t) =
-      fun (x10 : t) -> Foo.t_of_js (Ojs.call (t_to_js x10) "toFoo" [||])
+      fun (x10 : t) ->
+        Foo.t_of_js (Jsoo_runtime.Js.meth_call (t_to_js x10) "toFoo" [||])
   end

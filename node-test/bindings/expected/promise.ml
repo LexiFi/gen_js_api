@@ -7,19 +7,30 @@ module UntypedPromise =
     and t_to_js : t -> Ojs.t = fun (x1 : Ojs.t) -> x1
     let (resolve : Ojs.t -> Ojs.t) =
       fun (x3 : Ojs.t) ->
-        Ojs.call (Ojs.get_prop_ascii Ojs.global "Promise") "resolve" [|x3|]
+        Jsoo_runtime.Js.meth_call
+          (Jsoo_runtime.Js.get
+             (Jsoo_runtime.Js.pure_js_expr "joo_global_object")
+             (Obj.magic "Promise")) "resolve" [|x3|]
     let (reject : Ojs.t -> Ojs.t) =
       fun (x4 : Ojs.t) ->
-        Ojs.call (Ojs.get_prop_ascii Ojs.global "Promise") "reject" [|x4|]
+        Jsoo_runtime.Js.meth_call
+          (Jsoo_runtime.Js.get
+             (Jsoo_runtime.Js.pure_js_expr "joo_global_object")
+             (Obj.magic "Promise")) "reject" [|x4|]
     let (then_ :
       Ojs.t -> success:(Ojs.t -> Ojs.t) -> error:(Ojs.t -> Ojs.t) -> Ojs.t) =
       fun (x9 : Ojs.t) ->
         fun ~success:(x5 : Ojs.t -> Ojs.t) ->
           fun ~error:(x7 : Ojs.t -> Ojs.t) ->
-            Ojs.call x9 "then" [|(Ojs.fun_to_js 1 x5);(Ojs.fun_to_js 1 x7)|]
+            Jsoo_runtime.Js.meth_call x9 "then"
+              [|(Jsoo_runtime.Js.callback_with_arity 1 x5);(Jsoo_runtime.Js.callback_with_arity
+                                                              1 x7)|]
     let (all : Ojs.t list -> Ojs.t) =
       fun (x10 : Ojs.t list) ->
-        Ojs.call (Ojs.get_prop_ascii Ojs.global "Promise") "all"
+        Jsoo_runtime.Js.meth_call
+          (Jsoo_runtime.Js.get
+             (Jsoo_runtime.Js.pure_js_expr "joo_global_object")
+             (Obj.magic "Promise")) "all"
           [|(Ojs.list_to_js (fun (x11 : Ojs.t) -> x11) x10)|]
     include
       struct
@@ -28,16 +39,19 @@ module UntypedPromise =
         [@@@ocaml.warning "-7-32-39"]
         let rec wrap_of_js : Ojs.t -> wrap =
           fun (x13 : Ojs.t) ->
-            { content = (Ojs.get_prop_ascii x13 "content") }
+            { content = (Jsoo_runtime.Js.get x13 (Obj.magic "content")) }
         and wrap_to_js : wrap -> Ojs.t =
-          fun (x12 : wrap) -> Ojs.obj [|("content", (x12.content))|]
+          fun (x12 : wrap) ->
+            Jsoo_runtime.Js.obj [|("content", (x12.content))|]
       end
     let is_promise o = (resolve o) == o
     let wrap o = if is_promise o then wrap_to_js { content = o } else o
     let unwrap o =
-      if Ojs.has_property o "content"
-      then Ojs.get_prop_ascii o "content"
-      else o
+      let open Jsoo_runtime in
+        let content = Js.get o (Js.string "content") in
+        if (content == Ojs.null) || (content == Ojs.undefined)
+        then o
+        else content
     let return x = resolve (wrap x)
     let fail err = reject (wrap err)
     let bind ?(error= fail)  p f =

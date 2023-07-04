@@ -14,55 +14,64 @@ let (_ : Ojs.t to_js) = fun (x10 : Ojs.t) -> x10
 let (_ : (string * int) of_js) =
   fun (x11 : Ojs.t) ->
     let x12 = x11 in
-    ((Ojs.string_of_js (Ojs.array_get x12 0)),
-      (Ojs.int_of_js (Ojs.array_get x12 1)))
+    ((Ojs.string_of_js (Jsoo_runtime.Js.get x12 (Ojs.int_to_js 0))),
+      (Ojs.int_of_js (Jsoo_runtime.Js.get x12 (Ojs.int_to_js 1))))
 let (_ : (string * int) to_js) =
   fun (x13 : (string * int)) ->
     let (x14, x15) = x13 in
-    let x16 = Ojs.array_make 2 in
-    Ojs.array_set x16 0 (Ojs.string_to_js x14);
-    Ojs.array_set x16 1 (Ojs.int_to_js x15);
+    let x16 =
+      Jsoo_runtime.Js.new_obj
+        (Jsoo_runtime.Js.get
+           (Jsoo_runtime.Js.pure_js_expr "joo_global_object")
+           (Obj.magic "Array")) [|(Ojs.int_to_js 2)|] in
+    Jsoo_runtime.Js.set x16 (Ojs.int_to_js 0) (Ojs.string_to_js x14);
+    Jsoo_runtime.Js.set x16 (Ojs.int_to_js 1) (Ojs.int_to_js x15);
     x16
 let (_ : (string * int * bool) of_js) =
   fun (x17 : Ojs.t) ->
     let x18 = x17 in
-    ((Ojs.string_of_js (Ojs.array_get x18 0)),
-      (Ojs.int_of_js (Ojs.array_get x18 1)),
-      (Ojs.bool_of_js (Ojs.array_get x18 2)))
+    ((Ojs.string_of_js (Jsoo_runtime.Js.get x18 (Ojs.int_to_js 0))),
+      (Ojs.int_of_js (Jsoo_runtime.Js.get x18 (Ojs.int_to_js 1))),
+      (Ojs.bool_of_js (Jsoo_runtime.Js.get x18 (Ojs.int_to_js 2))))
 let (_ : (string * int * bool) to_js) =
   fun (x19 : (string * int * bool)) ->
     let (x20, x21, x22) = x19 in
-    let x23 = Ojs.array_make 3 in
-    Ojs.array_set x23 0 (Ojs.string_to_js x20);
-    Ojs.array_set x23 1 (Ojs.int_to_js x21);
-    Ojs.array_set x23 2 (Ojs.bool_to_js x22);
+    let x23 =
+      Jsoo_runtime.Js.new_obj
+        (Jsoo_runtime.Js.get
+           (Jsoo_runtime.Js.pure_js_expr "joo_global_object")
+           (Obj.magic "Array")) [|(Ojs.int_to_js 3)|] in
+    Jsoo_runtime.Js.set x23 (Ojs.int_to_js 0) (Ojs.string_to_js x20);
+    Jsoo_runtime.Js.set x23 (Ojs.int_to_js 1) (Ojs.int_to_js x21);
+    Jsoo_runtime.Js.set x23 (Ojs.int_to_js 2) (Ojs.bool_to_js x22);
     x23
 let (_ : (string -> int) of_js) =
   fun (x24 : Ojs.t) ->
     fun (x25 : string) ->
-      Ojs.int_of_js (Ojs.apply x24 [|(Ojs.string_to_js x25)|])
+      Ojs.int_of_js (Jsoo_runtime.Js.fun_call x24 [|(Ojs.string_to_js x25)|])
 let (_ : (string -> int) to_js) =
   fun (x26 : string -> int) ->
-    Ojs.fun_to_js 1
+    Jsoo_runtime.Js.callback_with_arity 1
       (fun (x27 : Ojs.t) -> Ojs.int_to_js (x26 (Ojs.string_of_js x27)))
 let (_ : ((string -> int) -> bool -> unit) of_js) =
   fun (x28 : Ojs.t) ->
     fun (x29 : string -> int) ->
       fun (x31 : bool) ->
         ignore
-          (Ojs.apply x28
-             [|(Ojs.fun_to_js 1
+          (Jsoo_runtime.Js.fun_call x28
+             [|(Jsoo_runtime.Js.callback_with_arity 1
                   (fun (x30 : Ojs.t) ->
                      Ojs.int_to_js (x29 (Ojs.string_of_js x30))));(Ojs.bool_to_js
                                                                     x31)|])
 let (_ : ((string -> int) -> bool -> unit) to_js) =
   fun (x32 : (string -> int) -> bool -> unit) ->
-    Ojs.fun_to_js 2
+    Jsoo_runtime.Js.callback_with_arity 2
       (fun (x33 : Ojs.t) ->
          fun (x35 : Ojs.t) ->
            x32
              (fun (x34 : string) ->
-                Ojs.int_of_js (Ojs.apply x33 [|(Ojs.string_to_js x34)|]))
+                Ojs.int_of_js
+                  (Jsoo_runtime.Js.fun_call x33 [|(Ojs.string_to_js x34)|]))
              (Ojs.bool_of_js x35))
 let (_ : string array of_js) =
   fun (x36 : Ojs.t) -> Ojs.array_of_js Ojs.string_of_js x36
@@ -78,14 +87,16 @@ let (_ : string option to_js) =
   fun (x46 : string option) -> Ojs.option_to_js Ojs.string_to_js x46
 let (_ : (_ -> _) of_js) =
   fun (x48 : Ojs.t) ->
-    fun (x49 : 'a) -> Obj.magic (Ojs.apply x48 [|(Obj.magic x49)|])
+    fun (x49 : 'a) ->
+      Obj.magic (Jsoo_runtime.Js.fun_call x48 [|(Obj.magic x49)|])
 let (_ : (_ -> _) to_js) =
   fun (x50 : 'a -> 'b) ->
-    Ojs.fun_to_js 1 (fun (x51 : Ojs.t) -> Obj.magic (x50 (Obj.magic x51)))
+    Jsoo_runtime.Js.callback_with_arity 1
+      (fun (x51 : Ojs.t) -> Obj.magic (x50 (Obj.magic x51)))
 let (_ : [ `foo  | `bar  | `Baz  | `I of int  | `S of string ] of_js) =
   fun (x52 : Ojs.t) ->
     let x53 = x52 in
-    match Ojs.type_of x53 with
+    match Ojs.string_of_js (Jsoo_runtime.Js.typeof x53) with
     | "number" -> (match Ojs.int_of_js x53 with | 42 -> `bar | x54 -> `I x54)
     | "string" ->
         (match Ojs.string_of_js x53 with
@@ -108,23 +119,33 @@ let (_ : (label:int -> ?opt:int -> unit -> unit) of_js) =
       fun ?opt:(x61 : int option) ->
         fun () ->
           ignore
-            (Ojs.call x59 "apply"
-               [|Ojs.null;((let x62 =
-                              Ojs.new_obj
-                                (Ojs.get_prop_ascii Ojs.global "Array") 
-                                [||] in
-                            ignore
-                              (Ojs.call x62 "push" [|(Ojs.int_to_js x60)|]);
-                            (match x61 with
-                             | Some x63 ->
-                                 ignore
-                                   (Ojs.call x62 "push"
-                                      [|(Ojs.int_to_js x63)|])
-                             | None -> ());
-                            x62))|])
+            (Jsoo_runtime.Js.meth_call x59 "apply"
+               [|(Jsoo_runtime.Js.pure_js_expr "null");((let x62 =
+                                                           Jsoo_runtime.Js.new_obj
+                                                             (Jsoo_runtime.Js.get
+                                                                (Jsoo_runtime.Js.pure_js_expr
+                                                                   "joo_global_object")
+                                                                (Obj.magic
+                                                                   "Array"))
+                                                             [||] in
+                                                         ignore
+                                                           (Jsoo_runtime.Js.meth_call
+                                                              x62 "push"
+                                                              [|(Ojs.int_to_js
+                                                                   x60)|]);
+                                                         (match x61 with
+                                                          | Some x63 ->
+                                                              ignore
+                                                                (Jsoo_runtime.Js.meth_call
+                                                                   x62 "push"
+                                                                   [|(
+                                                                    Ojs.int_to_js
+                                                                    x63)|])
+                                                          | None -> ());
+                                                         x62))|])
 let (_ : (label:int -> ?opt:int -> unit -> unit) to_js) =
   fun (x64 : label:int -> ?opt:int -> unit -> unit) ->
-    Ojs.fun_to_js 2
+    Jsoo_runtime.Js.callback_with_arity 2
       (fun (x65 : Ojs.t) ->
          fun (x66 : Ojs.t) ->
            x64 ~label:(Ojs.int_of_js x65)
@@ -135,23 +156,33 @@ let (_ : (label:int -> ?opt:int -> unit -> unit) of_js) =
       fun ?opt:(x70 : int option) ->
         fun () ->
           ignore
-            (Ojs.call x68 "apply"
-               [|Ojs.null;((let x71 =
-                              Ojs.new_obj
-                                (Ojs.get_prop_ascii Ojs.global "Array") 
-                                [||] in
-                            ignore
-                              (Ojs.call x71 "push" [|(Ojs.int_to_js x69)|]);
-                            (match x70 with
-                             | Some x72 ->
-                                 ignore
-                                   (Ojs.call x71 "push"
-                                      [|(Ojs.int_to_js x72)|])
-                             | None -> ());
-                            x71))|])
+            (Jsoo_runtime.Js.meth_call x68 "apply"
+               [|(Jsoo_runtime.Js.pure_js_expr "null");((let x71 =
+                                                           Jsoo_runtime.Js.new_obj
+                                                             (Jsoo_runtime.Js.get
+                                                                (Jsoo_runtime.Js.pure_js_expr
+                                                                   "joo_global_object")
+                                                                (Obj.magic
+                                                                   "Array"))
+                                                             [||] in
+                                                         ignore
+                                                           (Jsoo_runtime.Js.meth_call
+                                                              x71 "push"
+                                                              [|(Ojs.int_to_js
+                                                                   x69)|]);
+                                                         (match x70 with
+                                                          | Some x72 ->
+                                                              ignore
+                                                                (Jsoo_runtime.Js.meth_call
+                                                                   x71 "push"
+                                                                   [|(
+                                                                    Ojs.int_to_js
+                                                                    x72)|])
+                                                          | None -> ());
+                                                         x71))|])
 let (_ : (label:int -> ?opt:int -> unit -> unit) to_js) =
   fun (x73 : label:int -> ?opt:int -> unit -> unit) ->
-    Ojs.fun_to_js 2
+    Jsoo_runtime.Js.callback_with_arity 2
       (fun (x74 : Ojs.t) ->
          fun (x75 : Ojs.t) ->
            x73 ~label:(Ojs.int_of_js x74)
@@ -177,73 +208,110 @@ module B :
         fun ?x:(x77 : int option) ->
           fun () ->
             ignore
-              (let x80 = Ojs.global in
-               Ojs.call (Ojs.get_prop_ascii x80 "default0") "apply"
+              (let x80 = Jsoo_runtime.Js.pure_js_expr "joo_global_object" in
+               Jsoo_runtime.Js.meth_call
+                 (Jsoo_runtime.Js.get x80 (Obj.magic "default0")) "apply"
                  [|x80;((let x78 =
-                           Ojs.new_obj
-                             (Ojs.get_prop_ascii Ojs.global "Array") 
+                           Jsoo_runtime.Js.new_obj
+                             (Jsoo_runtime.Js.get
+                                (Jsoo_runtime.Js.pure_js_expr
+                                   "joo_global_object") (Obj.magic "Array"))
                              [||] in
                          (match x77 with
                           | Some x79 ->
                               ignore
-                                (Ojs.call x78 "push" [|(Ojs.int_to_js x79)|])
+                                (Jsoo_runtime.Js.meth_call x78 "push"
+                                   [|(Ojs.int_to_js x79)|])
                           | None -> ());
                          x78))|])
       let (default1 : ?x:int -> unit -> unit) =
         fun ?x:(x81 : int option) ->
           fun () ->
             ignore
-              (Ojs.call Ojs.global "default1"
+              (Jsoo_runtime.Js.meth_call
+                 (Jsoo_runtime.Js.pure_js_expr "joo_global_object")
+                 "default1"
                  [|(Ojs.int_to_js
                       (match x81 with | Some x82 -> x82 | None -> 42))|])
       let (builder0 : unit -> Ojs.t) =
-        fun () -> let x83 = Ojs.empty_obj () in x83
+        fun () ->
+          let x83 =
+            Jsoo_runtime.Js.new_obj
+              (Jsoo_runtime.Js.get
+                 (Jsoo_runtime.Js.pure_js_expr "joo_global_object")
+                 (Obj.magic "Object")) [||] in
+          x83
       let (builder1 : x:int -> Ojs.t) =
         fun ~x:(x84 : int) ->
-          let x85 = Ojs.empty_obj () in
-          Ojs.set_prop_ascii x85 "x" (Ojs.int_to_js x84); x85
+          let x85 =
+            Jsoo_runtime.Js.new_obj
+              (Jsoo_runtime.Js.get
+                 (Jsoo_runtime.Js.pure_js_expr "joo_global_object")
+                 (Obj.magic "Object")) [||] in
+          Jsoo_runtime.Js.set x85 (Obj.magic "x") (Ojs.int_to_js x84); x85
       let (builder2 : ?x:int -> ?y:string -> unit -> Ojs.t) =
         fun ?x:(x86 : int option) ->
           fun ?y:(x87 : string option) ->
             fun () ->
-              let x88 = Ojs.empty_obj () in
+              let x88 =
+                Jsoo_runtime.Js.new_obj
+                  (Jsoo_runtime.Js.get
+                     (Jsoo_runtime.Js.pure_js_expr "joo_global_object")
+                     (Obj.magic "Object")) [||] in
               (match x86 with
-               | Some x90 -> Ojs.set_prop_ascii x88 "x" (Ojs.int_to_js x90)
+               | Some x90 ->
+                   Jsoo_runtime.Js.set x88 (Obj.magic "x")
+                     (Ojs.int_to_js x90)
                | None -> ());
               (match x87 with
                | Some x89 ->
-                   Ojs.set_prop_ascii x88 "y" (Ojs.string_to_js x89)
+                   Jsoo_runtime.Js.set x88 (Obj.magic "y")
+                     (Ojs.string_to_js x89)
                | None -> ());
               x88
       let (builder3 : x:int -> y:string -> unit -> Ojs.t) =
         fun ~x:(x91 : int) ->
           fun ~y:(x92 : string) ->
             fun () ->
-              let x93 = Ojs.empty_obj () in
-              Ojs.set_prop_ascii x93 "x" (Ojs.int_to_js x91);
-              Ojs.set_prop_ascii x93 "y" (Ojs.string_to_js x92);
+              let x93 =
+                Jsoo_runtime.Js.new_obj
+                  (Jsoo_runtime.Js.get
+                     (Jsoo_runtime.Js.pure_js_expr "joo_global_object")
+                     (Obj.magic "Object")) [||] in
+              Jsoo_runtime.Js.set x93 (Obj.magic "x") (Ojs.int_to_js x91);
+              Jsoo_runtime.Js.set x93 (Obj.magic "y") (Ojs.string_to_js x92);
               x93
       let (builder4 : x:int -> y:string -> z:unit -> Ojs.t) =
         fun ~x:(x94 : int) ->
           fun ~y:(x95 : string) ->
             fun ~z:(x96 : unit) ->
-              let x97 = Ojs.empty_obj () in
-              Ojs.set_prop_ascii x97 "x" (Ojs.int_to_js x94);
-              Ojs.set_prop_ascii x97 "y" (Ojs.string_to_js x95);
-              Ojs.set_prop_ascii x97 "z" (Ojs.unit_to_js x96);
+              let x97 =
+                Jsoo_runtime.Js.new_obj
+                  (Jsoo_runtime.Js.get
+                     (Jsoo_runtime.Js.pure_js_expr "joo_global_object")
+                     (Obj.magic "Object")) [||] in
+              Jsoo_runtime.Js.set x97 (Obj.magic "x") (Ojs.int_to_js x94);
+              Jsoo_runtime.Js.set x97 (Obj.magic "y") (Ojs.string_to_js x95);
+              Jsoo_runtime.Js.set x97 (Obj.magic "z") (Ojs.unit_to_js x96);
               x97
       let (builder5 : ?x:int -> ?y:string -> unit -> Ojs.t) =
         fun ?x:(x98 : int option) ->
           fun ?y:(x99 : string option) ->
             fun () ->
-              let x100 = Ojs.empty_obj () in
+              let x100 =
+                Jsoo_runtime.Js.new_obj
+                  (Jsoo_runtime.Js.get
+                     (Jsoo_runtime.Js.pure_js_expr "joo_global_object")
+                     (Obj.magic "Object")) [||] in
               (match x98 with
                | Some x102 ->
-                   Ojs.set_prop_ascii x100 "x" (Ojs.int_to_js x102)
+                   Jsoo_runtime.Js.set x100 (Obj.magic "x")
+                     (Ojs.int_to_js x102)
                | None -> ());
               (match x99 with
                | Some x101 ->
-                   Ojs.set_prop_ascii x100 "y" (Ojs.string_to_js x101)
+                   Jsoo_runtime.Js.set x100 (Obj.magic "y")
+                     (Ojs.string_to_js x101)
                | None -> ());
               x100
       let (builder6 : ?x:int -> ?y:string -> ?z:int -> unit -> Ojs.t) =
@@ -251,34 +319,43 @@ module B :
           fun ?y:(x104 : string option) ->
             fun ?z:(x105 : int option) ->
               fun () ->
-                let x106 = Ojs.empty_obj () in
-                Ojs.set_prop_ascii x106 "x"
+                let x106 =
+                  Jsoo_runtime.Js.new_obj
+                    (Jsoo_runtime.Js.get
+                       (Jsoo_runtime.Js.pure_js_expr "joo_global_object")
+                       (Obj.magic "Object")) [||] in
+                Jsoo_runtime.Js.set x106 (Obj.magic "x")
                   (Ojs.int_to_js
                      (match x103 with | Some x109 -> x109 | None -> 42));
-                Ojs.set_prop_ascii x106 "y"
+                Jsoo_runtime.Js.set x106 (Obj.magic "y")
                   (Ojs.string_to_js
                      (match x104 with | Some x108 -> x108 | None -> "42"));
                 (match x105 with
                  | Some x107 ->
-                     Ojs.set_prop_ascii x106 "z" (Ojs.int_to_js x107)
+                     Jsoo_runtime.Js.set x106 (Obj.magic "z")
+                       (Ojs.int_to_js x107)
                  | None -> ());
                 x106
       let (sep : string -> string list -> string) =
         fun (x110 : string) ->
           fun (x111 : string list) ->
             Ojs.string_of_js
-              (let x114 = Ojs.global in
-               Ojs.call (Ojs.get_prop_ascii x114 "sep") "apply"
+              (let x114 = Jsoo_runtime.Js.pure_js_expr "joo_global_object" in
+               Jsoo_runtime.Js.meth_call
+                 (Jsoo_runtime.Js.get x114 (Obj.magic "sep")) "apply"
                  [|x114;((let x112 =
-                            Ojs.new_obj
-                              (Ojs.get_prop_ascii Ojs.global "Array") 
+                            Jsoo_runtime.Js.new_obj
+                              (Jsoo_runtime.Js.get
+                                 (Jsoo_runtime.Js.pure_js_expr
+                                    "joo_global_object") (Obj.magic "Array"))
                               [||] in
                           ignore
-                            (Ojs.call x112 "push" [|(Ojs.string_to_js x110)|]);
+                            (Jsoo_runtime.Js.meth_call x112 "push"
+                               [|(Ojs.string_to_js x110)|]);
                           List.iter
                             (fun (x113 : string) ->
                                ignore
-                                 (Ojs.call x112 "push"
+                                 (Jsoo_runtime.Js.meth_call x112 "push"
                                     [|(Ojs.string_to_js x113)|])) x111;
                           x112))|])
     end)[@merlin.hide ]) 
@@ -376,36 +453,38 @@ module T :
       let rec record_of_js : Ojs.t -> record =
         fun (x124 : Ojs.t) ->
           {
-            x = (js_of_js (Ojs.get_prop_ascii x124 "x"));
-            y = (js_of_js (Ojs.get_prop_ascii x124 "y"))
+            x = (js_of_js (Jsoo_runtime.Js.get x124 (Obj.magic "x")));
+            y = (js_of_js (Jsoo_runtime.Js.get x124 (Obj.magic "y")))
           }
       and record_to_js : record -> Ojs.t =
         fun (x123 : record) ->
-          Ojs.obj [|("x", (js_to_js x123.x));("y", (js_to_js x123.y))|]
+          Jsoo_runtime.Js.obj
+            [|("x", (js_to_js x123.x));("y", (js_to_js x123.y))|]
       type mutable_record = {
         mutable x: js ;
         y: js }
       let rec mutable_record_of_js : Ojs.t -> mutable_record =
         fun (x126 : Ojs.t) ->
           {
-            x = (js_of_js (Ojs.get_prop_ascii x126 "x"));
-            y = (js_of_js (Ojs.get_prop_ascii x126 "y"))
+            x = (js_of_js (Jsoo_runtime.Js.get x126 (Obj.magic "x")));
+            y = (js_of_js (Jsoo_runtime.Js.get x126 (Obj.magic "y")))
           }
       and mutable_record_to_js : mutable_record -> Ojs.t =
         fun (x125 : mutable_record) ->
-          Ojs.obj [|("x", (js_to_js x125.x));("y", (js_to_js x125.y))|]
+          Jsoo_runtime.Js.obj
+            [|("x", (js_to_js x125.x));("y", (js_to_js x125.y))|]
       type record_relabel = {
         x: int ;
         y: int }
       let rec record_relabel_of_js : Ojs.t -> record_relabel =
         fun (x128 : Ojs.t) ->
           {
-            x = (Ojs.int_of_js (Ojs.get_prop_ascii x128 "x"));
-            y = (Ojs.int_of_js (Ojs.get_prop_ascii x128 "Y"))
+            x = (Ojs.int_of_js (Jsoo_runtime.Js.get x128 (Obj.magic "x")));
+            y = (Ojs.int_of_js (Jsoo_runtime.Js.get x128 (Obj.magic "Y")))
           }
       and record_relabel_to_js : record_relabel -> Ojs.t =
         fun (x127 : record_relabel) ->
-          Ojs.obj
+          Jsoo_runtime.Js.obj
             [|("x", (Ojs.int_to_js x127.x));("Y", (Ojs.int_to_js x127.y))|]
       type ('a, 'b) parametrized = {
         x: 'a ;
@@ -420,8 +499,10 @@ module T :
               fun (__b_of_js : Ojs.t -> __b) ->
                 fun (x130 : Ojs.t) ->
                   {
-                    x = (__a_of_js (Ojs.get_prop_ascii x130 "x"));
-                    y = (__b_of_js (Ojs.get_prop_ascii x130 "y"))
+                    x =
+                      (__a_of_js (Jsoo_runtime.Js.get x130 (Obj.magic "x")));
+                    y =
+                      (__b_of_js (Jsoo_runtime.Js.get x130 (Obj.magic "y")))
                   }
       and parametrized_to_js :
         'a 'b .
@@ -432,7 +513,7 @@ module T :
             fun (__a_to_js : __a -> Ojs.t) ->
               fun (__b_to_js : __b -> Ojs.t) ->
                 fun (x129 : (__a, __b) parametrized) ->
-                  Ojs.obj
+                  Jsoo_runtime.Js.obj
                     [|("x", (__a_to_js x129.x));("y", (__b_to_js x129.y))|]
       type 'a abs = ('a -> int) -> unit
       let rec abs_of_js : 'a . (Ojs.t -> 'a) -> Ojs.t -> 'a abs =
@@ -441,19 +522,20 @@ module T :
             fun (x134 : Ojs.t) ->
               fun (x135 : __a -> int) ->
                 ignore
-                  (Ojs.apply x134
-                     [|(Ojs.fun_to_js 1
+                  (Jsoo_runtime.Js.fun_call x134
+                     [|(Jsoo_runtime.Js.callback_with_arity 1
                           (fun (x136 : Ojs.t) ->
                              Ojs.int_to_js (x135 (__a_of_js x136))))|])
       and abs_to_js : 'a . ('a -> Ojs.t) -> 'a abs -> Ojs.t =
         fun (type __a) ->
           fun (__a_to_js : __a -> Ojs.t) ->
             fun (x131 : (__a -> int) -> unit) ->
-              Ojs.fun_to_js 1
+              Jsoo_runtime.Js.callback_with_arity 1
                 (fun (x132 : Ojs.t) ->
                    x131
                      (fun (x133 : __a) ->
-                        Ojs.int_of_js (Ojs.apply x132 [|(__a_to_js x133)|])))
+                        Ojs.int_of_js
+                          (Jsoo_runtime.Js.fun_call x132 [|(__a_to_js x133)|])))
       type specialized = (int, int) parametrized
       let rec specialized_of_js : Ojs.t -> specialized =
         fun (x140 : Ojs.t) ->
@@ -469,7 +551,7 @@ module T :
       let rec enum_of_js : Ojs.t -> enum =
         fun (x144 : Ojs.t) ->
           let x145 = x144 in
-          match Ojs.type_of x145 with
+          match Ojs.string_of_js (Jsoo_runtime.Js.typeof x145) with
           | "number" ->
               (match Ojs.float_of_js x145 with
                | 4.2 -> Baz
@@ -499,7 +581,7 @@ module T :
       let rec status_of_js : Ojs.t -> status =
         fun (x149 : Ojs.t) ->
           let x150 = x149 in
-          match Ojs.type_of x150 with
+          match Ojs.string_of_js (Jsoo_runtime.Js.typeof x150) with
           | "number" ->
               (match Ojs.float_of_js x150 with
                | 1.5 -> OO
@@ -524,7 +606,7 @@ module T :
       let rec poly_of_js : Ojs.t -> poly =
         fun (x156 : Ojs.t) ->
           let x157 = x156 in
-          match Ojs.type_of x157 with
+          match Ojs.string_of_js (Jsoo_runtime.Js.typeof x157) with
           | "number" ->
               (match Ojs.float_of_js x157 with
                | 4.2 -> `baz
@@ -561,24 +643,39 @@ module T :
       let rec sum_of_js : Ojs.t -> sum =
         fun (x167 : Ojs.t) ->
           let x168 = x167 in
-          match Ojs.type_of (Ojs.get_prop_ascii x168 "kind") with
+          match Ojs.string_of_js
+                  (Jsoo_runtime.Js.typeof
+                     (Jsoo_runtime.Js.get x168 (Obj.magic "kind")))
+          with
           | "number" -> Unknown x168
           | "string" ->
-              (match Ojs.string_of_js (Ojs.get_prop_ascii x168 "kind") with
+              (match Ojs.string_of_js
+                       (Jsoo_runtime.Js.get x168 (Obj.magic "kind"))
+               with
                | "A" -> A
-               | "B" -> B (Ojs.int_of_js (Ojs.get_prop_ascii x168 "arg"))
+               | "B" ->
+                   B
+                     (Ojs.int_of_js
+                        (Jsoo_runtime.Js.get x168 (Obj.magic "arg")))
                | "C" ->
                    C
                      ((Ojs.int_of_js
-                         (Ojs.array_get (Ojs.get_prop_ascii x168 "arg") 0)),
+                         (Jsoo_runtime.Js.get
+                            (Jsoo_runtime.Js.get x168 (Obj.magic "arg"))
+                            (Ojs.int_to_js 0))),
                        (Ojs.string_of_js
-                          (Ojs.array_get (Ojs.get_prop_ascii x168 "arg") 1)))
+                          (Jsoo_runtime.Js.get
+                             (Jsoo_runtime.Js.get x168 (Obj.magic "arg"))
+                             (Ojs.int_to_js 1))))
                | "D" ->
                    D
                      {
-                       age = (Ojs.int_of_js (Ojs.get_prop_ascii x168 "age"));
+                       age =
+                         (Ojs.int_of_js
+                            (Jsoo_runtime.Js.get x168 (Obj.magic "age")));
                        name =
-                         (Ojs.string_of_js (Ojs.get_prop_ascii x168 "name"))
+                         (Ojs.string_of_js
+                            (Jsoo_runtime.Js.get x168 (Obj.magic "name")))
                      }
                | _ -> Unknown x168)
           | "boolean" -> Unknown x168
@@ -586,23 +683,30 @@ module T :
       and sum_to_js : sum -> Ojs.t =
         fun (x160 : sum) ->
           match x160 with
-          | A -> Ojs.obj [|("kind", (Ojs.string_to_js "A"))|]
+          | A -> Jsoo_runtime.Js.obj [|("kind", (Ojs.string_to_js "A"))|]
           | B x161 ->
-              Ojs.obj
+              Jsoo_runtime.Js.obj
                 [|("kind", (Ojs.string_to_js "B"));("arg",
                                                      (Ojs.int_to_js x161))|]
           | C (x162, x163) ->
-              let x164 = Ojs.array_make 2 in
-              (Ojs.array_set x164 1 (Ojs.string_to_js x163);
-               Ojs.array_set x164 0 (Ojs.int_to_js x162);
-               Ojs.obj [|("kind", (Ojs.string_to_js "C"));("arg", x164)|])
+              let x164 =
+                Jsoo_runtime.Js.new_obj
+                  (Jsoo_runtime.Js.get
+                     (Jsoo_runtime.Js.pure_js_expr "joo_global_object")
+                     (Obj.magic "Array")) [|(Ojs.int_to_js 2)|] in
+              (Jsoo_runtime.Js.set x164 (Ojs.int_to_js 1)
+                 (Ojs.string_to_js x163);
+               Jsoo_runtime.Js.set x164 (Ojs.int_to_js 0)
+                 (Ojs.int_to_js x162);
+               Jsoo_runtime.Js.obj
+                 [|("kind", (Ojs.string_to_js "C"));("arg", x164)|])
           | D x165 ->
-              Ojs.obj
+              Jsoo_runtime.Js.obj
                 [|("kind", (Ojs.string_to_js "D"));("age",
                                                      (Ojs.int_to_js x165.age));
                   ("name", (Ojs.string_to_js x165.name))|]
           | Unknown x166 ->
-              Ojs.obj
+              Jsoo_runtime.Js.obj
                 [|("kind", (Ojs.string_to_js "Unknown"));("arg", x166)|]
       type t =
         | A 
@@ -616,53 +720,78 @@ module T :
       let rec t_of_js : Ojs.t -> t =
         fun (x177 : Ojs.t) ->
           let x178 = x177 in
-          match Ojs.type_of (Ojs.get_prop_ascii x178 "kind") with
+          match Ojs.string_of_js
+                  (Jsoo_runtime.Js.typeof
+                     (Jsoo_runtime.Js.get x178 (Obj.magic "kind")))
+          with
           | "number" -> Unknown x178
           | "string" ->
-              (match Ojs.string_of_js (Ojs.get_prop_ascii x178 "kind") with
+              (match Ojs.string_of_js
+                       (Jsoo_runtime.Js.get x178 (Obj.magic "kind"))
+               with
                | "A" -> A
-               | "B" -> B (Ojs.int_of_js (Ojs.get_prop_ascii x178 "bArg"))
+               | "B" ->
+                   B
+                     (Ojs.int_of_js
+                        (Jsoo_runtime.Js.get x178 (Obj.magic "bArg")))
                | "C" ->
                    C
                      ((Ojs.int_of_js
-                         (Ojs.array_get (Ojs.get_prop_ascii x178 "cArg") 0)),
+                         (Jsoo_runtime.Js.get
+                            (Jsoo_runtime.Js.get x178 (Obj.magic "cArg"))
+                            (Ojs.int_to_js 0))),
                        (Ojs.string_of_js
-                          (Ojs.array_get (Ojs.get_prop_ascii x178 "cArg") 1)))
+                          (Jsoo_runtime.Js.get
+                             (Jsoo_runtime.Js.get x178 (Obj.magic "cArg"))
+                             (Ojs.int_to_js 1))))
                | "D" ->
                    D
                      {
-                       age = (Ojs.int_of_js (Ojs.get_prop_ascii x178 "X"));
+                       age =
+                         (Ojs.int_of_js
+                            (Jsoo_runtime.Js.get x178 (Obj.magic "X")));
                        name =
-                         (Ojs.string_of_js (Ojs.get_prop_ascii x178 "Y"))
+                         (Ojs.string_of_js
+                            (Jsoo_runtime.Js.get x178 (Obj.magic "Y")))
                      }
-               | "F" -> E (Ojs.int_of_js (Ojs.get_prop_ascii x178 "fArg"))
+               | "F" ->
+                   E
+                     (Ojs.int_of_js
+                        (Jsoo_runtime.Js.get x178 (Obj.magic "fArg")))
                | _ -> Unknown x178)
           | "boolean" -> Unknown x178
           | _ -> Unknown x178
       and t_to_js : t -> Ojs.t =
         fun (x169 : t) ->
           match x169 with
-          | A -> Ojs.obj [|("kind", (Ojs.string_to_js "A"))|]
+          | A -> Jsoo_runtime.Js.obj [|("kind", (Ojs.string_to_js "A"))|]
           | B x170 ->
-              Ojs.obj
+              Jsoo_runtime.Js.obj
                 [|("kind", (Ojs.string_to_js "B"));("bArg",
                                                      (Ojs.int_to_js x170))|]
           | C (x171, x172) ->
-              let x173 = Ojs.array_make 2 in
-              (Ojs.array_set x173 1 (Ojs.string_to_js x172);
-               Ojs.array_set x173 0 (Ojs.int_to_js x171);
-               Ojs.obj [|("kind", (Ojs.string_to_js "C"));("cArg", x173)|])
+              let x173 =
+                Jsoo_runtime.Js.new_obj
+                  (Jsoo_runtime.Js.get
+                     (Jsoo_runtime.Js.pure_js_expr "joo_global_object")
+                     (Obj.magic "Array")) [|(Ojs.int_to_js 2)|] in
+              (Jsoo_runtime.Js.set x173 (Ojs.int_to_js 1)
+                 (Ojs.string_to_js x172);
+               Jsoo_runtime.Js.set x173 (Ojs.int_to_js 0)
+                 (Ojs.int_to_js x171);
+               Jsoo_runtime.Js.obj
+                 [|("kind", (Ojs.string_to_js "C"));("cArg", x173)|])
           | D x174 ->
-              Ojs.obj
+              Jsoo_runtime.Js.obj
                 [|("kind", (Ojs.string_to_js "D"));("X",
                                                      (Ojs.int_to_js x174.age));
                   ("Y", (Ojs.string_to_js x174.name))|]
           | E x175 ->
-              Ojs.obj
+              Jsoo_runtime.Js.obj
                 [|("kind", (Ojs.string_to_js "F"));("fArg",
                                                      (Ojs.int_to_js x175))|]
           | Unknown x176 ->
-              Ojs.obj
+              Jsoo_runtime.Js.obj
                 [|("kind", (Ojs.string_to_js "Unknown"));("arg", x176)|]
       type union =
         | A 
@@ -672,7 +801,7 @@ module T :
       let rec union_to_js : union -> Ojs.t =
         fun (x179 : union) ->
           match x179 with
-          | A -> Ojs.null
+          | A -> Jsoo_runtime.Js.pure_js_expr "null"
           | B x180 -> Ojs.int_to_js x180
           | C x181 -> Ojs.int_to_js x181
           | D x182 -> x182
@@ -680,7 +809,7 @@ module T :
       let rec poly_union_to_js : poly_union -> Ojs.t =
         fun (x185 : [ `A  | `B of int  | `C of int  | `D of Ojs.t ]) ->
           match x185 with
-          | `A -> Ojs.null
+          | `A -> Jsoo_runtime.Js.pure_js_expr "null"
           | `B x186 -> Ojs.int_to_js x186
           | `C x187 -> Ojs.int_to_js x187
           | `D x188 -> x188
@@ -692,10 +821,15 @@ module T :
       let rec discr_union_of_js : Ojs.t -> discr_union =
         fun (x195 : Ojs.t) ->
           let x196 = x195 in
-          match Ojs.type_of (Ojs.get_prop_ascii x196 "discr") with
+          match Ojs.string_of_js
+                  (Jsoo_runtime.Js.typeof
+                     (Jsoo_runtime.Js.get x196 (Obj.magic "discr")))
+          with
           | "number" -> D x196
           | "string" ->
-              (match Ojs.string_of_js (Ojs.get_prop_ascii x196 "discr") with
+              (match Ojs.string_of_js
+                       (Jsoo_runtime.Js.get x196 (Obj.magic "discr"))
+               with
                | "A" -> A
                | "B" -> B (Ojs.int_of_js x196)
                | "C" -> C (Ojs.int_of_js x196)
@@ -705,7 +839,7 @@ module T :
       and discr_union_to_js : discr_union -> Ojs.t =
         fun (x191 : discr_union) ->
           match x191 with
-          | A -> Ojs.null
+          | A -> Jsoo_runtime.Js.pure_js_expr "null"
           | B x192 -> Ojs.int_to_js x192
           | C x193 -> Ojs.int_to_js x193
           | D x194 -> x194
@@ -713,10 +847,15 @@ module T :
       let rec discr_poly_union_of_js : Ojs.t -> discr_poly_union =
         fun (x201 : Ojs.t) ->
           let x202 = x201 in
-          match Ojs.type_of (Ojs.get_prop_ascii x202 "discr") with
+          match Ojs.string_of_js
+                  (Jsoo_runtime.Js.typeof
+                     (Jsoo_runtime.Js.get x202 (Obj.magic "discr")))
+          with
           | "number" -> `D x202
           | "string" ->
-              (match Ojs.string_of_js (Ojs.get_prop_ascii x202 "discr") with
+              (match Ojs.string_of_js
+                       (Jsoo_runtime.Js.get x202 (Obj.magic "discr"))
+               with
                | "A" -> `A
                | "B" -> `B (Ojs.int_of_js x202)
                | "C" -> `C (Ojs.int_of_js x202)
@@ -726,7 +865,7 @@ module T :
       and discr_poly_union_to_js : discr_poly_union -> Ojs.t =
         fun (x197 : [ `A  | `B of int  | `C of int  | `D of Ojs.t ]) ->
           match x197 with
-          | `A -> Ojs.null
+          | `A -> Jsoo_runtime.Js.pure_js_expr "null"
           | `B x198 -> Ojs.int_to_js x198
           | `C x199 -> Ojs.int_to_js x199
           | `D x200 -> x200
@@ -738,13 +877,20 @@ module T :
       let rec discr_union_value_of_js : Ojs.t -> discr_union_value =
         fun (x207 : Ojs.t) ->
           let x208 = x207 in
-          match Ojs.type_of (Ojs.get_prop_ascii x208 "discr") with
+          match Ojs.string_of_js
+                  (Jsoo_runtime.Js.typeof
+                     (Jsoo_runtime.Js.get x208 (Obj.magic "discr")))
+          with
           | "number" ->
-              (match Ojs.int_of_js (Ojs.get_prop_ascii x208 "discr") with
+              (match Ojs.int_of_js
+                       (Jsoo_runtime.Js.get x208 (Obj.magic "discr"))
+               with
                | 0 -> A
                | _ -> D x208)
           | "string" ->
-              (match Ojs.string_of_js (Ojs.get_prop_ascii x208 "discr") with
+              (match Ojs.string_of_js
+                       (Jsoo_runtime.Js.get x208 (Obj.magic "discr"))
+               with
                | "42" -> B (Ojs.int_of_js x208)
                | "C" -> C (Ojs.int_of_js x208)
                | _ -> D x208)
@@ -753,7 +899,7 @@ module T :
       and discr_union_value_to_js : discr_union_value -> Ojs.t =
         fun (x203 : discr_union_value) ->
           match x203 with
-          | A -> Ojs.null
+          | A -> Jsoo_runtime.Js.pure_js_expr "null"
           | B x204 -> Ojs.int_to_js x204
           | C x205 -> Ojs.int_to_js x205
           | D x206 -> x206
@@ -762,9 +908,11 @@ module T :
           let (f : string -> unit) =
             fun (x209 : string) ->
               ignore
-                (Ojs.call
-                   (Ojs.get_prop_ascii
-                      (Ojs.get_prop_ascii Ojs.global "outer") "inner") "f"
+                (Jsoo_runtime.Js.meth_call
+                   (Jsoo_runtime.Js.get
+                      (Jsoo_runtime.Js.get
+                         (Jsoo_runtime.Js.pure_js_expr "joo_global_object")
+                         (Obj.magic "outer")) (Obj.magic "inner")) "f"
                    [|(Ojs.string_to_js x209)|])
         end
       module NestedScope1 =
@@ -772,9 +920,11 @@ module T :
           let (f : string -> unit) =
             fun (x210 : string) ->
               ignore
-                (Ojs.call
-                   (Ojs.get_prop_ascii
-                      (Ojs.get_prop_ascii Ojs.global "outer") "inner") "f"
+                (Jsoo_runtime.Js.meth_call
+                   (Jsoo_runtime.Js.get
+                      (Jsoo_runtime.Js.get
+                         (Jsoo_runtime.Js.pure_js_expr "joo_global_object")
+                         (Obj.magic "outer")) (Obj.magic "inner")) "f"
                    [|(Ojs.string_to_js x210)|])
         end
       module NestedScope2 =
@@ -782,9 +932,11 @@ module T :
           let (f : string -> unit) =
             fun (x211 : string) ->
               ignore
-                (Ojs.call
-                   (Ojs.get_prop_ascii
-                      (Ojs.get_prop_ascii Ojs.global "outer") "inner") "f"
+                (Jsoo_runtime.Js.meth_call
+                   (Jsoo_runtime.Js.get
+                      (Jsoo_runtime.Js.get
+                         (Jsoo_runtime.Js.pure_js_expr "joo_global_object")
+                         (Obj.magic "outer")) (Obj.magic "inner")) "f"
                    [|(Ojs.string_to_js x211)|])
         end
     end)[@merlin.hide ]) [@@ocaml.doc " Types Declarations "]

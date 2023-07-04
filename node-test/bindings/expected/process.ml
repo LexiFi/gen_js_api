@@ -2,7 +2,13 @@
 [@@@ocaml.warning "-7-32-39"]
 let (env : string Container.StringMap.t) =
   Container.StringMap.t_of_js Ojs.string_of_js
-    (Ojs.get_prop_ascii (Ojs.get_prop_ascii Ojs.global "process") "env")
+    (Jsoo_runtime.Js.get
+       (Jsoo_runtime.Js.get
+          (Jsoo_runtime.Js.pure_js_expr "joo_global_object")
+          (Obj.magic "process")) (Obj.magic "env"))
 let (version : string option) =
   Ojs.option_of_js Ojs.string_of_js
-    (Ojs.get_prop_ascii (Ojs.get_prop_ascii Ojs.global "process") "version")
+    (Jsoo_runtime.Js.get
+       (Jsoo_runtime.Js.get
+          (Jsoo_runtime.Js.pure_js_expr "joo_global_object")
+          (Obj.magic "process")) (Obj.magic "version"))

@@ -7,14 +7,20 @@ module JsArray(E:Ojs.T) =
     and t_to_js : t -> Ojs.t = fun (x1 : Ojs.t) -> x1
     let (create : unit -> t) =
       fun () ->
-        t_of_js (Ojs.new_obj (Ojs.get_prop_ascii Ojs.global "Array") [||])
+        t_of_js
+          (Jsoo_runtime.Js.new_obj
+             (Jsoo_runtime.Js.get
+                (Jsoo_runtime.Js.pure_js_expr "joo_global_object")
+                (Obj.magic "Array")) [||])
     let (push : t -> E.t -> unit) =
       fun (x4 : t) ->
         fun (x3 : E.t) ->
-          ignore (Ojs.call (t_to_js x4) "push" [|(E.t_to_js x3)|])
+          ignore
+            (Jsoo_runtime.Js.meth_call (t_to_js x4) "push" [|(E.t_to_js x3)|])
     let (pop : t -> E.t option) =
       fun (x5 : t) ->
-        Ojs.option_of_js E.t_of_js (Ojs.call (t_to_js x5) "pop" [||])
+        Ojs.option_of_js E.t_of_js
+          (Jsoo_runtime.Js.meth_call (t_to_js x5) "pop" [||])
   end
 module UntypedArray = struct include (JsArray)(Ojs) end
 module StringArray =
@@ -24,7 +30,8 @@ module StringArray =
       fun (x8 : t) ->
         fun (x7 : string) ->
           Ojs.string_of_js
-            (Ojs.call (t_to_js x8) "join" [|(Ojs.string_to_js x7)|])
+            (Jsoo_runtime.Js.meth_call (t_to_js x8) "join"
+               [|(Ojs.string_to_js x7)|])
   end
 module JsArray2 =
   struct
@@ -38,18 +45,29 @@ module JsArray2 =
     let (create : unit -> 'a t) =
       fun () ->
         t_of_js Obj.magic
-          (Ojs.new_obj (Ojs.get_prop_ascii Ojs.global "Array") [||])
+          (Jsoo_runtime.Js.new_obj
+             (Jsoo_runtime.Js.get
+                (Jsoo_runtime.Js.pure_js_expr "joo_global_object")
+                (Obj.magic "Array")) [||])
     let (create' : (module Ojs.T with type t = 'a) -> 'a list -> 'a t) =
       fun (type a) ->
         fun ((module A)  : (module Ojs.T with type t = a)) ->
           fun (x12 : a list) ->
             t_of_js A.t_of_js
-              (Ojs.new_obj_arr (Ojs.get_prop_ascii Ojs.global "Array")
+              (Jsoo_runtime.Js.new_obj_arr
+                 (Jsoo_runtime.Js.get
+                    (Jsoo_runtime.Js.pure_js_expr "joo_global_object")
+                    (Obj.magic "Array"))
                  (let x13 =
-                    Ojs.new_obj (Ojs.get_prop_ascii Ojs.global "Array") [||] in
+                    Jsoo_runtime.Js.new_obj
+                      (Jsoo_runtime.Js.get
+                         (Jsoo_runtime.Js.pure_js_expr "joo_global_object")
+                         (Obj.magic "Array")) [||] in
                   List.iter
                     (fun (x14 : a) ->
-                       ignore (Ojs.call x13 "push" [|(A.t_to_js x14)|])) x12;
+                       ignore
+                         (Jsoo_runtime.Js.meth_call x13 "push"
+                            [|(A.t_to_js x14)|])) x12;
                   x13))
     let (push : (module Ojs.T with type t = 'a) -> 'a t -> 'a -> unit) =
       fun (type a) ->
@@ -57,20 +75,22 @@ module JsArray2 =
           fun (x17 : a t) ->
             fun (x16 : a) ->
               ignore
-                (Ojs.call (t_to_js A.t_to_js x17) "push" [|(A.t_to_js x16)|])
+                (Jsoo_runtime.Js.meth_call (t_to_js A.t_to_js x17) "push"
+                   [|(A.t_to_js x16)|])
     let (pop : (module Ojs.T with type t = 'a) -> 'a t -> 'a option) =
       fun (type a) ->
         fun ((module A)  : (module Ojs.T with type t = a)) ->
           fun (x19 : a t) ->
             Ojs.option_of_js A.t_of_js
-              (Ojs.call (t_to_js A.t_to_js x19) "pop" [||])
+              (Jsoo_runtime.Js.meth_call (t_to_js A.t_to_js x19) "pop" [||])
     let (get : (module Ojs.T with type t = 'a) -> 'a t -> int -> 'a option) =
       fun (type a) ->
         fun ((module A)  : (module Ojs.T with type t = a)) ->
           fun (x22 : a t) ->
             fun (x24 : int) ->
               Ojs.option_of_js A.t_of_js
-                (Ojs.array_get (t_to_js A.t_to_js x22) x24)
+                (Jsoo_runtime.Js.get (t_to_js A.t_to_js x22)
+                   (Ojs.int_to_js x24))
     let (set : (module Ojs.T with type t = 'a) -> 'a t -> int -> 'a -> unit)
       =
       fun (type a) ->
@@ -78,11 +98,12 @@ module JsArray2 =
           fun (x26 : a t) ->
             fun (x28 : int) ->
               fun (x29 : a) ->
-                Ojs.array_set (t_to_js A.t_to_js x26) x28 (A.t_to_js x29)
+                Jsoo_runtime.Js.set (t_to_js A.t_to_js x26)
+                  (Ojs.int_to_js x28) (A.t_to_js x29)
     let (join : string t -> string -> string) =
       fun (x31 : string t) ->
         fun (x30 : string) ->
           Ojs.string_of_js
-            (Ojs.call (t_to_js Ojs.string_to_js x31) "join"
+            (Jsoo_runtime.Js.meth_call (t_to_js Ojs.string_to_js x31) "join"
                [|(Ojs.string_to_js x30)|])
   end

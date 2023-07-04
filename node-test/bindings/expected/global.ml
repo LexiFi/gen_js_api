@@ -10,17 +10,27 @@ let (set_interval : (unit -> unit) -> int -> interval_id) =
   fun (x5 : unit -> unit) ->
     fun (x6 : int) ->
       interval_id_of_js
-        (Ojs.call Ojs.global "setInterval"
-           [|(Ojs.fun_to_js 1 (fun _ -> x5 ()));(Ojs.int_to_js x6)|])
+        (Jsoo_runtime.Js.meth_call
+           (Jsoo_runtime.Js.pure_js_expr "joo_global_object") "setInterval"
+           [|(Jsoo_runtime.Js.callback_with_arity 1 (fun _ -> x5 ()));(
+             Ojs.int_to_js x6)|])
 let (set_timeout : (unit -> unit) -> int -> timeout_id) =
   fun (x7 : unit -> unit) ->
     fun (x8 : int) ->
       timeout_id_of_js
-        (Ojs.call Ojs.global "setTimeout"
-           [|(Ojs.fun_to_js 1 (fun _ -> x7 ()));(Ojs.int_to_js x8)|])
+        (Jsoo_runtime.Js.meth_call
+           (Jsoo_runtime.Js.pure_js_expr "joo_global_object") "setTimeout"
+           [|(Jsoo_runtime.Js.callback_with_arity 1 (fun _ -> x7 ()));(
+             Ojs.int_to_js x8)|])
 let (clear_timeout : timeout_id -> unit) =
   fun (x9 : timeout_id) ->
-    ignore (Ojs.call Ojs.global "clearTimeout" [|(timeout_id_to_js x9)|])
+    ignore
+      (Jsoo_runtime.Js.meth_call
+         (Jsoo_runtime.Js.pure_js_expr "joo_global_object") "clearTimeout"
+         [|(timeout_id_to_js x9)|])
 let (clear_interval : interval_id -> unit) =
   fun (x10 : interval_id) ->
-    ignore (Ojs.call Ojs.global "clearInterval" [|(interval_id_to_js x10)|])
+    ignore
+      (Jsoo_runtime.Js.meth_call
+         (Jsoo_runtime.Js.pure_js_expr "joo_global_object") "clearInterval"
+         [|(interval_id_to_js x10)|])
