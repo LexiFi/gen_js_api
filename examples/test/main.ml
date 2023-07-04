@@ -33,9 +33,9 @@ module LocalBindings = [%js:
 
 let () =
   let s = [%js.of: int list] [10; 20; 30] in
-  Printf.printf "%i\n%!" ([%js.to: int] (Ojs.array_get s 0));
-  Printf.printf "%i\n%!" ([%js.to: int] (Ojs.array_get s 1));
-  Printf.printf "%i\n%!" ([%js.to: int] (Ojs.array_get s 2))
+  Printf.printf "%i\n%!" ([%js.to: int] (Jsoo_runtime.Js.get s (Ojs.int_to_js 0)));
+  Printf.printf "%i\n%!" ([%js.to: int] (Jsoo_runtime.Js.get s (Ojs.int_to_js 1)));
+  Printf.printf "%i\n%!" ([%js.to: int] (Jsoo_runtime.Js.get s (Ojs.int_to_js 2)))
 
 let () =
   let sum xs = List.fold_left ( + ) 0 xs in
@@ -80,11 +80,19 @@ let button ?attrs s onclick =
 
 let div = elt "div"
 
+include
+  [%js:
+    val getOwnPropertyNames:
+      Ojs.t -> string array [@@js.global "Object.getOwnPropertyNames"]
+  ]
+
+let iter_properties obj f =
+  Array.iter f (getOwnPropertyNames obj)
+
 let () =
   Array.iter (Printf.printf "[%i]\n") myArray;
-
-  Ojs.array_set myArray2 0 (Ojs.int_to_js 10);
-  Ojs.array_set myArray2 1 (Ojs.array_to_js Ojs.int_to_js [| 100; 200; 300 |]);
+  Jsoo_runtime.Js.set myArray2 (Ojs.int_to_js 0) (Ojs.int_to_js 10);
+  Jsoo_runtime.Js.set myArray2 (Ojs.int_to_js 1) (Ojs.array_to_js Ojs.int_to_js [| 100; 200; 300 |]);
 (*  Ojs.array_set myArray2 1 ([%to_js: int array] [| 100; 200; 300 |]); *)
 
 (*
@@ -138,7 +146,7 @@ let () =
   let charlie = Person.create "Charlie" (Person.Foo.OtherString "bla") in
   let eve = Person.create "Eve" (Person.Foo.OtherInt 2713) in
 
-  Ojs.iter_properties (Person.cast alice) (Format.printf "%s\n%!");
+  iter_properties (Person.cast alice) (Format.printf "%s\n%!");
 
   let alice_obj = PersonObj.create "Alice" Person.Foo.Foo in
   let bob_obj = PersonObj.of_person bob in
@@ -208,14 +216,23 @@ end = struct
   type 'a t = (string * 'a) list
 
   let t_to_js ml2js l =
-    let o = Ojs.empty_obj () in
-    List.iter (fun (k, v) -> Ojs.set_prop o (Ojs.string_to_js k) (ml2js v)) l;
+    let o = Jsoo_runtime.Js.obj [||] in
+    List.iter (fun (k, v) -> Jsoo_runtime.Js.set o (Ojs.string_to_js k) (ml2js v)) l;
     o
+
+  include
+    [%js:
+      val getOwnPropertyNames: Ojs.t -> string array [@@js.global "Object.getOwnPropertyNames"]
+    ]
+
+  let iter_properties obj f =
+    Array.iter f (getOwnPropertyNames obj)
 
   let t_of_js js2ml o =
     let l = ref [] in
-    Ojs.iter_properties o
-      (fun k -> l := (k, js2ml (Ojs.get_prop o (Ojs.string_to_js k))) :: !l);
+
+    iter_properties o
+      (fun k -> l := (k, js2ml (Jsoo_runtime.Js.get o (Ojs.string_to_js k))) :: !l);
     !l
 end
 

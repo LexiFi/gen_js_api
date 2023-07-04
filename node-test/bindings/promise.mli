@@ -28,10 +28,12 @@ module UntypedPromise : sig
       else o
 
     let unwrap o =
-      if Ojs.has_property o "content" then
-        Ojs.get_prop_ascii o "content"
-      else
+      let open Jsoo_runtime in
+      let content = Js.get o (Js.string "content") in
+      if content == Ojs.null || content == Ojs.undefined then
         o
+      else
+        content
 
     let return x = resolve (wrap x)
     let fail err = reject (wrap err)

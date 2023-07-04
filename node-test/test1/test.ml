@@ -240,8 +240,8 @@ let () =
 (** https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Number/Number **)
 let () =
     let check (a: Number.t) (b: float) =
-      assert (Ojs.instance_of (a :> Ojs.t) ~constr:(Number.number :> Ojs.t));
-      assert (not (Ojs.instance_of (Ojs.float_to_js b) ~constr:(Number.number :> Ojs.t)));
+      assert (Jsoo_runtime.Js.instanceof (a :> Ojs.t) (Number.number :> Ojs.t));
+      assert (not (Jsoo_runtime.Js.instanceof (Ojs.float_to_js b) (Number.number :> Ojs.t)));
       assert (Number.valueOf a = b);
       ()
     in
