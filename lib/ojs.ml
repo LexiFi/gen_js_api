@@ -15,54 +15,54 @@
 
 type t = Jsoo_runtime.Js.t
 
-external pure_js_expr: string -> t = "caml_pure_js_expr"
+open Jsoo_runtime
+
+let pure_js_expr = Js.pure_js_expr
 let global = pure_js_expr "globalThis"
 let null = pure_js_expr "null"
 let undefined = pure_js_expr "undefined"
 
-external t_of_js: t -> t = "%identity"
-external t_to_js: t -> t = "%identity"
+let t_of_js: t -> t = Fun.id
+let t_to_js: t -> t = Fun.id
 
-external string_of_js: t -> string = "caml_js_to_string"
-external string_to_js: string -> t = "caml_js_from_string"
+let string_of_js: t -> string = Js.to_string
+let string_to_js: string -> t = Js.string
 
 external int_of_js: t -> int = "%identity"
 external int_to_js: int -> t = "%identity"
 
-external bool_of_js: t -> bool = "caml_js_to_bool"
-external bool_to_js: bool -> t = "caml_js_from_bool"
+let bool_of_js: t -> bool = Js.to_bool
+let bool_to_js: bool -> t = Js.bool
 
-external float_of_js: t -> float = "%identity"
-external float_to_js: float -> t = "%identity"
+let float_of_js: t -> float = Js.float_of_number
+let float_to_js: float -> t = Js.number_of_float
 
-external obj: (string * t) array -> t = "caml_js_object"
+let obj: (string * t) array -> t = Js.obj
 
-external variable: string -> t = "caml_js_var"
+let variable: string -> t = For_compatibility_only.variable
 
-external get: t -> string -> t = "caml_js_get"
-external set: t -> string -> t -> unit = "caml_js_set"
-external delete: t -> string -> unit = "caml_js_delete"
+let get: t -> string -> t = fun x y -> Js.get x (Js.string y)
+let set: t -> string -> t -> unit = fun x y -> Js.set x (Js.string y)
+let delete: t -> string -> unit = fun x y -> Js.delete x (Js.string y)
 
-external get_prop: t -> t -> t = "caml_js_get"
-external set_prop: t -> t -> t -> unit = "caml_js_set"
-external delete_prop: t -> t -> unit = "caml_js_delete"
+let get_prop: t -> t -> t = Js.get
+let set_prop: t -> t -> t -> unit = Js.set
+let delete_prop: t -> t -> unit = Js.delete
 
-external get_prop_ascii: t -> string -> t = "caml_js_get"
-external set_prop_ascii: t -> string -> t -> unit = "caml_js_set"
-external delete_prop_ascii: t -> string -> unit = "caml_js_delete"
+let get_prop_ascii: t -> string -> t = fun x y -> Js.get x (Obj.magic y)
+let set_prop_ascii: t -> string -> t -> unit =  fun x y -> Js.set x (Obj.magic y)
+let delete_prop_ascii: t -> string -> unit = fun x y -> Js.delete x (Obj.magic y)
 
-external internal_type_of: t -> t = "caml_js_typeof"
-let type_of x = string_of_js (internal_type_of x)
+let type_of x = string_of_js (Js.typeof x)
 
-external internal_instance_of: t -> t -> t = "caml_js_instanceof"
-let instance_of x ~constr = bool_of_js (internal_instance_of x constr)
+let instance_of x ~constr = Js.instanceof x constr
 
-external equals: t -> t -> bool = "caml_js_equals"
+let equals: t -> t -> bool = Js.equals
 
-external new_obj: t -> t array -> t = "caml_js_new"
+let new_obj: t -> t array -> t = Js.new_obj
 
-external call: t -> string -> t array -> t = "caml_js_meth_call"
-external apply: t -> t array -> t = "caml_js_fun_call"
+let call: t -> string -> t array -> t = Js.meth_call
+let apply: t -> t array -> t = Js.fun_call
 
 let array_make n = new_obj (get_prop_ascii global "Array") [|int_to_js n|]
 let array_get t i = get_prop t (int_to_js i)
@@ -105,17 +105,16 @@ class obj (x:t) =
     method to_js = x
   end
 
-external fun_to_js: int -> (t -> 'a) -> t = "caml_js_wrap_callback_strict"
-external fun_to_js_args: (t -> 'a) -> t = "caml_js_wrap_callback_arguments"
+let fun_to_js: int -> (t -> 'a) -> t = Js.callback_with_arity
+let fun_to_js_args: (t -> 'a) -> t = Js.callback_with_arguments
 
 let has_property o x =
   type_of o = "object" && o != null
   && get_prop o (string_to_js x) != undefined
 
-external new_obj_arr: t -> t -> t = "caml_ojs_new_arr"
+let new_obj_arr: t -> t -> t = Js.new_obj_arr
 
 let empty_obj () = new_obj (get_prop_ascii global "Object") [||]
-
 
 let getOwnPropertyNames obj =
   Jsoo_runtime.Js.meth_call

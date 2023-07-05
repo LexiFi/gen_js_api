@@ -17,20 +17,20 @@ val global: t
 
 (** {2 Mapper for built-in types} *)
 
-external t_of_js: t -> t = "%identity"
-external t_to_js: t -> t = "%identity"
+val t_of_js: t -> t
+val t_to_js: t -> t
 
-external string_of_js: t -> string = "caml_js_to_string"
-external string_to_js: string -> t = "caml_js_from_string"
+val string_of_js: t -> string
+val string_to_js: string -> t
 
-external int_of_js: t -> int = "%identity"
-external int_to_js: int -> t = "%identity"
+val int_of_js: t -> int
+val int_to_js: int -> t
 
-external bool_of_js: t -> bool = "caml_js_to_bool"
-external bool_to_js: bool -> t = "caml_js_from_bool"
+val bool_of_js: t -> bool
+val bool_to_js: bool -> t
 
-external float_of_js: t -> float = "%identity"
-external float_to_js: float -> t = "%identity"
+val float_of_js: t -> float
+val float_to_js: float -> t
 
 val array_of_js: (t -> 'a) -> t -> 'a array
 val array_to_js: ('a -> t) -> 'a array -> t
@@ -74,46 +74,46 @@ module Option (A: T) : T with type t = A.t option
 
 (** {2 Deprecated Functions } *)
 
-external fun_to_js: int -> (t -> 'a) -> t = "caml_js_wrap_callback_strict"
+val fun_to_js: int -> (t -> 'a) -> t
   [@@ocaml.deprecated "Use Jsoo_runtime.Js.callback_with_arity instead."]
 
-external fun_to_js_args: (t -> 'a) -> t = "caml_js_wrap_callback_arguments"
+val fun_to_js_args: (t -> 'a) -> t
   [@@ocaml.deprecated "Use Jsoo_runtime.Js.callback_with_arguments instead."]
 
-external get: t -> string -> t = "caml_js_get"
+val get: t -> string -> t
   [@@ocaml.deprecated "Use Ojs.get_prop_ascii instead."]
 
-external set: t -> string -> t -> unit = "caml_js_set"
+val set: t -> string -> t -> unit
   [@@ocaml.deprecated "Use Ojs.set_prop_ascii instead."]
 
-external delete: t -> string -> unit = "caml_js_delete"
+val delete: t -> string -> unit
   [@@ocaml.deprecated "Use Ojs.delete_prop_ascii instead."]
 
-external get_prop_ascii: t -> string -> t = "caml_js_get"
+val get_prop_ascii: t -> string -> t
   [@@ocaml.deprecated "Use Jsoo_runtime.Js.get instead."]
   (** Get the property from an object (only works if the property key is a plain ascii string). *)
 
-external set_prop_ascii: t -> string -> t -> unit = "caml_js_set"
+val set_prop_ascii: t -> string -> t -> unit
   [@@ocaml.deprecated "Use Jsoo_runtime.Js.set instead."]
   (** Set an object property (only works if the property key is a plain ascii string). *)
 
-external delete_prop_ascii: t -> string -> unit = "caml_js_delete"
+val delete_prop_ascii: t -> string -> unit
   [@@ocaml.deprecated "Use Jsoo_runtime.Js.delete instead."]
   (** Delete an object property (only works if the property key is a plain ascii string). *)
 
-external get_prop: t -> t -> t = "caml_js_get"
+val get_prop: t -> t -> t
   [@@ocaml.deprecated "Use Jsoo_runtime.Js.get instead."]
   (** Get the property from an object. *)
 
-external set_prop: t -> t -> t -> unit = "caml_js_set"
+val set_prop: t -> t -> t -> unit
   [@@ocaml.deprecated "Use Jsoo_runtime.Js.set instead."]
   (** Set an object property. *)
 
-external delete_prop: t -> t -> unit = "caml_js_delete"
+val delete_prop: t -> t -> unit
   [@@ocaml.deprecated "Use Jsoo_runtime.Js.delete instead."]
   (** Delete an object property. *)
 
-external obj: (string * t) array -> t = "caml_js_object"
+val obj: (string * t) array -> t
   [@@ocaml.deprecated "Use Jsoo_runtime.Js.obj instead."]
 
 val empty_obj: unit -> t
@@ -125,13 +125,13 @@ val has_property: t -> string -> bool
 val iter_properties: t -> (string -> unit) -> unit
   [@@ocaml.deprecated "Please do not use. It will be removed."]
 
-external call: t -> string -> t array -> t = "caml_js_meth_call"
+val call: t -> string -> t array -> t
   [@@ocaml.deprecated  "Use Jsoo_runtime.Js.meth_call instead."]
 
-external apply: t -> t array -> t = "caml_js_fun_call"
+val apply: t -> t array -> t
   [@@ocaml.deprecated  "Use Jsoo_runtime.Js.fun_call instead."]
 
-external new_obj: t -> t array -> t = "caml_js_new"
+val new_obj: t -> t array -> t
   [@@ocaml.deprecated  "Use Jsoo_runtime.Js.new_obj instead."]
 
 val call_arr: t -> string -> t -> t
@@ -140,7 +140,7 @@ val call_arr: t -> string -> t -> t
 val apply_arr: t -> t -> t
   [@@ocaml.deprecated  "Use Jsoo_runtime.Js.fun_call instead."]
 
-external new_obj_arr: t -> t -> t = "caml_ojs_new_arr"
+val new_obj_arr: t -> t -> t
   [@@ocaml.deprecated  "Use Jsoo_runtime.Js.new_obj_arr."]
 
 val array_make: int -> t
@@ -152,7 +152,7 @@ val array_get: t -> int -> t
 val array_set: t -> int -> t -> unit
   [@@ocaml.deprecated  "Use another binding of the global Array module."]
 
-external variable: string -> t = "caml_js_var"
+val variable: string -> t
   [@@ocaml.deprecated "For compatibility only."]
 
 val type_of: t -> string
