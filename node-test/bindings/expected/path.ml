@@ -26,7 +26,7 @@ let (join : string list -> string) =
          [|x7;((let x5 =
                   Jsoo_runtime.Js.new_obj
                     (Jsoo_runtime.Js.get
-                       (Jsoo_runtime.Js.pure_js_expr "joo_global_object")
+                       (Jsoo_runtime.Js.pure_js_expr "globalThis")
                        (Obj.magic "Array")) [||] in
                 List.iter
                   (fun (x6 : string) ->

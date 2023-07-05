@@ -7,22 +7,19 @@ let (alloc : int -> t) =
   fun (x3 : int) ->
     t_of_js
       (Jsoo_runtime.Js.meth_call
-         (Jsoo_runtime.Js.get
-            (Jsoo_runtime.Js.pure_js_expr "joo_global_object")
+         (Jsoo_runtime.Js.get (Jsoo_runtime.Js.pure_js_expr "globalThis")
             (Obj.magic "Buffer")) "alloc" [|(Ojs.int_to_js x3)|])
 let (from : string -> t) =
   fun (x4 : string) ->
     t_of_js
       (Jsoo_runtime.Js.meth_call
-         (Jsoo_runtime.Js.get
-            (Jsoo_runtime.Js.pure_js_expr "joo_global_object")
+         (Jsoo_runtime.Js.get (Jsoo_runtime.Js.pure_js_expr "globalThis")
             (Obj.magic "Buffer")) "from" [|(Ojs.string_to_js x4)|])
 let (concat : t list -> t) =
   fun (x5 : t list) ->
     t_of_js
       (Jsoo_runtime.Js.meth_call
-         (Jsoo_runtime.Js.get
-            (Jsoo_runtime.Js.pure_js_expr "joo_global_object")
+         (Jsoo_runtime.Js.get (Jsoo_runtime.Js.pure_js_expr "globalThis")
             (Obj.magic "Buffer")) "concat" [|(Ojs.list_to_js t_to_js x5)|])
 let (length : t -> int) =
   fun (x7 : t) ->

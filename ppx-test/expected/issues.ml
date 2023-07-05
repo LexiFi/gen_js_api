@@ -19,7 +19,7 @@ module Issue117 :
               ignore
                 (Jsoo_runtime.Js.meth_call
                    (Jsoo_runtime.Js.get
-                      (Jsoo_runtime.Js.pure_js_expr "joo_global_object")
+                      (Jsoo_runtime.Js.pure_js_expr "globalThis")
                       (Obj.magic "console")) "log" [|(Obj.magic x3)|])
           let (log2 : 'a -> 'b -> unit) =
             fun (x4 : 'a) ->
@@ -27,7 +27,7 @@ module Issue117 :
                 ignore
                   (Jsoo_runtime.Js.meth_call
                      (Jsoo_runtime.Js.get
-                        (Jsoo_runtime.Js.pure_js_expr "joo_global_object")
+                        (Jsoo_runtime.Js.pure_js_expr "globalThis")
                         (Obj.magic "console")) "jsLog2"
                      [|(Obj.magic x4);(Obj.magic x5)|])
         end
@@ -179,15 +179,14 @@ module Issue146 : sig val f : ?arg:[ `Foo ] -> unit -> int end =
         fun ?arg:(x48 : [ `Foo ] option) ->
           fun () ->
             Ojs.int_of_js
-              (let x51 = Jsoo_runtime.Js.pure_js_expr "joo_global_object" in
+              (let x51 = Jsoo_runtime.Js.pure_js_expr "globalThis" in
                Jsoo_runtime.Js.meth_call
                  (Jsoo_runtime.Js.get x51 (Obj.magic "f")) "apply"
                  [|x51;((let x49 =
                            Jsoo_runtime.Js.new_obj
                              (Jsoo_runtime.Js.get
-                                (Jsoo_runtime.Js.pure_js_expr
-                                   "joo_global_object") (Obj.magic "Array"))
-                             [||] in
+                                (Jsoo_runtime.Js.pure_js_expr "globalThis")
+                                (Obj.magic "Array")) [||] in
                          (match x48 with
                           | Some x50 ->
                               ignore
@@ -239,14 +238,13 @@ module PR165 :
                   t_of_js
                     (Jsoo_runtime.Js.new_obj_arr
                        (Jsoo_runtime.Js.get
-                          (Jsoo_runtime.Js.pure_js_expr "joo_global_object")
+                          (Jsoo_runtime.Js.pure_js_expr "globalThis")
                           (Obj.magic "ParameterInformation"))
                        (let x58 =
                           Jsoo_runtime.Js.new_obj
                             (Jsoo_runtime.Js.get
-                               (Jsoo_runtime.Js.pure_js_expr
-                                  "joo_global_object") (Obj.magic "Array"))
-                            [||] in
+                               (Jsoo_runtime.Js.pure_js_expr "globalThis")
+                               (Obj.magic "Array")) [||] in
                         ignore
                           (Jsoo_runtime.Js.meth_call x58 "push"
                              [|((match x56 with
@@ -257,7 +255,7 @@ module PR165 :
                                        Jsoo_runtime.Js.new_obj
                                          (Jsoo_runtime.Js.get
                                             (Jsoo_runtime.Js.pure_js_expr
-                                               "joo_global_object")
+                                               "globalThis")
                                             (Obj.magic "Array"))
                                          [|(Ojs.int_to_js 2)|] in
                                      (Jsoo_runtime.Js.set x66

@@ -2,9 +2,9 @@
 [@@@ocaml.warning "-7-32-39"]
 let (path : Ojs.t) =
   Jsoo_runtime.Js.get
-    (Jsoo_runtime.Js.get (Jsoo_runtime.Js.pure_js_expr "joo_global_object")
+    (Jsoo_runtime.Js.get (Jsoo_runtime.Js.pure_js_expr "globalThis")
        (Obj.magic "__LIB__NODE__IMPORTS")) (Obj.magic "path")
 let (fs : Ojs.t) =
   Jsoo_runtime.Js.get
-    (Jsoo_runtime.Js.get (Jsoo_runtime.Js.pure_js_expr "joo_global_object")
+    (Jsoo_runtime.Js.get (Jsoo_runtime.Js.pure_js_expr "globalThis")
        (Obj.magic "__LIB__NODE__IMPORTS")) (Obj.magic "fs")

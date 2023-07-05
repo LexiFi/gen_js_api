@@ -15,8 +15,7 @@ module M =
     let (prop_get : unit -> int) =
       ((fun () ->
           Ojs.int_of_js
-            (Jsoo_runtime.Js.get
-               (Jsoo_runtime.Js.pure_js_expr "joo_global_object")
+            (Jsoo_runtime.Js.get (Jsoo_runtime.Js.pure_js_expr "globalThis")
                (Obj.magic "propGet")))
       [@ocaml.ppwarning
         "Heuristic for automatic binding is deprecated; please add the '@js.get' attribute."])
@@ -29,8 +28,7 @@ module M =
         "Heuristic for automatic binding is deprecated; please add the '@js.set' attribute."])
     let (set_global : int -> unit) =
       ((fun (x6 : int) ->
-          Jsoo_runtime.Js.set
-            (Jsoo_runtime.Js.pure_js_expr "joo_global_object")
+          Jsoo_runtime.Js.set (Jsoo_runtime.Js.pure_js_expr "globalThis")
             (Obj.magic "global") (Ojs.int_to_js x6))
       [@ocaml.ppwarning
         "Heuristic for automatic binding is deprecated; please add the '@js.set' attribute."])
@@ -39,7 +37,7 @@ module M =
           t_of_js
             (Jsoo_runtime.Js.new_obj
                (Jsoo_runtime.Js.get
-                  (Jsoo_runtime.Js.pure_js_expr "joo_global_object")
+                  (Jsoo_runtime.Js.pure_js_expr "globalThis")
                   (Obj.magic "ThingUnit")) [||]))
       [@ocaml.ppwarning
         "Heuristic for automatic binding is deprecated; please add the '@js.new' attribute."])
@@ -48,7 +46,7 @@ module M =
           t_of_js
             (Jsoo_runtime.Js.new_obj
                (Jsoo_runtime.Js.get
-                  (Jsoo_runtime.Js.pure_js_expr "joo_global_object")
+                  (Jsoo_runtime.Js.pure_js_expr "globalThis")
                   (Obj.magic "ThingArgs")) [|(Ojs.int_to_js x7)|]))
       [@ocaml.ppwarning
         "Heuristic for automatic binding is deprecated; please add the '@js.new' attribute."])
@@ -91,8 +89,7 @@ module M =
         "Heuristic for automatic binding is deprecated; please add the '@js.call' attribute."])
     let (global : t) =
       ((t_of_js
-          (Jsoo_runtime.Js.get
-             (Jsoo_runtime.Js.pure_js_expr "joo_global_object")
+          (Jsoo_runtime.Js.get (Jsoo_runtime.Js.pure_js_expr "globalThis")
              (Obj.magic "global")))
       [@ocaml.ppwarning
         "Heuristic for automatic binding is deprecated; please add the '@js.global' attribute."])

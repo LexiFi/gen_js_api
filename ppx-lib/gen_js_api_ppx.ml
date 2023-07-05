@@ -873,7 +873,7 @@ let split sep s =
   in
   aux 0 0
 
-let jsoo_global = jsoo_pure_js_expr "joo_global_object"
+let jsoo_global = jsoo_pure_js_expr "globalThis"
 
 let magic x =
   app (var ("Obj.magic")) (nolabel ([x])) false

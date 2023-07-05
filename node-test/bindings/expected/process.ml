@@ -3,12 +3,10 @@
 let (env : string Container.StringMap.t) =
   Container.StringMap.t_of_js Ojs.string_of_js
     (Jsoo_runtime.Js.get
-       (Jsoo_runtime.Js.get
-          (Jsoo_runtime.Js.pure_js_expr "joo_global_object")
+       (Jsoo_runtime.Js.get (Jsoo_runtime.Js.pure_js_expr "globalThis")
           (Obj.magic "process")) (Obj.magic "env"))
 let (version : string option) =
   Ojs.option_of_js Ojs.string_of_js
     (Jsoo_runtime.Js.get
-       (Jsoo_runtime.Js.get
-          (Jsoo_runtime.Js.pure_js_expr "joo_global_object")
+       (Jsoo_runtime.Js.get (Jsoo_runtime.Js.pure_js_expr "globalThis")
           (Obj.magic "process")) (Obj.magic "version"))

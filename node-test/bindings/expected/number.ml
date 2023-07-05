@@ -14,7 +14,7 @@ let (toString : t -> ?radix:int -> unit -> float) =
              [|x7;((let x4 =
                       Jsoo_runtime.Js.new_obj
                         (Jsoo_runtime.Js.get
-                           (Jsoo_runtime.Js.pure_js_expr "joo_global_object")
+                           (Jsoo_runtime.Js.pure_js_expr "globalThis")
                            (Obj.magic "Array")) [||] in
                     (match x3 with
                      | Some x5 ->
@@ -34,7 +34,7 @@ let (toFixed : t -> ?fractionDigits:int -> unit -> float) =
              [|x12;((let x9 =
                        Jsoo_runtime.Js.new_obj
                          (Jsoo_runtime.Js.get
-                            (Jsoo_runtime.Js.pure_js_expr "joo_global_object")
+                            (Jsoo_runtime.Js.pure_js_expr "globalThis")
                             (Obj.magic "Array")) [||] in
                      (match x8 with
                       | Some x10 ->
@@ -54,7 +54,7 @@ let (toExponential : t -> ?fractionDigits:int -> unit -> float) =
              [|x17;((let x14 =
                        Jsoo_runtime.Js.new_obj
                          (Jsoo_runtime.Js.get
-                            (Jsoo_runtime.Js.pure_js_expr "joo_global_object")
+                            (Jsoo_runtime.Js.pure_js_expr "globalThis")
                             (Obj.magic "Array")) [||] in
                      (match x13 with
                       | Some x15 ->
@@ -74,7 +74,7 @@ let (toPrecision : t -> ?precision:int -> unit -> float) =
              [|x22;((let x19 =
                        Jsoo_runtime.Js.new_obj
                          (Jsoo_runtime.Js.get
-                            (Jsoo_runtime.Js.pure_js_expr "joo_global_object")
+                            (Jsoo_runtime.Js.pure_js_expr "globalThis")
                             (Obj.magic "Array")) [||] in
                      (match x18 with
                       | Some x20 ->
@@ -92,45 +92,38 @@ module Scoped =
       fun (x24 : 'any) ->
         t_of_js
           (Jsoo_runtime.Js.new_obj
-             (Jsoo_runtime.Js.get
-                (Jsoo_runtime.Js.pure_js_expr "joo_global_object")
+             (Jsoo_runtime.Js.get (Jsoo_runtime.Js.pure_js_expr "globalThis")
                 (Obj.magic "Number")) [|(Obj.magic x24)|])
     let (invoke : 'any -> float) =
       fun (x25 : 'any) ->
         Ojs.float_of_js
           (Jsoo_runtime.Js.fun_call
-             (Jsoo_runtime.Js.get
-                (Jsoo_runtime.Js.pure_js_expr "joo_global_object")
+             (Jsoo_runtime.Js.get (Jsoo_runtime.Js.pure_js_expr "globalThis")
                 (Obj.magic "Number")) [|(Obj.magic x25)|])
     let (min_value : float) =
       Ojs.float_of_js
         (Jsoo_runtime.Js.get
-           (Jsoo_runtime.Js.get
-              (Jsoo_runtime.Js.pure_js_expr "joo_global_object")
+           (Jsoo_runtime.Js.get (Jsoo_runtime.Js.pure_js_expr "globalThis")
               (Obj.magic "Number")) (Obj.magic "MIN_VALUE"))
     let (max_value : float) =
       Ojs.float_of_js
         (Jsoo_runtime.Js.get
-           (Jsoo_runtime.Js.get
-              (Jsoo_runtime.Js.pure_js_expr "joo_global_object")
+           (Jsoo_runtime.Js.get (Jsoo_runtime.Js.pure_js_expr "globalThis")
               (Obj.magic "Number")) (Obj.magic "MAX_VALUE"))
     let (nan : float) =
       Ojs.float_of_js
         (Jsoo_runtime.Js.get
-           (Jsoo_runtime.Js.get
-              (Jsoo_runtime.Js.pure_js_expr "joo_global_object")
+           (Jsoo_runtime.Js.get (Jsoo_runtime.Js.pure_js_expr "globalThis")
               (Obj.magic "Number")) (Obj.magic "NaN"))
     let (negative_infinity : float) =
       Ojs.float_of_js
         (Jsoo_runtime.Js.get
-           (Jsoo_runtime.Js.get
-              (Jsoo_runtime.Js.pure_js_expr "joo_global_object")
+           (Jsoo_runtime.Js.get (Jsoo_runtime.Js.pure_js_expr "globalThis")
               (Obj.magic "Number")) (Obj.magic "NEGATIVE_INFINITY"))
     let (positive_infinity : float) =
       Ojs.float_of_js
         (Jsoo_runtime.Js.get
-           (Jsoo_runtime.Js.get
-              (Jsoo_runtime.Js.pure_js_expr "joo_global_object")
+           (Jsoo_runtime.Js.get (Jsoo_runtime.Js.pure_js_expr "globalThis")
               (Obj.magic "Number")) (Obj.magic "POSITIVE_INFINITY"))
   end
 module Static =
@@ -173,5 +166,5 @@ module Static =
   end
 let (number : Static.t) =
   Static.t_of_js
-    (Jsoo_runtime.Js.get (Jsoo_runtime.Js.pure_js_expr "joo_global_object")
+    (Jsoo_runtime.Js.get (Jsoo_runtime.Js.pure_js_expr "globalThis")
        (Obj.magic "Number"))

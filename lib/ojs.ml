@@ -16,7 +16,7 @@
 type t = Jsoo_runtime.Js.t
 
 external pure_js_expr: string -> t = "caml_pure_js_expr"
-let global = pure_js_expr "joo_global_object"
+let global = pure_js_expr "globalThis"
 let null = pure_js_expr "null"
 let undefined = pure_js_expr "undefined"
 

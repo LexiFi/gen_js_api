@@ -12,19 +12,17 @@ module M =
     let (prop_get : unit -> int) =
       fun () ->
         Ojs.int_of_js
-          (Jsoo_runtime.Js.get
-             (Jsoo_runtime.Js.pure_js_expr "joo_global_object")
+          (Jsoo_runtime.Js.get (Jsoo_runtime.Js.pure_js_expr "globalThis")
              (Obj.magic "getter"))
     let (global : t) =
       t_of_js
-        (Jsoo_runtime.Js.get
-           (Jsoo_runtime.Js.pure_js_expr "joo_global_object")
+        (Jsoo_runtime.Js.get (Jsoo_runtime.Js.pure_js_expr "globalThis")
            (Obj.magic "global"))
     let (global_arrow : int -> int) =
       fun (x5 : int) ->
         Ojs.int_of_js
           (Jsoo_runtime.Js.meth_call
-             (Jsoo_runtime.Js.pure_js_expr "joo_global_object") "global"
+             (Jsoo_runtime.Js.pure_js_expr "globalThis") "global"
              [|(Ojs.int_to_js x5)|])
     let (prop_set : t -> int -> unit) =
       fun (x6 : t) ->
@@ -33,8 +31,7 @@ module M =
             (Ojs.int_to_js x7)
     let (prop_set_global : t -> unit) =
       fun (x8 : t) ->
-        Jsoo_runtime.Js.set
-          (Jsoo_runtime.Js.pure_js_expr "joo_global_object")
+        Jsoo_runtime.Js.set (Jsoo_runtime.Js.pure_js_expr "globalThis")
           (Obj.magic "setter") (t_to_js x8)
     let (method_call_global : t -> int) =
       fun (x9 : t) ->
@@ -67,8 +64,7 @@ module M =
       fun (x17 : int) ->
         t_of_js
           (Jsoo_runtime.Js.new_obj
-             (Jsoo_runtime.Js.get
-                (Jsoo_runtime.Js.pure_js_expr "joo_global_object")
+             (Jsoo_runtime.Js.get (Jsoo_runtime.Js.pure_js_expr "globalThis")
                 (Obj.magic "Thing")) [|(Ojs.int_to_js x17)|])
     let (builder : ?x:int -> int -> z:int -> t) =
       fun ?x:(x18 : int option) ->
@@ -77,7 +73,7 @@ module M =
             let x21 =
               Jsoo_runtime.Js.new_obj
                 (Jsoo_runtime.Js.get
-                   (Jsoo_runtime.Js.pure_js_expr "joo_global_object")
+                   (Jsoo_runtime.Js.pure_js_expr "globalThis")
                    (Obj.magic "Object")) [||] in
             (match x18 with
              | Some x22 ->
