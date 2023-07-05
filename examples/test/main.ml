@@ -220,14 +220,6 @@ end = struct
     List.iter (fun (k, v) -> Jsoo_runtime.Js.set o (Ojs.string_to_js k) (ml2js v)) l;
     o
 
-  include
-    [%js:
-      val getOwnPropertyNames: Ojs.t -> string array [@@js.global "Object.getOwnPropertyNames"]
-    ]
-
-  let iter_properties obj f =
-    Array.iter f (getOwnPropertyNames obj)
-
   let t_of_js js2ml o =
     let l = ref [] in
 
