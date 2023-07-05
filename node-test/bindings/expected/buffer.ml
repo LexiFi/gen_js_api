@@ -8,22 +8,24 @@ let (alloc : int -> t) =
     t_of_js
       (Jsoo_runtime.Js.meth_call
          (Jsoo_runtime.Js.get (Jsoo_runtime.Js.pure_js_expr "globalThis")
-            (Obj.magic "Buffer")) "alloc" [|(Ojs.int_to_js x3)|])
+            (Ojs.string_to_js "Buffer")) "alloc" [|(Ojs.int_to_js x3)|])
 let (from : string -> t) =
   fun (x4 : string) ->
     t_of_js
       (Jsoo_runtime.Js.meth_call
          (Jsoo_runtime.Js.get (Jsoo_runtime.Js.pure_js_expr "globalThis")
-            (Obj.magic "Buffer")) "from" [|(Ojs.string_to_js x4)|])
+            (Ojs.string_to_js "Buffer")) "from" [|(Ojs.string_to_js x4)|])
 let (concat : t list -> t) =
   fun (x5 : t list) ->
     t_of_js
       (Jsoo_runtime.Js.meth_call
          (Jsoo_runtime.Js.get (Jsoo_runtime.Js.pure_js_expr "globalThis")
-            (Obj.magic "Buffer")) "concat" [|(Ojs.list_to_js t_to_js x5)|])
+            (Ojs.string_to_js "Buffer")) "concat"
+         [|(Ojs.list_to_js t_to_js x5)|])
 let (length : t -> int) =
   fun (x7 : t) ->
-    Ojs.int_of_js (Jsoo_runtime.Js.get (t_to_js x7) (Obj.magic "length"))
+    Ojs.int_of_js
+      (Jsoo_runtime.Js.get (t_to_js x7) (Ojs.string_to_js "length"))
 let (get : t -> int -> int option) =
   fun (x8 : t) ->
     fun (x9 : int) ->

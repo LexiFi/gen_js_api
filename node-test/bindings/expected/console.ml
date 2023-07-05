@@ -5,13 +5,13 @@ let (log : 'a -> unit) =
     ignore
       (Jsoo_runtime.Js.meth_call
          (Jsoo_runtime.Js.get (Jsoo_runtime.Js.pure_js_expr "globalThis")
-            (Obj.magic "console")) "log" [|(Obj.magic x1)|])
+            (Ojs.string_to_js "console")) "log" [|(Obj.magic x1)|])
 let (error : 'a -> unit) =
   fun (x2 : 'a) ->
     ignore
       (Jsoo_runtime.Js.meth_call
          (Jsoo_runtime.Js.get (Jsoo_runtime.Js.pure_js_expr "globalThis")
-            (Obj.magic "console")) "error" [|(Obj.magic x2)|])
+            (Ojs.string_to_js "console")) "error" [|(Obj.magic x2)|])
 module T =
   struct
     let (log : (module Ojs.T with type t = 'a) -> 'a -> unit) =
@@ -22,7 +22,7 @@ module T =
               (Jsoo_runtime.Js.meth_call
                  (Jsoo_runtime.Js.get
                     (Jsoo_runtime.Js.pure_js_expr "globalThis")
-                    (Obj.magic "console")) "log" [|(A.t_to_js x3)|])
+                    (Ojs.string_to_js "console")) "log" [|(A.t_to_js x3)|])
     let (error : (module Ojs.T with type t = 'a) -> 'a -> unit) =
       fun (type a) ->
         fun ((module A)  : (module Ojs.T with type t = a)) ->
@@ -31,5 +31,5 @@ module T =
               (Jsoo_runtime.Js.meth_call
                  (Jsoo_runtime.Js.get
                     (Jsoo_runtime.Js.pure_js_expr "globalThis")
-                    (Obj.magic "console")) "error" [|(A.t_to_js x4)|])
+                    (Ojs.string_to_js "console")) "error" [|(A.t_to_js x4)|])
   end

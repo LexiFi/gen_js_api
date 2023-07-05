@@ -8,16 +8,17 @@ module M =
     let (cast : t -> string) = fun (x3 : t) -> Ojs.string_of_js (t_to_js x3)
     let (prop_get_arg : t -> int) =
       fun (x4 : t) ->
-        Ojs.int_of_js (Jsoo_runtime.Js.get (t_to_js x4) (Obj.magic "getter"))
+        Ojs.int_of_js
+          (Jsoo_runtime.Js.get (t_to_js x4) (Ojs.string_to_js "getter"))
     let (prop_get : unit -> int) =
       fun () ->
         Ojs.int_of_js
           (Jsoo_runtime.Js.get (Jsoo_runtime.Js.pure_js_expr "globalThis")
-             (Obj.magic "getter"))
+             (Ojs.string_to_js "getter"))
     let (global : t) =
       t_of_js
         (Jsoo_runtime.Js.get (Jsoo_runtime.Js.pure_js_expr "globalThis")
-           (Obj.magic "global"))
+           (Ojs.string_to_js "global"))
     let (global_arrow : int -> int) =
       fun (x5 : int) ->
         Ojs.int_of_js
@@ -27,12 +28,12 @@ module M =
     let (prop_set : t -> int -> unit) =
       fun (x6 : t) ->
         fun (x7 : int) ->
-          Jsoo_runtime.Js.set (t_to_js x6) (Obj.magic "setter")
+          Jsoo_runtime.Js.set (t_to_js x6) (Ojs.string_to_js "setter")
             (Ojs.int_to_js x7)
     let (prop_set_global : t -> unit) =
       fun (x8 : t) ->
         Jsoo_runtime.Js.set (Jsoo_runtime.Js.pure_js_expr "globalThis")
-          (Obj.magic "setter") (t_to_js x8)
+          (Ojs.string_to_js "setter") (t_to_js x8)
     let (method_call_global : t -> int) =
       fun (x9 : t) ->
         Ojs.int_of_js (Jsoo_runtime.Js.meth_call (t_to_js x9) "method" [||])
@@ -65,7 +66,7 @@ module M =
         t_of_js
           (Jsoo_runtime.Js.new_obj
              (Jsoo_runtime.Js.get (Jsoo_runtime.Js.pure_js_expr "globalThis")
-                (Obj.magic "Thing")) [|(Ojs.int_to_js x17)|])
+                (Ojs.string_to_js "Thing")) [|(Ojs.int_to_js x17)|])
     let (builder : ?x:int -> int -> z:int -> t) =
       fun ?x:(x18 : int option) ->
         fun (x19 : int) ->
@@ -74,13 +75,16 @@ module M =
               Jsoo_runtime.Js.new_obj
                 (Jsoo_runtime.Js.get
                    (Jsoo_runtime.Js.pure_js_expr "globalThis")
-                   (Obj.magic "Object")) [||] in
+                   (Ojs.string_to_js "Object")) [||] in
             (match x18 with
              | Some x22 ->
-                 Jsoo_runtime.Js.set x21 (Obj.magic "x") (Ojs.int_to_js x22)
+                 Jsoo_runtime.Js.set x21 (Ojs.string_to_js "x")
+                   (Ojs.int_to_js x22)
              | None -> ());
-            Jsoo_runtime.Js.set x21 (Obj.magic "y") (Ojs.int_to_js x19);
-            Jsoo_runtime.Js.set x21 (Obj.magic "z") (Ojs.int_to_js x20);
+            Jsoo_runtime.Js.set x21 (Ojs.string_to_js "y")
+              (Ojs.int_to_js x19);
+            Jsoo_runtime.Js.set x21 (Ojs.string_to_js "z")
+              (Ojs.int_to_js x20);
             t_of_js x21
     let (index_get_int : t -> int -> string option) =
       fun (x23 : t) ->

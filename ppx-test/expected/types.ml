@@ -22,7 +22,7 @@ let (_ : (string * int) to_js) =
     let x16 =
       Jsoo_runtime.Js.new_obj
         (Jsoo_runtime.Js.get (Jsoo_runtime.Js.pure_js_expr "globalThis")
-           (Obj.magic "Array")) [|(Ojs.int_to_js 2)|] in
+           (Ojs.string_to_js "Array")) [|(Ojs.int_to_js 2)|] in
     Jsoo_runtime.Js.set x16 (Ojs.int_to_js 0) (Ojs.string_to_js x14);
     Jsoo_runtime.Js.set x16 (Ojs.int_to_js 1) (Ojs.int_to_js x15);
     x16
@@ -38,7 +38,7 @@ let (_ : (string * int * bool) to_js) =
     let x23 =
       Jsoo_runtime.Js.new_obj
         (Jsoo_runtime.Js.get (Jsoo_runtime.Js.pure_js_expr "globalThis")
-           (Obj.magic "Array")) [|(Ojs.int_to_js 3)|] in
+           (Ojs.string_to_js "Array")) [|(Ojs.int_to_js 3)|] in
     Jsoo_runtime.Js.set x23 (Ojs.int_to_js 0) (Ojs.string_to_js x20);
     Jsoo_runtime.Js.set x23 (Ojs.int_to_js 1) (Ojs.int_to_js x21);
     Jsoo_runtime.Js.set x23 (Ojs.int_to_js 2) (Ojs.bool_to_js x22);
@@ -123,7 +123,7 @@ let (_ : (label:int -> ?opt:int -> unit -> unit) of_js) =
                                                              (Jsoo_runtime.Js.get
                                                                 (Jsoo_runtime.Js.pure_js_expr
                                                                    "globalThis")
-                                                                (Obj.magic
+                                                                (Ojs.string_to_js
                                                                    "Array"))
                                                              [||] in
                                                          ignore
@@ -160,7 +160,7 @@ let (_ : (label:int -> ?opt:int -> unit -> unit) of_js) =
                                                              (Jsoo_runtime.Js.get
                                                                 (Jsoo_runtime.Js.pure_js_expr
                                                                    "globalThis")
-                                                                (Obj.magic
+                                                                (Ojs.string_to_js
                                                                    "Array"))
                                                              [||] in
                                                          ignore
@@ -208,12 +208,13 @@ module B :
             ignore
               (let x80 = Jsoo_runtime.Js.pure_js_expr "globalThis" in
                Jsoo_runtime.Js.meth_call
-                 (Jsoo_runtime.Js.get x80 (Obj.magic "default0")) "apply"
+                 (Jsoo_runtime.Js.get x80 (Ojs.string_to_js "default0"))
+                 "apply"
                  [|x80;((let x78 =
                            Jsoo_runtime.Js.new_obj
                              (Jsoo_runtime.Js.get
                                 (Jsoo_runtime.Js.pure_js_expr "globalThis")
-                                (Obj.magic "Array")) [||] in
+                                (Ojs.string_to_js "Array")) [||] in
                          (match x77 with
                           | Some x79 ->
                               ignore
@@ -235,7 +236,7 @@ module B :
             Jsoo_runtime.Js.new_obj
               (Jsoo_runtime.Js.get
                  (Jsoo_runtime.Js.pure_js_expr "globalThis")
-                 (Obj.magic "Object")) [||] in
+                 (Ojs.string_to_js "Object")) [||] in
           x83
       let (builder1 : x:int -> Ojs.t) =
         fun ~x:(x84 : int) ->
@@ -243,8 +244,9 @@ module B :
             Jsoo_runtime.Js.new_obj
               (Jsoo_runtime.Js.get
                  (Jsoo_runtime.Js.pure_js_expr "globalThis")
-                 (Obj.magic "Object")) [||] in
-          Jsoo_runtime.Js.set x85 (Obj.magic "x") (Ojs.int_to_js x84); x85
+                 (Ojs.string_to_js "Object")) [||] in
+          Jsoo_runtime.Js.set x85 (Ojs.string_to_js "x") (Ojs.int_to_js x84);
+          x85
       let (builder2 : ?x:int -> ?y:string -> unit -> Ojs.t) =
         fun ?x:(x86 : int option) ->
           fun ?y:(x87 : string option) ->
@@ -253,15 +255,15 @@ module B :
                 Jsoo_runtime.Js.new_obj
                   (Jsoo_runtime.Js.get
                      (Jsoo_runtime.Js.pure_js_expr "globalThis")
-                     (Obj.magic "Object")) [||] in
+                     (Ojs.string_to_js "Object")) [||] in
               (match x86 with
                | Some x90 ->
-                   Jsoo_runtime.Js.set x88 (Obj.magic "x")
+                   Jsoo_runtime.Js.set x88 (Ojs.string_to_js "x")
                      (Ojs.int_to_js x90)
                | None -> ());
               (match x87 with
                | Some x89 ->
-                   Jsoo_runtime.Js.set x88 (Obj.magic "y")
+                   Jsoo_runtime.Js.set x88 (Ojs.string_to_js "y")
                      (Ojs.string_to_js x89)
                | None -> ());
               x88
@@ -273,9 +275,11 @@ module B :
                 Jsoo_runtime.Js.new_obj
                   (Jsoo_runtime.Js.get
                      (Jsoo_runtime.Js.pure_js_expr "globalThis")
-                     (Obj.magic "Object")) [||] in
-              Jsoo_runtime.Js.set x93 (Obj.magic "x") (Ojs.int_to_js x91);
-              Jsoo_runtime.Js.set x93 (Obj.magic "y") (Ojs.string_to_js x92);
+                     (Ojs.string_to_js "Object")) [||] in
+              Jsoo_runtime.Js.set x93 (Ojs.string_to_js "x")
+                (Ojs.int_to_js x91);
+              Jsoo_runtime.Js.set x93 (Ojs.string_to_js "y")
+                (Ojs.string_to_js x92);
               x93
       let (builder4 : x:int -> y:string -> z:unit -> Ojs.t) =
         fun ~x:(x94 : int) ->
@@ -285,10 +289,13 @@ module B :
                 Jsoo_runtime.Js.new_obj
                   (Jsoo_runtime.Js.get
                      (Jsoo_runtime.Js.pure_js_expr "globalThis")
-                     (Obj.magic "Object")) [||] in
-              Jsoo_runtime.Js.set x97 (Obj.magic "x") (Ojs.int_to_js x94);
-              Jsoo_runtime.Js.set x97 (Obj.magic "y") (Ojs.string_to_js x95);
-              Jsoo_runtime.Js.set x97 (Obj.magic "z") (Ojs.unit_to_js x96);
+                     (Ojs.string_to_js "Object")) [||] in
+              Jsoo_runtime.Js.set x97 (Ojs.string_to_js "x")
+                (Ojs.int_to_js x94);
+              Jsoo_runtime.Js.set x97 (Ojs.string_to_js "y")
+                (Ojs.string_to_js x95);
+              Jsoo_runtime.Js.set x97 (Ojs.string_to_js "z")
+                (Ojs.unit_to_js x96);
               x97
       let (builder5 : ?x:int -> ?y:string -> unit -> Ojs.t) =
         fun ?x:(x98 : int option) ->
@@ -298,15 +305,15 @@ module B :
                 Jsoo_runtime.Js.new_obj
                   (Jsoo_runtime.Js.get
                      (Jsoo_runtime.Js.pure_js_expr "globalThis")
-                     (Obj.magic "Object")) [||] in
+                     (Ojs.string_to_js "Object")) [||] in
               (match x98 with
                | Some x102 ->
-                   Jsoo_runtime.Js.set x100 (Obj.magic "x")
+                   Jsoo_runtime.Js.set x100 (Ojs.string_to_js "x")
                      (Ojs.int_to_js x102)
                | None -> ());
               (match x99 with
                | Some x101 ->
-                   Jsoo_runtime.Js.set x100 (Obj.magic "y")
+                   Jsoo_runtime.Js.set x100 (Ojs.string_to_js "y")
                      (Ojs.string_to_js x101)
                | None -> ());
               x100
@@ -319,16 +326,16 @@ module B :
                   Jsoo_runtime.Js.new_obj
                     (Jsoo_runtime.Js.get
                        (Jsoo_runtime.Js.pure_js_expr "globalThis")
-                       (Obj.magic "Object")) [||] in
-                Jsoo_runtime.Js.set x106 (Obj.magic "x")
+                       (Ojs.string_to_js "Object")) [||] in
+                Jsoo_runtime.Js.set x106 (Ojs.string_to_js "x")
                   (Ojs.int_to_js
                      (match x103 with | Some x109 -> x109 | None -> 42));
-                Jsoo_runtime.Js.set x106 (Obj.magic "y")
+                Jsoo_runtime.Js.set x106 (Ojs.string_to_js "y")
                   (Ojs.string_to_js
                      (match x104 with | Some x108 -> x108 | None -> "42"));
                 (match x105 with
                  | Some x107 ->
-                     Jsoo_runtime.Js.set x106 (Obj.magic "z")
+                     Jsoo_runtime.Js.set x106 (Ojs.string_to_js "z")
                        (Ojs.int_to_js x107)
                  | None -> ());
                 x106
@@ -338,12 +345,12 @@ module B :
             Ojs.string_of_js
               (let x114 = Jsoo_runtime.Js.pure_js_expr "globalThis" in
                Jsoo_runtime.Js.meth_call
-                 (Jsoo_runtime.Js.get x114 (Obj.magic "sep")) "apply"
+                 (Jsoo_runtime.Js.get x114 (Ojs.string_to_js "sep")) "apply"
                  [|x114;((let x112 =
                             Jsoo_runtime.Js.new_obj
                               (Jsoo_runtime.Js.get
                                  (Jsoo_runtime.Js.pure_js_expr "globalThis")
-                                 (Obj.magic "Array")) [||] in
+                                 (Ojs.string_to_js "Array")) [||] in
                           ignore
                             (Jsoo_runtime.Js.meth_call x112 "push"
                                [|(Ojs.string_to_js x110)|]);
@@ -448,8 +455,8 @@ module T :
       let rec record_of_js : Ojs.t -> record =
         fun (x124 : Ojs.t) ->
           {
-            x = (js_of_js (Jsoo_runtime.Js.get x124 (Obj.magic "x")));
-            y = (js_of_js (Jsoo_runtime.Js.get x124 (Obj.magic "y")))
+            x = (js_of_js (Jsoo_runtime.Js.get x124 (Ojs.string_to_js "x")));
+            y = (js_of_js (Jsoo_runtime.Js.get x124 (Ojs.string_to_js "y")))
           }
       and record_to_js : record -> Ojs.t =
         fun (x123 : record) ->
@@ -461,8 +468,8 @@ module T :
       let rec mutable_record_of_js : Ojs.t -> mutable_record =
         fun (x126 : Ojs.t) ->
           {
-            x = (js_of_js (Jsoo_runtime.Js.get x126 (Obj.magic "x")));
-            y = (js_of_js (Jsoo_runtime.Js.get x126 (Obj.magic "y")))
+            x = (js_of_js (Jsoo_runtime.Js.get x126 (Ojs.string_to_js "x")));
+            y = (js_of_js (Jsoo_runtime.Js.get x126 (Ojs.string_to_js "y")))
           }
       and mutable_record_to_js : mutable_record -> Ojs.t =
         fun (x125 : mutable_record) ->
@@ -474,8 +481,12 @@ module T :
       let rec record_relabel_of_js : Ojs.t -> record_relabel =
         fun (x128 : Ojs.t) ->
           {
-            x = (Ojs.int_of_js (Jsoo_runtime.Js.get x128 (Obj.magic "x")));
-            y = (Ojs.int_of_js (Jsoo_runtime.Js.get x128 (Obj.magic "Y")))
+            x =
+              (Ojs.int_of_js
+                 (Jsoo_runtime.Js.get x128 (Ojs.string_to_js "x")));
+            y =
+              (Ojs.int_of_js
+                 (Jsoo_runtime.Js.get x128 (Ojs.string_to_js "Y")))
           }
       and record_relabel_to_js : record_relabel -> Ojs.t =
         fun (x127 : record_relabel) ->
@@ -495,9 +506,11 @@ module T :
                 fun (x130 : Ojs.t) ->
                   {
                     x =
-                      (__a_of_js (Jsoo_runtime.Js.get x130 (Obj.magic "x")));
+                      (__a_of_js
+                         (Jsoo_runtime.Js.get x130 (Ojs.string_to_js "x")));
                     y =
-                      (__b_of_js (Jsoo_runtime.Js.get x130 (Obj.magic "y")))
+                      (__b_of_js
+                         (Jsoo_runtime.Js.get x130 (Ojs.string_to_js "y")))
                   }
       and parametrized_to_js :
         'a 'b .
@@ -640,37 +653,39 @@ module T :
           let x168 = x167 in
           match Ojs.string_of_js
                   (Jsoo_runtime.Js.typeof
-                     (Jsoo_runtime.Js.get x168 (Obj.magic "kind")))
+                     (Jsoo_runtime.Js.get x168 (Ojs.string_to_js "kind")))
           with
           | "number" -> Unknown x168
           | "string" ->
               (match Ojs.string_of_js
-                       (Jsoo_runtime.Js.get x168 (Obj.magic "kind"))
+                       (Jsoo_runtime.Js.get x168 (Ojs.string_to_js "kind"))
                with
                | "A" -> A
                | "B" ->
                    B
                      (Ojs.int_of_js
-                        (Jsoo_runtime.Js.get x168 (Obj.magic "arg")))
+                        (Jsoo_runtime.Js.get x168 (Ojs.string_to_js "arg")))
                | "C" ->
                    C
                      ((Ojs.int_of_js
                          (Jsoo_runtime.Js.get
-                            (Jsoo_runtime.Js.get x168 (Obj.magic "arg"))
-                            (Ojs.int_to_js 0))),
+                            (Jsoo_runtime.Js.get x168
+                               (Ojs.string_to_js "arg")) (Ojs.int_to_js 0))),
                        (Ojs.string_of_js
                           (Jsoo_runtime.Js.get
-                             (Jsoo_runtime.Js.get x168 (Obj.magic "arg"))
-                             (Ojs.int_to_js 1))))
+                             (Jsoo_runtime.Js.get x168
+                                (Ojs.string_to_js "arg")) (Ojs.int_to_js 1))))
                | "D" ->
                    D
                      {
                        age =
                          (Ojs.int_of_js
-                            (Jsoo_runtime.Js.get x168 (Obj.magic "age")));
+                            (Jsoo_runtime.Js.get x168
+                               (Ojs.string_to_js "age")));
                        name =
                          (Ojs.string_of_js
-                            (Jsoo_runtime.Js.get x168 (Obj.magic "name")))
+                            (Jsoo_runtime.Js.get x168
+                               (Ojs.string_to_js "name")))
                      }
                | _ -> Unknown x168)
           | "boolean" -> Unknown x168
@@ -688,7 +703,7 @@ module T :
                 Jsoo_runtime.Js.new_obj
                   (Jsoo_runtime.Js.get
                      (Jsoo_runtime.Js.pure_js_expr "globalThis")
-                     (Obj.magic "Array")) [|(Ojs.int_to_js 2)|] in
+                     (Ojs.string_to_js "Array")) [|(Ojs.int_to_js 2)|] in
               (Jsoo_runtime.Js.set x164 (Ojs.int_to_js 1)
                  (Ojs.string_to_js x163);
                Jsoo_runtime.Js.set x164 (Ojs.int_to_js 0)
@@ -717,42 +732,42 @@ module T :
           let x178 = x177 in
           match Ojs.string_of_js
                   (Jsoo_runtime.Js.typeof
-                     (Jsoo_runtime.Js.get x178 (Obj.magic "kind")))
+                     (Jsoo_runtime.Js.get x178 (Ojs.string_to_js "kind")))
           with
           | "number" -> Unknown x178
           | "string" ->
               (match Ojs.string_of_js
-                       (Jsoo_runtime.Js.get x178 (Obj.magic "kind"))
+                       (Jsoo_runtime.Js.get x178 (Ojs.string_to_js "kind"))
                with
                | "A" -> A
                | "B" ->
                    B
                      (Ojs.int_of_js
-                        (Jsoo_runtime.Js.get x178 (Obj.magic "bArg")))
+                        (Jsoo_runtime.Js.get x178 (Ojs.string_to_js "bArg")))
                | "C" ->
                    C
                      ((Ojs.int_of_js
                          (Jsoo_runtime.Js.get
-                            (Jsoo_runtime.Js.get x178 (Obj.magic "cArg"))
-                            (Ojs.int_to_js 0))),
+                            (Jsoo_runtime.Js.get x178
+                               (Ojs.string_to_js "cArg")) (Ojs.int_to_js 0))),
                        (Ojs.string_of_js
                           (Jsoo_runtime.Js.get
-                             (Jsoo_runtime.Js.get x178 (Obj.magic "cArg"))
-                             (Ojs.int_to_js 1))))
+                             (Jsoo_runtime.Js.get x178
+                                (Ojs.string_to_js "cArg")) (Ojs.int_to_js 1))))
                | "D" ->
                    D
                      {
                        age =
                          (Ojs.int_of_js
-                            (Jsoo_runtime.Js.get x178 (Obj.magic "X")));
+                            (Jsoo_runtime.Js.get x178 (Ojs.string_to_js "X")));
                        name =
                          (Ojs.string_of_js
-                            (Jsoo_runtime.Js.get x178 (Obj.magic "Y")))
+                            (Jsoo_runtime.Js.get x178 (Ojs.string_to_js "Y")))
                      }
                | "F" ->
                    E
                      (Ojs.int_of_js
-                        (Jsoo_runtime.Js.get x178 (Obj.magic "fArg")))
+                        (Jsoo_runtime.Js.get x178 (Ojs.string_to_js "fArg")))
                | _ -> Unknown x178)
           | "boolean" -> Unknown x178
           | _ -> Unknown x178
@@ -769,7 +784,7 @@ module T :
                 Jsoo_runtime.Js.new_obj
                   (Jsoo_runtime.Js.get
                      (Jsoo_runtime.Js.pure_js_expr "globalThis")
-                     (Obj.magic "Array")) [|(Ojs.int_to_js 2)|] in
+                     (Ojs.string_to_js "Array")) [|(Ojs.int_to_js 2)|] in
               (Jsoo_runtime.Js.set x173 (Ojs.int_to_js 1)
                  (Ojs.string_to_js x172);
                Jsoo_runtime.Js.set x173 (Ojs.int_to_js 0)
@@ -818,12 +833,12 @@ module T :
           let x196 = x195 in
           match Ojs.string_of_js
                   (Jsoo_runtime.Js.typeof
-                     (Jsoo_runtime.Js.get x196 (Obj.magic "discr")))
+                     (Jsoo_runtime.Js.get x196 (Ojs.string_to_js "discr")))
           with
           | "number" -> D x196
           | "string" ->
               (match Ojs.string_of_js
-                       (Jsoo_runtime.Js.get x196 (Obj.magic "discr"))
+                       (Jsoo_runtime.Js.get x196 (Ojs.string_to_js "discr"))
                with
                | "A" -> A
                | "B" -> B (Ojs.int_of_js x196)
@@ -844,12 +859,12 @@ module T :
           let x202 = x201 in
           match Ojs.string_of_js
                   (Jsoo_runtime.Js.typeof
-                     (Jsoo_runtime.Js.get x202 (Obj.magic "discr")))
+                     (Jsoo_runtime.Js.get x202 (Ojs.string_to_js "discr")))
           with
           | "number" -> `D x202
           | "string" ->
               (match Ojs.string_of_js
-                       (Jsoo_runtime.Js.get x202 (Obj.magic "discr"))
+                       (Jsoo_runtime.Js.get x202 (Ojs.string_to_js "discr"))
                with
                | "A" -> `A
                | "B" -> `B (Ojs.int_of_js x202)
@@ -874,17 +889,17 @@ module T :
           let x208 = x207 in
           match Ojs.string_of_js
                   (Jsoo_runtime.Js.typeof
-                     (Jsoo_runtime.Js.get x208 (Obj.magic "discr")))
+                     (Jsoo_runtime.Js.get x208 (Ojs.string_to_js "discr")))
           with
           | "number" ->
               (match Ojs.int_of_js
-                       (Jsoo_runtime.Js.get x208 (Obj.magic "discr"))
+                       (Jsoo_runtime.Js.get x208 (Ojs.string_to_js "discr"))
                with
                | 0 -> A
                | _ -> D x208)
           | "string" ->
               (match Ojs.string_of_js
-                       (Jsoo_runtime.Js.get x208 (Obj.magic "discr"))
+                       (Jsoo_runtime.Js.get x208 (Ojs.string_to_js "discr"))
                with
                | "42" -> B (Ojs.int_of_js x208)
                | "C" -> C (Ojs.int_of_js x208)
@@ -907,7 +922,8 @@ module T :
                    (Jsoo_runtime.Js.get
                       (Jsoo_runtime.Js.get
                          (Jsoo_runtime.Js.pure_js_expr "globalThis")
-                         (Obj.magic "outer")) (Obj.magic "inner")) "f"
+                         (Ojs.string_to_js "outer"))
+                      (Ojs.string_to_js "inner")) "f"
                    [|(Ojs.string_to_js x209)|])
         end
       module NestedScope1 =
@@ -919,7 +935,8 @@ module T :
                    (Jsoo_runtime.Js.get
                       (Jsoo_runtime.Js.get
                          (Jsoo_runtime.Js.pure_js_expr "globalThis")
-                         (Obj.magic "outer")) (Obj.magic "inner")) "f"
+                         (Ojs.string_to_js "outer"))
+                      (Ojs.string_to_js "inner")) "f"
                    [|(Ojs.string_to_js x210)|])
         end
       module NestedScope2 =
@@ -931,7 +948,8 @@ module T :
                    (Jsoo_runtime.Js.get
                       (Jsoo_runtime.Js.get
                          (Jsoo_runtime.Js.pure_js_expr "globalThis")
-                         (Obj.magic "outer")) (Obj.magic "inner")) "f"
+                         (Ojs.string_to_js "outer"))
+                      (Ojs.string_to_js "inner")) "f"
                    [|(Ojs.string_to_js x211)|])
         end
     end)[@merlin.hide ]) [@@ocaml.doc " Types Declarations "]

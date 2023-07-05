@@ -306,10 +306,12 @@ let rec union_int_of_js : Ojs.t -> union_int =
     let x77 = x76 in
     match Ojs.string_of_js
             (Jsoo_runtime.Js.typeof
-               (Jsoo_runtime.Js.get x77 (Obj.magic "tag")))
+               (Jsoo_runtime.Js.get x77 (Ojs.string_to_js "tag")))
     with
     | "number" ->
-        (match Ojs.int_of_js (Jsoo_runtime.Js.get x77 (Obj.magic "tag")) with
+        (match Ojs.int_of_js
+                 (Jsoo_runtime.Js.get x77 (Ojs.string_to_js "tag"))
+         with
          | 0 -> Union_int_0 (dummy1_of_js x77)
          | 1 -> Union_int_1 (dummy2_of_js x77)
          | _ -> Unknown x77)
@@ -331,10 +333,11 @@ let rec union_float_of_js : Ojs.t -> union_float =
     let x83 = x82 in
     match Ojs.string_of_js
             (Jsoo_runtime.Js.typeof
-               (Jsoo_runtime.Js.get x83 (Obj.magic "tag")))
+               (Jsoo_runtime.Js.get x83 (Ojs.string_to_js "tag")))
     with
     | "number" ->
-        (match Ojs.float_of_js (Jsoo_runtime.Js.get x83 (Obj.magic "tag"))
+        (match Ojs.float_of_js
+                 (Jsoo_runtime.Js.get x83 (Ojs.string_to_js "tag"))
          with
          | 0.1 -> Union_float_0_1 (dummy1_of_js x83)
          | 1.1 -> Union_float_1_1 (dummy2_of_js x83)
@@ -357,11 +360,12 @@ let rec union_string_of_js : Ojs.t -> union_string =
     let x89 = x88 in
     match Ojs.string_of_js
             (Jsoo_runtime.Js.typeof
-               (Jsoo_runtime.Js.get x89 (Obj.magic "tag")))
+               (Jsoo_runtime.Js.get x89 (Ojs.string_to_js "tag")))
     with
     | "number" -> Unknown x89
     | "string" ->
-        (match Ojs.string_of_js (Jsoo_runtime.Js.get x89 (Obj.magic "tag"))
+        (match Ojs.string_of_js
+                 (Jsoo_runtime.Js.get x89 (Ojs.string_to_js "tag"))
          with
          | "foo" -> Union_string_foo (dummy3_of_js x89)
          | "bar" -> Union_string_bar (dummy4_of_js x89)
@@ -380,7 +384,8 @@ type union_bool =
 let rec union_bool_of_js : Ojs.t -> union_bool =
   fun (x93 : Ojs.t) ->
     let x94 = x93 in
-    match Ojs.bool_of_js (Jsoo_runtime.Js.get x94 (Obj.magic "tag")) with
+    match Ojs.bool_of_js (Jsoo_runtime.Js.get x94 (Ojs.string_to_js "tag"))
+    with
     | true -> Union_bool_true (dummy5_of_js x94)
     | false -> Union_bool_false (dummy6_of_js x94)
 and union_bool_to_js : union_bool -> Ojs.t =
@@ -393,7 +398,8 @@ type union_bool_partial =
 let rec union_bool_partial_of_js : Ojs.t -> union_bool_partial =
   fun (x97 : Ojs.t) ->
     let x98 = x97 in
-    match Ojs.bool_of_js (Jsoo_runtime.Js.get x98 (Obj.magic "tag")) with
+    match Ojs.bool_of_js (Jsoo_runtime.Js.get x98 (Ojs.string_to_js "tag"))
+    with
     | true -> Union_bool_true (dummy5_of_js x98)
     | _ -> assert false
 and union_bool_partial_to_js : union_bool_partial -> Ojs.t =
@@ -407,12 +413,13 @@ let rec union_bool_partial2_of_js : Ojs.t -> union_bool_partial2 =
     let x103 = x102 in
     match Ojs.string_of_js
             (Jsoo_runtime.Js.typeof
-               (Jsoo_runtime.Js.get x103 (Obj.magic "tag")))
+               (Jsoo_runtime.Js.get x103 (Ojs.string_to_js "tag")))
     with
     | "number" -> Unknown x103
     | "string" -> Unknown x103
     | "boolean" ->
-        (match Ojs.bool_of_js (Jsoo_runtime.Js.get x103 (Obj.magic "tag"))
+        (match Ojs.bool_of_js
+                 (Jsoo_runtime.Js.get x103 (Ojs.string_to_js "tag"))
          with
          | true -> Union_bool_true (dummy5_of_js x103)
          | _ -> Unknown x103)
@@ -437,28 +444,31 @@ let rec union_mixed_of_js : Ojs.t -> union_mixed =
     let x115 = x114 in
     match Ojs.string_of_js
             (Jsoo_runtime.Js.typeof
-               (Jsoo_runtime.Js.get x115 (Obj.magic "tag")))
+               (Jsoo_runtime.Js.get x115 (Ojs.string_to_js "tag")))
     with
     | "number" ->
-        (match Ojs.float_of_js (Jsoo_runtime.Js.get x115 (Obj.magic "tag"))
+        (match Ojs.float_of_js
+                 (Jsoo_runtime.Js.get x115 (Ojs.string_to_js "tag"))
          with
          | 0.1 -> Union_float_0_1 (dummy1_of_js x115)
          | 1.1 -> Union_float_1_1 (dummy2_of_js x115)
          | _ ->
              (match Ojs.int_of_js
-                      (Jsoo_runtime.Js.get x115 (Obj.magic "tag"))
+                      (Jsoo_runtime.Js.get x115 (Ojs.string_to_js "tag"))
               with
               | 0 -> Union_int_0 (dummy1_of_js x115)
               | 1 -> Union_int_1 (dummy2_of_js x115)
               | _ -> Unknown x115))
     | "string" ->
-        (match Ojs.string_of_js (Jsoo_runtime.Js.get x115 (Obj.magic "tag"))
+        (match Ojs.string_of_js
+                 (Jsoo_runtime.Js.get x115 (Ojs.string_to_js "tag"))
          with
          | "foo" -> Union_string_foo (dummy3_of_js x115)
          | "bar" -> Union_string_bar (dummy4_of_js x115)
          | _ -> Unknown x115)
     | "boolean" ->
-        (match Ojs.bool_of_js (Jsoo_runtime.Js.get x115 (Obj.magic "tag"))
+        (match Ojs.bool_of_js
+                 (Jsoo_runtime.Js.get x115 (Ojs.string_to_js "tag"))
          with
          | true -> Union_bool_true (dummy5_of_js x115)
          | false -> Union_bool_false (dummy6_of_js x115))
@@ -489,28 +499,31 @@ let rec union_mixed_partial_bool_of_js : Ojs.t -> union_mixed_partial_bool =
     let x126 = x125 in
     match Ojs.string_of_js
             (Jsoo_runtime.Js.typeof
-               (Jsoo_runtime.Js.get x126 (Obj.magic "tag")))
+               (Jsoo_runtime.Js.get x126 (Ojs.string_to_js "tag")))
     with
     | "number" ->
-        (match Ojs.float_of_js (Jsoo_runtime.Js.get x126 (Obj.magic "tag"))
+        (match Ojs.float_of_js
+                 (Jsoo_runtime.Js.get x126 (Ojs.string_to_js "tag"))
          with
          | 0.1 -> Union_float_0_1 (dummy1_of_js x126)
          | 1.1 -> Union_float_1_1 (dummy2_of_js x126)
          | _ ->
              (match Ojs.int_of_js
-                      (Jsoo_runtime.Js.get x126 (Obj.magic "tag"))
+                      (Jsoo_runtime.Js.get x126 (Ojs.string_to_js "tag"))
               with
               | 0 -> Union_int_0 (dummy1_of_js x126)
               | 1 -> Union_int_1 (dummy2_of_js x126)
               | _ -> Unknown x126))
     | "string" ->
-        (match Ojs.string_of_js (Jsoo_runtime.Js.get x126 (Obj.magic "tag"))
+        (match Ojs.string_of_js
+                 (Jsoo_runtime.Js.get x126 (Ojs.string_to_js "tag"))
          with
          | "foo" -> Union_string_foo (dummy3_of_js x126)
          | "bar" -> Union_string_bar (dummy4_of_js x126)
          | _ -> Unknown x126)
     | "boolean" ->
-        (match Ojs.bool_of_js (Jsoo_runtime.Js.get x126 (Obj.magic "tag"))
+        (match Ojs.bool_of_js
+                 (Jsoo_runtime.Js.get x126 (Ojs.string_to_js "tag"))
          with
          | true -> Union_bool_true (dummy5_of_js x126)
          | _ -> Unknown x126)

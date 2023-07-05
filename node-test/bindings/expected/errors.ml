@@ -10,28 +10,29 @@ module Error =
         t_of_js
           (Jsoo_runtime.Js.new_obj
              (Jsoo_runtime.Js.get (Jsoo_runtime.Js.pure_js_expr "globalThis")
-                (Obj.magic "Error")) [|(Ojs.string_to_js x3)|])
+                (Ojs.string_to_js "Error")) [|(Ojs.string_to_js x3)|])
     let (stack_trace_limit : int) =
       Ojs.int_of_js
         (Jsoo_runtime.Js.get
            (Jsoo_runtime.Js.get (Jsoo_runtime.Js.pure_js_expr "globalThis")
-              (Obj.magic "Error")) (Obj.magic "stackTraceLimit"))
+              (Ojs.string_to_js "Error"))
+           (Ojs.string_to_js "stackTraceLimit"))
     let (set_stack_trace_limit : int -> unit) =
       fun (x4 : int) ->
         Jsoo_runtime.Js.set
           (Jsoo_runtime.Js.get (Jsoo_runtime.Js.pure_js_expr "globalThis")
-             (Obj.magic "Error")) (Obj.magic "stackTraceLimit")
+             (Ojs.string_to_js "Error")) (Ojs.string_to_js "stackTraceLimit")
           (Ojs.int_to_js x4)
     let (code : t -> string) =
       fun (x5 : t) ->
         Ojs.string_of_js
-          (Jsoo_runtime.Js.get (t_to_js x5) (Obj.magic "code"))
+          (Jsoo_runtime.Js.get (t_to_js x5) (Ojs.string_to_js "code"))
     let (message : t -> string) =
       fun (x6 : t) ->
         Ojs.string_of_js
-          (Jsoo_runtime.Js.get (t_to_js x6) (Obj.magic "message"))
+          (Jsoo_runtime.Js.get (t_to_js x6) (Ojs.string_to_js "message"))
     let (stack : t -> string) =
       fun (x7 : t) ->
         Ojs.string_of_js
-          (Jsoo_runtime.Js.get (t_to_js x7) (Obj.magic "stack"))
+          (Jsoo_runtime.Js.get (t_to_js x7) (Ojs.string_to_js "stack"))
   end

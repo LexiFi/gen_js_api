@@ -9,12 +9,12 @@ module UntypedPromise =
       fun (x3 : Ojs.t) ->
         Jsoo_runtime.Js.meth_call
           (Jsoo_runtime.Js.get (Jsoo_runtime.Js.pure_js_expr "globalThis")
-             (Obj.magic "Promise")) "resolve" [|x3|]
+             (Ojs.string_to_js "Promise")) "resolve" [|x3|]
     let (reject : Ojs.t -> Ojs.t) =
       fun (x4 : Ojs.t) ->
         Jsoo_runtime.Js.meth_call
           (Jsoo_runtime.Js.get (Jsoo_runtime.Js.pure_js_expr "globalThis")
-             (Obj.magic "Promise")) "reject" [|x4|]
+             (Ojs.string_to_js "Promise")) "reject" [|x4|]
     let (then_ :
       Ojs.t -> success:(Ojs.t -> Ojs.t) -> error:(Ojs.t -> Ojs.t) -> Ojs.t) =
       fun (x9 : Ojs.t) ->
@@ -27,7 +27,7 @@ module UntypedPromise =
       fun (x10 : Ojs.t list) ->
         Jsoo_runtime.Js.meth_call
           (Jsoo_runtime.Js.get (Jsoo_runtime.Js.pure_js_expr "globalThis")
-             (Obj.magic "Promise")) "all"
+             (Ojs.string_to_js "Promise")) "all"
           [|(Ojs.list_to_js (fun (x11 : Ojs.t) -> x11) x10)|]
     include
       struct
@@ -36,7 +36,10 @@ module UntypedPromise =
         [@@@ocaml.warning "-7-32-39"]
         let rec wrap_of_js : Ojs.t -> wrap =
           fun (x13 : Ojs.t) ->
-            { content = (Jsoo_runtime.Js.get x13 (Obj.magic "content")) }
+            {
+              content =
+                (Jsoo_runtime.Js.get x13 (Ojs.string_to_js "content"))
+            }
         and wrap_to_js : wrap -> Ojs.t =
           fun (x12 : wrap) ->
             Jsoo_runtime.Js.obj [|("content", (x12.content))|]

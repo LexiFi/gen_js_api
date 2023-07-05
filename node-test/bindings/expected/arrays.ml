@@ -10,7 +10,7 @@ module JsArray(E:Ojs.T) =
         t_of_js
           (Jsoo_runtime.Js.new_obj
              (Jsoo_runtime.Js.get (Jsoo_runtime.Js.pure_js_expr "globalThis")
-                (Obj.magic "Array")) [||])
+                (Ojs.string_to_js "Array")) [||])
     let (push : t -> E.t -> unit) =
       fun (x4 : t) ->
         fun (x3 : E.t) ->
@@ -46,7 +46,7 @@ module JsArray2 =
         t_of_js Obj.magic
           (Jsoo_runtime.Js.new_obj
              (Jsoo_runtime.Js.get (Jsoo_runtime.Js.pure_js_expr "globalThis")
-                (Obj.magic "Array")) [||])
+                (Ojs.string_to_js "Array")) [||])
     let (create' : (module Ojs.T with type t = 'a) -> 'a list -> 'a t) =
       fun (type a) ->
         fun ((module A)  : (module Ojs.T with type t = a)) ->
@@ -55,12 +55,12 @@ module JsArray2 =
               (Jsoo_runtime.Js.new_obj_arr
                  (Jsoo_runtime.Js.get
                     (Jsoo_runtime.Js.pure_js_expr "globalThis")
-                    (Obj.magic "Array"))
+                    (Ojs.string_to_js "Array"))
                  (let x13 =
                     Jsoo_runtime.Js.new_obj
                       (Jsoo_runtime.Js.get
                          (Jsoo_runtime.Js.pure_js_expr "globalThis")
-                         (Obj.magic "Array")) [||] in
+                         (Ojs.string_to_js "Array")) [||] in
                   List.iter
                     (fun (x14 : a) ->
                        ignore

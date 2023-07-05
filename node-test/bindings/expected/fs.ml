@@ -8,7 +8,7 @@ module Dirent =
     let (name : t -> string) =
       fun (x3 : t) ->
         Ojs.string_of_js
-          (Jsoo_runtime.Js.get (t_to_js x3) (Obj.magic "name"))
+          (Jsoo_runtime.Js.get (t_to_js x3) (Ojs.string_to_js "name"))
     let (is_file : t -> bool) =
       fun (x4 : t) ->
         Ojs.bool_of_js (Jsoo_runtime.Js.meth_call (t_to_js x4) "isFile" [||])
@@ -25,7 +25,7 @@ module Dir =
     let (path : t -> string) =
       fun (x8 : t) ->
         Ojs.string_of_js
-          (Jsoo_runtime.Js.get (t_to_js x8) (Obj.magic "path"))
+          (Jsoo_runtime.Js.get (t_to_js x8) (Ojs.string_to_js "path"))
     let (close : t -> unit Promise.t) =
       fun (x9 : t) ->
         Promise.t_of_js Ojs.unit_of_js
@@ -48,9 +48,11 @@ module FileHandle =
       fun (x17 : Ojs.t) ->
         {
           bytes_read =
-            (Ojs.int_of_js (Jsoo_runtime.Js.get x17 (Obj.magic "bytesRead")));
+            (Ojs.int_of_js
+               (Jsoo_runtime.Js.get x17 (Ojs.string_to_js "bytesRead")));
           buffer =
-            (Buffer.t_of_js (Jsoo_runtime.Js.get x17 (Obj.magic "buffer")))
+            (Buffer.t_of_js
+               (Jsoo_runtime.Js.get x17 (Ojs.string_to_js "buffer")))
         }
     and read_to_js : read -> Ojs.t =
       fun (x16 : read) ->
@@ -98,38 +100,39 @@ module FileHandle =
           (Jsoo_runtime.Js.meth_call (t_to_js x36) "datasync" [||])
     let (fd : t -> int) =
       fun (x38 : t) ->
-        Ojs.int_of_js (Jsoo_runtime.Js.get (t_to_js x38) (Obj.magic "fd"))
+        Ojs.int_of_js
+          (Jsoo_runtime.Js.get (t_to_js x38) (Ojs.string_to_js "fd"))
   end
 let (readdir : string -> string list Promise.t) =
   fun (x39 : string) ->
     Promise.t_of_js
       (fun (x40 : Ojs.t) -> Ojs.list_of_js Ojs.string_of_js x40)
       (Jsoo_runtime.Js.meth_call
-         (Jsoo_runtime.Js.get Imports.fs (Obj.magic "promises")) "readdir"
-         [|(Ojs.string_to_js x39)|])
+         (Jsoo_runtime.Js.get Imports.fs (Ojs.string_to_js "promises"))
+         "readdir" [|(Ojs.string_to_js x39)|])
 let (open_ : string -> flag:string -> FileHandle.t Promise.t) =
   fun (x42 : string) ->
     fun ~flag:(x43 : string) ->
       Promise.t_of_js FileHandle.t_of_js
         (Jsoo_runtime.Js.meth_call
-           (Jsoo_runtime.Js.get Imports.fs (Obj.magic "promises")) "open"
-           [|(Ojs.string_to_js x42);(Ojs.string_to_js x43)|])
+           (Jsoo_runtime.Js.get Imports.fs (Ojs.string_to_js "promises"))
+           "open" [|(Ojs.string_to_js x42);(Ojs.string_to_js x43)|])
 let (rmdir : string -> unit Promise.t) =
   fun (x45 : string) ->
     Promise.t_of_js Ojs.unit_of_js
       (Jsoo_runtime.Js.meth_call
-         (Jsoo_runtime.Js.get Imports.fs (Obj.magic "promises")) "rmdir"
-         [|(Ojs.string_to_js x45)|])
+         (Jsoo_runtime.Js.get Imports.fs (Ojs.string_to_js "promises"))
+         "rmdir" [|(Ojs.string_to_js x45)|])
 let (rename : string -> string -> unit Promise.t) =
   fun (x47 : string) ->
     fun (x48 : string) ->
       Promise.t_of_js Ojs.unit_of_js
         (Jsoo_runtime.Js.meth_call
-           (Jsoo_runtime.Js.get Imports.fs (Obj.magic "promises")) "rename"
-           [|(Ojs.string_to_js x47);(Ojs.string_to_js x48)|])
+           (Jsoo_runtime.Js.get Imports.fs (Ojs.string_to_js "promises"))
+           "rename" [|(Ojs.string_to_js x47);(Ojs.string_to_js x48)|])
 let (unlink : string -> unit Promise.t) =
   fun (x50 : string) ->
     Promise.t_of_js Ojs.unit_of_js
       (Jsoo_runtime.Js.meth_call
-         (Jsoo_runtime.Js.get Imports.fs (Obj.magic "promises")) "unlink"
-         [|(Ojs.string_to_js x50)|])
+         (Jsoo_runtime.Js.get Imports.fs (Ojs.string_to_js "promises"))
+         "unlink" [|(Ojs.string_to_js x50)|])

@@ -18,7 +18,7 @@ module rec
         t_of_js
           (Jsoo_runtime.Js.new_obj
              (Jsoo_runtime.Js.get (Jsoo_runtime.Js.pure_js_expr "globalThis")
-                (Obj.magic "Foo")) [|(Ojs.string_to_js x3)|])
+                (Ojs.string_to_js "Foo")) [|(Ojs.string_to_js x3)|])
     let (describe : t -> string) =
       fun (x4 : t) ->
         Ojs.string_of_js
@@ -45,7 +45,7 @@ module rec
         t_of_js
           (Jsoo_runtime.Js.new_obj
              (Jsoo_runtime.Js.get (Jsoo_runtime.Js.pure_js_expr "globalThis")
-                (Obj.magic "Bar")) [|(Ojs.string_to_js x8)|])
+                (Ojs.string_to_js "Bar")) [|(Ojs.string_to_js x8)|])
     let (describe : t -> string) =
       fun (x9 : t) ->
         Ojs.string_of_js

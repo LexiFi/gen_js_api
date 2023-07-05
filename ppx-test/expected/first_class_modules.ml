@@ -10,7 +10,7 @@ module Console =
               (Jsoo_runtime.Js.meth_call
                  (Jsoo_runtime.Js.get
                     (Jsoo_runtime.Js.pure_js_expr "globalThis")
-                    (Obj.magic "console")) "log" [|(A.t_to_js x1)|])
+                    (Ojs.string_to_js "console")) "log" [|(A.t_to_js x1)|])
     let (log2 :
       (module Ojs.T with type t = 'a) ->
         (module Ojs.T with type t = 'b) -> 'a -> 'b -> unit)
@@ -25,7 +25,7 @@ module Console =
                     (Jsoo_runtime.Js.meth_call
                        (Jsoo_runtime.Js.get
                           (Jsoo_runtime.Js.pure_js_expr "globalThis")
-                          (Obj.magic "console")) "log"
+                          (Ojs.string_to_js "console")) "log"
                        [|(A.t_to_js x2);(B.t_to_js x3)|])
     let (log3 :
       (module Ojs.T with type t = 'a) ->
@@ -45,7 +45,7 @@ module Console =
                           (Jsoo_runtime.Js.meth_call
                              (Jsoo_runtime.Js.get
                                 (Jsoo_runtime.Js.pure_js_expr "globalThis")
-                                (Obj.magic "console")) "log"
+                                (Ojs.string_to_js "console")) "log"
                              [|(A.t_to_js x4);(B.t_to_js x5);(C.t_to_js x6)|])
   end
 module Console2 =
@@ -108,8 +108,8 @@ module Console3 =
                      (Jsoo_runtime.Js.get
                         (Jsoo_runtime.Js.get
                            (Jsoo_runtime.Js.pure_js_expr "globalThis")
-                           (Obj.magic "console")) (Obj.magic "log"))
-                     [|(A.t_to_js x18)|])
+                           (Ojs.string_to_js "console"))
+                        (Ojs.string_to_js "log")) [|(A.t_to_js x18)|])
         let (_2 :
           (module Ojs.T with type t = 'a) ->
             (module Ojs.T with type t = 'b) -> 'a -> 'b -> unit)
@@ -125,7 +125,8 @@ module Console3 =
                            (Jsoo_runtime.Js.get
                               (Jsoo_runtime.Js.get
                                  (Jsoo_runtime.Js.pure_js_expr "globalThis")
-                                 (Obj.magic "console")) (Obj.magic "log"))
+                                 (Ojs.string_to_js "console"))
+                              (Ojs.string_to_js "log"))
                            [|(A.t_to_js x19);(B.t_to_js x20)|])
         let (_3 :
           (module Ojs.T with type t = 'a) ->
@@ -146,8 +147,9 @@ module Console3 =
                                  (Jsoo_runtime.Js.get
                                     (Jsoo_runtime.Js.get
                                        (Jsoo_runtime.Js.pure_js_expr
-                                          "globalThis") (Obj.magic "console"))
-                                    (Obj.magic "log"))
+                                          "globalThis")
+                                       (Ojs.string_to_js "console"))
+                                    (Ojs.string_to_js "log"))
                                  [|(A.t_to_js x21);(B.t_to_js x22);(C.t_to_js
                                                                     x23)|])
       end
@@ -169,12 +171,12 @@ module Array =
               (Jsoo_runtime.Js.new_obj_arr
                  (Jsoo_runtime.Js.get
                     (Jsoo_runtime.Js.pure_js_expr "globalThis")
-                    (Obj.magic "Array"))
+                    (Ojs.string_to_js "Array"))
                  (let x27 =
                     Jsoo_runtime.Js.new_obj
                       (Jsoo_runtime.Js.get
                          (Jsoo_runtime.Js.pure_js_expr "globalThis")
-                         (Obj.magic "Array")) [||] in
+                         (Ojs.string_to_js "Array")) [||] in
                   List.iter
                     (fun (x28 : a) ->
                        ignore
@@ -189,13 +191,13 @@ module Array =
               (Jsoo_runtime.Js.meth_call
                  (Jsoo_runtime.Js.get
                     (Jsoo_runtime.Js.pure_js_expr "globalThis")
-                    (Obj.magic "Array")) "apply"
+                    (Ojs.string_to_js "Array")) "apply"
                  [|(Jsoo_runtime.Js.pure_js_expr "null");((let x31 =
                                                              Jsoo_runtime.Js.new_obj
                                                                (Jsoo_runtime.Js.get
                                                                   (Jsoo_runtime.Js.pure_js_expr
                                                                     "globalThis")
-                                                                  (Obj.magic
+                                                                  (Ojs.string_to_js
                                                                     "Array"))
                                                                [||] in
                                                            List.iter

@@ -875,21 +875,11 @@ let split sep s =
 
 let jsoo_global = jsoo_pure_js_expr "globalThis"
 
-let magic x =
-  app (var ("Obj.magic")) (nolabel ([x])) false
-
-let is_ascii s =
-  let exception Break in
-  try
-    String.iter (fun c -> if Char.code c > 127 then raise Break) s;
-    true
-  with Break -> false
-
 let get_prop o s =
-  jsoo "get" [o; if is_ascii s then magic (str s) else ojs "string_to_js" [str s]]
+  jsoo "get" [o; ojs "string_to_js" [str s]]
 
 let set_prop o s v =
-  jsoo "set" [o; if is_ascii s then magic (str s) else ojs "string_to_js" [str s]; v]
+  jsoo "set" [o; ojs "string_to_js" [str s]; v]
 
 let int_to_js i = ojs "int_to_js" [ i ]
 

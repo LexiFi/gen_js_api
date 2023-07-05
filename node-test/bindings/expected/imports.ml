@@ -3,8 +3,8 @@
 let (path : Ojs.t) =
   Jsoo_runtime.Js.get
     (Jsoo_runtime.Js.get (Jsoo_runtime.Js.pure_js_expr "globalThis")
-       (Obj.magic "__LIB__NODE__IMPORTS")) (Obj.magic "path")
+       (Ojs.string_to_js "__LIB__NODE__IMPORTS")) (Ojs.string_to_js "path")
 let (fs : Ojs.t) =
   Jsoo_runtime.Js.get
     (Jsoo_runtime.Js.get (Jsoo_runtime.Js.pure_js_expr "globalThis")
-       (Obj.magic "__LIB__NODE__IMPORTS")) (Obj.magic "fs")
+       (Ojs.string_to_js "__LIB__NODE__IMPORTS")) (Ojs.string_to_js "fs")
