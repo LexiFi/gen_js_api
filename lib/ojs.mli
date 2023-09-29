@@ -21,8 +21,8 @@ external int_to_js: int -> t = "%identity"
 external bool_of_js: t -> bool = "caml_js_to_bool"
 external bool_to_js: bool -> t = "caml_js_from_bool"
 
-external float_of_js: t -> float = "%identity"
-external float_to_js: float -> t = "%identity"
+external float_of_js: t -> float = "caml_js_to_float"
+external float_to_js: float -> t = "caml_js_from_float"
 
 val array_of_js: (t -> 'a) -> t -> 'a array
 val array_to_js: ('a -> t) -> 'a array -> t
