@@ -42,6 +42,8 @@ val option_to_js: ('a -> t) -> 'a option -> t
 val unit_of_js: t -> unit
 val unit_to_js: unit -> t
 
+val dict_of_js: (t -> 'a) -> t -> (string * 'a) list
+val dict_to_js: ('a -> t) -> (string * 'a) list -> t
 
 (** {2 Wrap OCaml functions as JS functions} *)
 

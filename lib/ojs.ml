@@ -121,6 +121,16 @@ external iter_properties_untyped : t -> t -> unit = "caml_ojs_iterate_properties
 let iter_properties x f =
   iter_properties_untyped x (fun_to_js 1 (fun x -> f (string_of_js x)))
 
+let dict_of_js f t =
+  let l = ref [] in
+  iter_properties t (fun k -> l := (k, f (get_prop_ascii t k)) :: !l);
+  !l
+
+let dict_to_js f x =
+  let t = empty_obj () in
+  List.iter (fun (k, v) -> set_prop_ascii t k (f v)) x;
+  t
+
 let apply_arr o arr = call o "apply" [| null; arr |]
 let call_arr o s arr = call (get_prop o (string_to_js s)) "apply" [| o; arr |]
 

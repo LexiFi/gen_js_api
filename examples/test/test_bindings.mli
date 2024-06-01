@@ -352,3 +352,7 @@ module Variants : sig
   end
 
 end
+
+module Dict : sig
+  type t = { h : ((string * int) list [@js.dict]) }
+end

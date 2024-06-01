@@ -16,6 +16,9 @@ The following types are supported out-of-the-box:
  - Sequences of JS-able types: `array` and `list`, both mapped to JS
    arrays (which are assumed to be indexed by integers 0..length-1).
 
+ - Dictionaries of JS-able types: `(string * 'a) list` mapped to
+   a JS object.
+
  - Options on JS-able types.  They are mapped to the same type as
    their parameter: `None` is mapped to JS `null` value, and both
    `null` and `undefined` are mapped back to `None`.  This encoding
@@ -204,6 +207,20 @@ implementation).  Mutually recursive type declarations are supported.
 - Sum type declaration, mapped to enums (see Enums section).
 
 - Sum type declaration with non constant constructors, mapped to records with a discriminator field (see Sum types section).
+
+
+- Association lists, mapped to JS objects
+
+  It is possible to annotate an OCaml type declaration of the form
+  ```
+  (string * ty) list
+  ```
+  (where `ty` is any JS-able type) with `[@js.dict]`. When this is done, values
+  of this type will be mapped to JS objects in the obvious way.
+
+  ```ocaml
+  type t = { headers: ((string * string) list [@js.dict]) }
+  ```
 
 - Arbitrary type with custom mappings
 

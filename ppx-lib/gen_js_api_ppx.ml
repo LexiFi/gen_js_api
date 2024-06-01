@@ -247,6 +247,7 @@ type typ =
                  global_attrs:attributes;
                  attributes:attributes;
                  constrs:constructor list }
+  | Dict of typ
   | Tuple of typ list
   | Typ_var of string
   | Packaged_type of { local_name:  string; (* `a` specified by `(type a)`*)
@@ -442,6 +443,11 @@ and parse_typ ~variance ctx ~global_attrs ty =
       begin match String.concat "." (Longident.flatten_exn lid), tl with
       | "unit", [] -> Unit ty.ptyp_loc
       | "Ojs.t", [] -> Js
+      | "list", [{ptyp_desc =
+                  Ptyp_tuple
+                    [{ptyp_desc = Ptyp_constr ({txt = Lident "string"; _}, []); _}; t];
+                  _}] when has_attribute "js.dict" ty.ptyp_attributes ->
+          Dict (parse_typ ~variance ctx ~global_attrs t)
       | s, tl -> Name (s, List.map (parse_typ ~variance ctx ~global_attrs) tl)
       end
   | Ptyp_variant (rows, Closed, None) ->
@@ -1087,6 +1093,8 @@ let rec js2ml ty exp =
       app (var ("Obj.magic")) (nolabel ([exp])) false
   | Packaged_type { module_name; _ } ->
       app (var (module_name ^ ".t_of_js")) (nolabel [exp]) false
+  | Dict typ ->
+      app (var "Ojs.dict_of_js") (nolabel [js2ml_fun ~eta:true typ; exp]) false
 
 and js2ml_of_variant ~variant loc ~global_attrs attrs constrs exp =
   let variant_kind = get_variant_kind loc attrs in
@@ -1343,6 +1351,8 @@ and ml2js ty exp =
       app (var ("Obj.magic")) (nolabel ([exp])) false
   | Packaged_type { module_name; _ } ->
       app (var (module_name ^ ".t_to_js")) (nolabel [exp]) false
+  | Dict typ ->
+      app (var "Ojs.dict_to_js") (nolabel [ml2js_fun ~eta:true typ; exp]) false
 
 and ml2js_discriminator ~global_attrs mlconstr attributes =
   match get_js_constr ~global_attrs mlconstr attributes with
@@ -1567,6 +1577,9 @@ and gen_typ ?(packaged_type_as_type_var = false) = function
   | Packaged_type { local_name; _ } ->
     if packaged_type_as_type_var then Typ.var local_name
     else Typ.constr (mknoloc (Lident local_name)) []
+  | Dict typ ->
+      Typ.constr (mknoloc (Lident "list"))
+        [gen_typ ~packaged_type_as_type_var (Tuple [Name ("string", []); typ])]
 
 and mkfun ?typ ?eta f =
   let s = fresh () in
