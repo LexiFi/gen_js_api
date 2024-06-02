@@ -356,3 +356,10 @@ end
 module Dict : sig
   type t = { h : ((string * int) list [@js.dict]) }
 end
+
+module X : sig
+  [@@@js.require "foo"]
+
+  val x : int -> int [@@js.global]
+  val y : string [@@js.global]
+end

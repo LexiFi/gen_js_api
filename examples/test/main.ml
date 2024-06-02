@@ -341,3 +341,9 @@ let () =
   | hd :: tl -> Cons (hd, of_list tl)
   in
   Console3.log ([%js.of: int t] (of_list [1;2;3]))
+
+include [%js:
+  [@@@js.require "elephant"]
+  val x : int [@@js.global]
+  val y : string [@@js.global]
+       ]

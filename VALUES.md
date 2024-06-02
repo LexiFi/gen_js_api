@@ -363,6 +363,28 @@ For instance, the following annotated modules will generate the same code:
   end [@js.scope "inner"] [@js.scope "outer"]
 ```
 
+Require
+-------
+
+The signature attribute `[@@@js.require "name"]` is equivalent to making the
+current global object the result of `require("name")`. This is useful to bind
+Node libraries. For instance,
+
+```ocaml
+module C: sig
+  [@@@js.require "crypto"]
+  type hash
+  val create_hash: unit -> hash [@@js.global]
+end
+```
+
+will bind the `createHash` function of the Node library `crypto`, somewhat as if
+we had written
+```
+const { createHash } = require("crypto")
+```
+in Node.
+
 First-class modules
 -------------------
 

@@ -376,11 +376,40 @@ type decl =
   | Open of Parsetree.open_description
   | Include of Parsetree.module_expr Parsetree.include_infos
 
+(** Utilities for code generation *)
+
+let longident_parse x = Longident.parse x [@@ocaml.alert "-deprecated"]
+
+let var x = Exp.ident (mknoloc (longident_parse x))
+let str s = Exp.constant (Pconst_string (s, Location.none, None))
+let int_of_repr n = Exp.constant (Pconst_integer (n, None))
+let int n = int_of_repr (string_of_int n)
+let float_of_repr f = Exp.constant (Pconst_float (f, None))
+let bool b = Exp.construct (mknoloc (longident_parse (if b then "true" else "false"))) None
+let pat_int n = Pat.constant (Pconst_integer (n, None))
+let pat_float f = Pat.constant (Pconst_float (f, None))
+let pat_str s = Pat.constant (Pconst_string (s, Location.none, None))
+let pat_bool b = Pat.construct (mknoloc (longident_parse (if b then "true" else "false"))) None
+
+let attr s e = (Attr.mk (mknoloc s) (PStr [Str.eval e]))
+
+let nolabel args = List.map (function x -> Nolabel, x) args
+
+let ojs_typ = Typ.constr (mknoloc (Ldot (Lident "Ojs", "t"))) []
+
+let ojs_var s = Exp.ident (mknoloc (Ldot (Lident "Ojs", s)))
+
+let ojs s args = Exp.apply (ojs_var s) (nolabel args)
+
+let ojs_null = ojs_var "null"
+
+let node_require e =
+  ojs "apply" [ojs "variable" [str "require"]; Exp.array [ojs "string_to_js" [e]]]
+
 (** Parsing *)
 
 let local_type_of_type_var label =
   "__"^label
-
 
 let neg_variance = function
   | -1 -> 1
@@ -671,6 +700,12 @@ let rec parse_sig_item ~global_attrs rest s =
       RecModule (List.map mapper mds) :: rest ~global_attrs
   | Psig_class cs -> Class (List.map (parse_class_decl ~global_attrs) cs) :: rest ~global_attrs
   | Psig_attribute ({attr_payload = PStr str; _} as attribute) when filter_attr_name "js.implem" attribute -> Implem str :: rest ~global_attrs
+  | Psig_attribute ({attr_payload =
+                       PStr [{pstr_desc = Pstr_eval (e, _); _}]; _} as attribute) when filter_attr_name "js.require" attribute ->
+      let name = "__require" in
+      (* There can be only one in scope at any given time, so no possibility of shadowing. *)
+      let global_attrs = attr "js.scope" (Exp.ident (mknoloc (Lident name))) :: global_attrs in
+      Implem [Str.value Nonrecursive [Vb.mk (Pat.var (mknoloc name)) (node_require e)]] :: rest ~global_attrs
   | Psig_attribute attribute ->
       let global_attrs = attribute :: global_attrs in
       rest ~global_attrs
@@ -782,21 +817,6 @@ and parse_class_field ~global_attrs = function
 
 (** Code generation *)
 
-let longident_parse x = Longident.parse x [@@ocaml.alert "-deprecated"]
-
-let var x = Exp.ident (mknoloc (longident_parse x))
-let str s = Exp.constant (Pconst_string (s, Location.none, None))
-let int_of_repr n = Exp.constant (Pconst_integer (n, None))
-let int n = int_of_repr (string_of_int n)
-let float_of_repr f = Exp.constant (Pconst_float (f, None))
-let bool b = Exp.construct (mknoloc (longident_parse (if b then "true" else "false"))) None
-let pat_int n = Pat.constant (Pconst_integer (n, None))
-let pat_float f = Pat.constant (Pconst_float (f, None))
-let pat_str s = Pat.constant (Pconst_string (s, Location.none, None))
-let pat_bool b = Pat.construct (mknoloc (longident_parse (if b then "true" else "false"))) None
-
-let attr s e = (Attr.mk (mknoloc s) (PStr [Str.eval e]))
-
 let disable_warnings = Str.attribute (attr "ocaml.warning" (str "-7-32-39"))
 (*  7: method overridden.
     32: unused value declarations (when *_of_js, *_to_js are not needed)
@@ -807,16 +827,6 @@ let disable_warnings = Str.attribute (attr "ocaml.warning" (str "-7-32-39"))
 let incl = function
   | [x] -> x
   | str -> Str.include_ (Incl.mk (Mod.structure str))
-
-let nolabel args = List.map (function x -> Nolabel, x) args
-
-let ojs_typ = Typ.constr (mknoloc (longident_parse "Ojs.t")) []
-
-let ojs_var s = Exp.ident (mknoloc (Ldot (Lident "Ojs", s)))
-
-let ojs s args = Exp.apply (ojs_var s) (nolabel args)
-
-let ojs_null = ojs_var "null"
 
 let list_iter f x =
   Exp.apply (Exp.ident (mknoloc (longident_parse "List.iter"))) (nolabel [f; x])
@@ -1604,7 +1614,6 @@ let process_fields ctx ~global_attrs l =
   mknoloc (Lident mlname), (* OCaml label *)
   jsname, (* JS name *)
   parse_typ ctx ~global_attrs typ
-
 
 let global_object ~global_attrs =
   let rec traverse = function
