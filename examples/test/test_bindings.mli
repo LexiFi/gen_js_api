@@ -354,7 +354,8 @@ module Variants : sig
 end
 
 module Dict : sig
-  type t = { h : ((string * int) list [@js.dict]) }
+  type t = { item_chosen : ((string * int) list [@js.dict]) } [@@js.capitalize]
+  type s = { foo: int [@js.capitalize]; bar: string }
 end
 
 module X : sig

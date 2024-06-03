@@ -181,13 +181,17 @@ implementation).  Mutually recursive type declarations are supported.
   be mutable (but conversions still create copies).
   Polymorphic fields are not yet supported.
 
-  OCaml record values of this type are mapped to JS objects (one
-  property per field).  By default, property names are equal to OCaml
-  labels, but this can be changed manually with a `[@js]` attribute.
+  OCaml record values of this type are mapped to JS objects (one property per
+  field).  By default, property names are equal to the OCaml labels converted to
+  camelCase, but this can be changed manually with a `[@js]` attribute.
 
   ```ocaml
   type myType = { x : int; y : int [@js "Y"]}
   ```
+
+  If one needs the JS labels to be capitalized (ie `CamelCase` instead of
+  `camelCase`) this can be achieved by adding the `[@js.capitalize]` attribute
+  to a record label or `[@@js.capitalize]` to the whole record type declaration.
 
 - Parametrized Type:
 
@@ -492,4 +496,3 @@ end
 You can also create safe bindings manually with the low level functions
 provided by `Ojs` module. See the [section on manually created bindings](LOW_LEVEL_BINDING.md)
 for more information.
-

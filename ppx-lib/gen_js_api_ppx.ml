@@ -208,7 +208,7 @@ let js_name ~global_attrs ?(capitalize = false) name =
   else
     let n = String.length name in
     let buf = Buffer.create n in
-    let capitalize = ref capitalize in
+    let capitalize = ref (has_attribute "js.capitalize" global_attrs || capitalize) in
     for i = 0 to n-1 do
       let c = name.[i] in
       if c = '_' then capitalize := true
@@ -1607,7 +1607,7 @@ let process_fields ctx ~global_attrs l =
   let typ = l.pld_type in
   let jsname =
     match get_string_attribute "js" attrs with
-    | None -> js_name ~global_attrs mlname
+    | None -> js_name ~global_attrs ~capitalize:(has_attribute "js.capitalize" attrs) mlname
     | Some s -> s
   in
   loc,
