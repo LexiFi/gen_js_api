@@ -1,6 +1,12 @@
 Changelog
 =========
 
+Version 1.1.3
+-------------
+- GPR#173: Compatibility with Wasm_of_ocaml (@vouillon)
+- GPR#171: Update build badge and remove unused travis config (@tmcgilchrist)
+
+
 Version 1.1.2
 -------------
 
