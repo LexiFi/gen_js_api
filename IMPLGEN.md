@@ -71,6 +71,25 @@ Interfaces processed by gen_js_api can currently contain:
     end
     ````
 
+  - Module aliases:
+
+    If a module alias is declared in the interface, like:
+
+    ```ocaml
+    module M = <Module Path>
+    ```
+
+    it is directly reflected in the generated implementation without modifications.
+
+  - Module inclusion:
+
+    To include a module `M` in the generated implementation, simply add
+
+    ```ocaml
+    include (module type of M)
+    ```
+    in the corresponding interface.
+
   - [Class declarations](CLASSES.md)
 
 

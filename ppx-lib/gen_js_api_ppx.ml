@@ -363,6 +363,7 @@ type classdecl =
 type decl =
   | Module of functor_parameter list * string * decl list
   | RecModule of (module_type * functor_parameter list * string * decl list) list
+  | ModuleAlias of string * Longident.t Location.loc
   | Type of rec_flag * Parsetree.type_declaration list * attributes
   | Val of { name:string;
              ty: typ;
@@ -653,6 +654,8 @@ let rec parse_sig_item ~global_attrs rest s =
       parse_valdecl ~global_attrs ~in_sig:true vd :: rest ~global_attrs
   | Psig_type (rec_flag, decls) ->
       Type (rec_flag, decls, global_attrs) :: rest ~global_attrs
+  | Psig_module {pmd_name = {txt = Some name; _}; pmd_type = {pmty_desc = Pmty_alias lid; _}; _} ->
+      ModuleAlias (name, lid) :: rest ~global_attrs
   | Psig_module md ->
       let functor_parameters, name, decls = parse_module_declaration md in
       Module (functor_parameters, name, decls) :: rest ~global_attrs
@@ -1776,6 +1779,9 @@ and gen_decl = function
 
   | RecModule modules ->
       [ Str.rec_module (List.map (fun (module_type, functor_parameters, s, decls) -> gen_module ~module_type functor_parameters s decls) modules) ]
+
+  | ModuleAlias (s, lid) ->
+      [ Str.module_ (Mb.mk (mknoloc (Some s)) (Mod.ident lid)) ]
 
   | Val { decl = Ignore; _ } -> []
 
