@@ -155,3 +155,15 @@
  (deps test_library.cma)
  (action
   (echo "Successfully compile test_library")))
+
+(rule
+ (targets modules.ml)
+ (deps modules.mli)
+ (action
+  (run gen_js_api %{deps} -o %{targets})))
+
+(rule
+ (alias runtest)
+ (package gen_js_api)
+ (action
+  (diff expected/modules.ml modules.ml)))
