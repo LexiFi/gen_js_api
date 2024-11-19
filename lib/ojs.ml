@@ -58,7 +58,7 @@ let undefined = pure_js_expr "undefined"
 
 external equals: t -> t -> bool = "caml_js_equals"
 
-let global = pure_js_expr "joo_global_object"
+let global = pure_js_expr "globalThis"
 
 external new_obj: t -> t array -> t = "caml_js_new"
 
