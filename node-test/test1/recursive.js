@@ -38,5 +38,5 @@ var Bar = /*#__PURE__*/function () {
   return Bar;
 }();
 
-joo_global_object.Foo = Foo
-joo_global_object.Bar = Bar
+globalThis.Foo = Foo
+globalThis.Bar = Bar
