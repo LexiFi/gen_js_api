@@ -1,8 +1,15 @@
 Changelog
 =========
 
+Version 1.1.4
+-------------
+
+- GPR#176: Remove references to joo_global_object (@hhugo)
+- GPR#175: Support for simple module construction (@sbriais)
+
 Version 1.1.3
 -------------
+
 - GPR#173: Compatibility with Wasm_of_ocaml (@vouillon)
 - GPR#171: Update build badge and remove unused travis config (@tmcgilchrist)
 
@@ -14,6 +21,7 @@ Version 1.1.2
 
 Version 1.1.1
 -------------
+
 - GPR#167: Fix CI (@cannorin)
 - GPR#166: Support first class modules to treat type variables safely (@cannorin)
 
