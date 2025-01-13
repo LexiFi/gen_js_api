@@ -1,8 +1,10 @@
-name: Main workflow
+name: Builds, tests & co
 
 on:
-  - pull_request
   - push
+  - pull_request
+
+permissions: read-all
 
 jobs:
   build:
@@ -11,40 +13,66 @@ jobs:
       matrix:
         os:
           - ubuntu-latest
-          # disabled for now:
-          # - macos-latest
-          # - windows-latest
-        node-version:
-          - 14.x
+          - macos-latest
+          - windows-latest
         ocaml-compiler:
-          - 4.14.x
-          - 4.12.x
-          - 4.11.x
-          - 4.10.x
-          - 4.09.x
-          - 4.08.x
+          - 5
+          - 4
+        include:
+          - os: ubuntu-latest
+            ocaml-compiler: "4.08"
 
     runs-on: ${{ matrix.os }}
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
+      - name: Checkout tree
+        uses: actions/checkout@v4
 
-      - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v2
+      - name: Set-up Node.js
+        uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: latest
 
-      - name: Use OCaml ${{ matrix.ocaml-version }}
-        uses: ocaml/setup-ocaml@v2
+      - name: Set-up OCaml
+        uses: ocaml/setup-ocaml@v3
         with:
           ocaml-compiler: ${{ matrix.ocaml-compiler }}
-          opam-pin: false
-          dune-cache: ${{ matrix.os != 'windows-latest' }}
 
-      - run: opam install . --deps-only --with-doc --with-test
+      - run: opam install . --deps-only --with-test
 
       - run: opam exec -- make
 
       - run: opam exec -- make test
-        continue-on-error: ${{ runner.os == 'Windows' }}
+
+  # lint-doc:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Checkout tree
+  #       uses: actions/checkout@v4
+  #     - name: Set-up OCaml
+  #       uses: ocaml/setup-ocaml@v3
+  #       with:
+  #         ocaml-compiler: 5
+  #     - uses: ocaml/setup-ocaml/lint-doc@v3
+
+  # lint-fmt:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Checkout tree
+  #       uses: actions/checkout@v4
+  #     - name: Set-up OCaml
+  #       uses: ocaml/setup-ocaml@v3
+  #       with:
+  #         ocaml-compiler: 5
+  #     - uses: ocaml/setup-ocaml/lint-fmt@v3
+
+  lint-opam:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout tree
+        uses: actions/checkout@v4
+      - name: Set-up OCaml
+        uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: 5
+      - uses: ocaml/setup-ocaml/lint-opam@v3
