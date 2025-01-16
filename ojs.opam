@@ -12,7 +12,7 @@ license: "MIT"
 homepage: "https://github.com/LexiFi/gen_js_api"
 bug-reports: "https://github.com/LexiFi/gen_js_api/issues"
 depends: [
-  "dune" {>= "2.7"}
+  "dune" {>= "3.0"}
   "ocaml" {>= "4.08"}
   "js_of_ocaml-compiler" {>= "4.0.0"}
   "odoc" {with-doc}

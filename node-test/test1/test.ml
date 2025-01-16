@@ -1,3 +1,9 @@
+(* The gen_js_api is released under the terms of an MIT-like license.     *)
+(* See the attached LICENSE file.                                         *)
+(* Copyright 2015 by LexiFi.                                              *)
+
+[@@@ocaml.warning "-32-34"]
+
 open Node
 
 let check_node_version version =
@@ -20,7 +26,7 @@ let check_node_version version =
     end
 
 let () =
-  check_node_version 10
+  check_node_version 18
 
 (** Buffer **)
 

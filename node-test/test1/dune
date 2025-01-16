@@ -15,5 +15,6 @@
 
 (rule
  (alias runtest)
+ (enabled_if %{bin-available:node})
  (action
   (run node %{dep:./test.bc.js})))

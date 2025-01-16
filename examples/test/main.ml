@@ -5,6 +5,8 @@
 (** Some ad hoc code to illustrate and test various aspects
     of gen_js_api *)
 
+[@@@ocaml.warning "-32-34"]
+
 open Test_bindings
 
 [@@@ocaml.warning "-22"]
