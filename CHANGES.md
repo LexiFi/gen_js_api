@@ -1,6 +1,11 @@
 Changelog
 =========
 
+Version 1.1.5
+-------------
+
+- GPR#180: Fix for OCaml 5.3.0
+
 Version 1.1.4
 -------------
 

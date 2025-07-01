@@ -1,6 +1,6 @@
 (lang dune 3.0)
 (name gen_js_api)
-(version 1.1.4)
+(version 1.1.5)
 
 (maintainers "Alain Frisch <alain.frisch@lexifi.com>")
 (authors
