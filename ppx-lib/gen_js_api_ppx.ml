@@ -1632,6 +1632,11 @@ and gen_funs ~global_attrs p =
         | _ -> error p.ptype_loc Cannot_parse_type
       ) p.ptype_params
   in
+  let poly ty =
+    match ctx_withloc with
+    | [] -> ty
+    | l -> Typ.poly l ty
+  in
   let ctx = List.map (fun lwl -> lwl.txt) ctx_withloc in
   let full_ctx = { empty_type_context with type_params = ctx } in
   let loc = p.ptype_loc in
@@ -1658,7 +1663,7 @@ and gen_funs ~global_attrs p =
                   let ty =
                     List.fold_right (fun tv acc -> Typ.arrow Nolabel (f tv) acc) ctx base
                   in
-                  Typ.poly ctx_withloc ty
+                  poly ty
                 in
                 let of_js_ty =
                   fold_types (fun tv -> Typ.arrow Nolabel ojs_typ (Typ.var tv)) (Typ.arrow Nolabel ojs_typ ty)
@@ -1754,7 +1759,7 @@ and gen_funs ~global_attrs p =
           (Vb.mk ~loc:p.ptype_loc
              (Pat.constraint_
                 (Pat.var (mknoloc name))
-                (Typ.poly ctx_withloc
+                (poly
                    (gen_typ (Arrow
                                {
                                  ty_args = (List.map (fun typ -> {lab=Arg; att=[]; typ}) input_typs);

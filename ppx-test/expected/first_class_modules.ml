@@ -44,8 +44,8 @@ module Console =
 module Console2 =
   struct
     type t = Ojs.t
-    let rec t_of_js : Ojs.t -> t = fun (x8 : Ojs.t) -> x8
-    and t_to_js : t -> Ojs.t = fun (x7 : Ojs.t) -> x7
+    let rec (t_of_js : Ojs.t -> t) = fun (x8 : Ojs.t) -> x8
+    and (t_to_js : t -> Ojs.t) = fun (x7 : Ojs.t) -> x7
     let (log : (module Ojs.T with type t = 'a) -> t -> 'a -> unit) =
       fun (type a) ->
         fun ((module A)  : (module Ojs.T with type t = a)) ->

@@ -11,8 +11,8 @@ module rec
       end =
   struct
     type t = Ojs.t
-    let rec t_of_js : Ojs.t -> t = fun (x2 : Ojs.t) -> x2
-    and t_to_js : t -> Ojs.t = fun (x1 : Ojs.t) -> x1
+    let rec (t_of_js : Ojs.t -> t) = fun (x2 : Ojs.t) -> x2
+    and (t_to_js : t -> Ojs.t) = fun (x1 : Ojs.t) -> x1
     let (create : string -> t) =
       fun (x3 : string) ->
         t_of_js
@@ -35,8 +35,8 @@ module rec
       end =
   struct
     type t = Ojs.t
-    let rec t_of_js : Ojs.t -> t = fun (x7 : Ojs.t) -> x7
-    and t_to_js : t -> Ojs.t = fun (x6 : Ojs.t) -> x6
+    let rec (t_of_js : Ojs.t -> t) = fun (x7 : Ojs.t) -> x7
+    and (t_to_js : t -> Ojs.t) = fun (x6 : Ojs.t) -> x6
     let (create : string -> t) =
       fun (x8 : string) ->
         t_of_js

@@ -3,8 +3,8 @@
 module UntypedPromise =
   struct
     type t = Ojs.t
-    let rec t_of_js : Ojs.t -> t = fun (x2 : Ojs.t) -> x2
-    and t_to_js : t -> Ojs.t = fun (x1 : Ojs.t) -> x1
+    let rec (t_of_js : Ojs.t -> t) = fun (x2 : Ojs.t) -> x2
+    and (t_to_js : t -> Ojs.t) = fun (x1 : Ojs.t) -> x1
     let (resolve : Ojs.t -> Ojs.t) =
       fun (x3 : Ojs.t) ->
         Ojs.call (Ojs.get_prop_ascii Ojs.global "Promise") "resolve" [|x3|]
@@ -26,10 +26,10 @@ module UntypedPromise =
         type wrap = {
           content: Ojs.t }
         [@@@ocaml.warning "-7-32-39"]
-        let rec wrap_of_js : Ojs.t -> wrap =
+        let rec (wrap_of_js : Ojs.t -> wrap) =
           fun (x13 : Ojs.t) ->
             { content = (Ojs.get_prop_ascii x13 "content") }
-        and wrap_to_js : wrap -> Ojs.t =
+        and (wrap_to_js : wrap -> Ojs.t) =
           fun (x12 : wrap) -> Ojs.obj [|("content", (x12.content))|]
       end
     let is_promise o = (resolve o) == o

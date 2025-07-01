@@ -36,7 +36,7 @@ type parse_result =
   base: string ;
   name: string ;
   ext: string }
-let rec parse_result_of_js : Ojs.t -> parse_result =
+let rec (parse_result_of_js : Ojs.t -> parse_result) =
   fun (x10 : Ojs.t) ->
     {
       dir = (Ojs.string_of_js (Ojs.get_prop_ascii x10 "dir"));
@@ -45,7 +45,7 @@ let rec parse_result_of_js : Ojs.t -> parse_result =
       name = (Ojs.string_of_js (Ojs.get_prop_ascii x10 "name"));
       ext = (Ojs.string_of_js (Ojs.get_prop_ascii x10 "ext"))
     }
-and parse_result_to_js : parse_result -> Ojs.t =
+and (parse_result_to_js : parse_result -> Ojs.t) =
   fun (x9 : parse_result) ->
     Ojs.obj
       [|("dir", (Ojs.string_to_js x9.dir));("root",
