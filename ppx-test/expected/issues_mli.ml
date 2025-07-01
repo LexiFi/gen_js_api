@@ -3,8 +3,8 @@
 module Issue144 =
   struct
     type t = Ojs.t
-    let rec t_of_js : Ojs.t -> t = fun (x2 : Ojs.t) -> x2
-    and t_to_js : t -> Ojs.t = fun (x1 : Ojs.t) -> x1
+    let rec (t_of_js : Ojs.t -> t) = fun (x2 : Ojs.t) -> x2
+    and (t_to_js : t -> Ojs.t) = fun (x1 : Ojs.t) -> x1
     let (f : t -> args:int -> int) =
       fun (x3 : t) ->
         fun ~args:(x4 : int) ->

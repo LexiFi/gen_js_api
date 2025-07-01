@@ -4,8 +4,8 @@
 module M =
   struct
     type t = Ojs.t
-    let rec t_of_js : Ojs.t -> t = fun (x2 : Ojs.t) -> x2
-    and t_to_js : t -> Ojs.t = fun (x1 : Ojs.t) -> x1
+    let rec (t_of_js : Ojs.t -> t) = fun (x2 : Ojs.t) -> x2
+    and (t_to_js : t -> Ojs.t) = fun (x1 : Ojs.t) -> x1
     let (prop_get_arg : t -> int) =
       ((fun (x3 : t) ->
           Ojs.int_of_js (Ojs.get_prop_ascii (t_to_js x3) "propGetArg"))

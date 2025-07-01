@@ -3,8 +3,8 @@
 module Dirent =
   struct
     type t = Ojs.t
-    let rec t_of_js : Ojs.t -> t = fun (x2 : Ojs.t) -> x2
-    and t_to_js : t -> Ojs.t = fun (x1 : Ojs.t) -> x1
+    let rec (t_of_js : Ojs.t -> t) = fun (x2 : Ojs.t) -> x2
+    and (t_to_js : t -> Ojs.t) = fun (x1 : Ojs.t) -> x1
     let (name : t -> string) =
       fun (x3 : t) ->
         Ojs.string_of_js (Ojs.get_prop_ascii (t_to_js x3) "name")
@@ -17,8 +17,8 @@ module Dirent =
 module Dir =
   struct
     type t = Ojs.t
-    let rec t_of_js : Ojs.t -> t = fun (x7 : Ojs.t) -> x7
-    and t_to_js : t -> Ojs.t = fun (x6 : Ojs.t) -> x6
+    let rec (t_of_js : Ojs.t -> t) = fun (x7 : Ojs.t) -> x7
+    and (t_to_js : t -> Ojs.t) = fun (x6 : Ojs.t) -> x6
     let (path : t -> string) =
       fun (x8 : t) ->
         Ojs.string_of_js (Ojs.get_prop_ascii (t_to_js x8) "path")
@@ -34,18 +34,18 @@ module Dir =
 module FileHandle =
   struct
     type t = Ojs.t
-    let rec t_of_js : Ojs.t -> t = fun (x15 : Ojs.t) -> x15
-    and t_to_js : t -> Ojs.t = fun (x14 : Ojs.t) -> x14
+    let rec (t_of_js : Ojs.t -> t) = fun (x15 : Ojs.t) -> x15
+    and (t_to_js : t -> Ojs.t) = fun (x14 : Ojs.t) -> x14
     type read = {
       bytes_read: int ;
       buffer: Buffer.t }
-    let rec read_of_js : Ojs.t -> read =
+    let rec (read_of_js : Ojs.t -> read) =
       fun (x17 : Ojs.t) ->
         {
           bytes_read = (Ojs.int_of_js (Ojs.get_prop_ascii x17 "bytesRead"));
           buffer = (Buffer.t_of_js (Ojs.get_prop_ascii x17 "buffer"))
         }
-    and read_to_js : read -> Ojs.t =
+    and (read_to_js : read -> Ojs.t) =
       fun (x16 : read) ->
         Ojs.obj
           [|("bytesRead", (Ojs.int_to_js x16.bytes_read));("buffer",
