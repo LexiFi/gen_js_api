@@ -38,6 +38,9 @@ jobs:
         with:
           ocaml-compiler: ${{ matrix.ocaml-compiler }}
 
+      - name: Pin ppxlib
+        run: opam pin add ppxlib https://github.com/ocaml-ppx/ppxlib.git#0.36
+
       - run: opam install . --deps-only --with-test
 
       - run: opam exec -- make
