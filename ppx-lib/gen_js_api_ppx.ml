@@ -296,6 +296,7 @@ type apply_type =
   | NewableFunction (* new f(..) *)
 
 type valdef =
+  | Runtime of string
   | Cast
   | Ignore
   | PropGet of string
@@ -311,6 +312,7 @@ type valdef =
   | Auto of valdef
 
 let rec string_of_valdef = function
+  | Runtime _ -> "js.runtime"
   | Cast -> "js.cast"
   | Ignore -> "js.ignore"
   | PropGet _ -> "js.get"
@@ -569,6 +571,7 @@ let parse_attr ~global_attrs (s, loc, auto) attribute =
   in
   let actions =
     [ "js.cast", (fun () -> Cast);
+      "js.runtime", (fun () -> Runtime (opt_name ()));
       "js.get", (fun () -> PropGet (opt_name ()));
       "js.set", (fun () -> PropSet (opt_name ~prefix:"set_" ()));
       "js.index_get", (fun () -> IndexGet);
@@ -892,17 +895,30 @@ let ojs_set o s v =
   else
     ojs "set_prop" [o; ojs "string_to_js" [str s]; v]
 
+let rec select_split_path o = function
+  | [] -> assert false
+  | [x] -> o, x
+  | x :: xs -> select_split_path (ojs_get o x) xs
+
 let select_path o s =
-  let rec select_path o = function
-    | [] -> assert false
-    | [x] -> o, x
-    | x :: xs -> select_path (ojs_get o x) xs
-  in
-  select_path o (split '.' s)
+  select_split_path o (split '.' s)
 
 let get_path global_object s =
   let o, x = select_path global_object s in
   ojs_get o x
+
+let runtime s =
+  let external_ = Exp.ident (mknoloc (longident_parse "Jsoo_runtime.Sys.external_")) in
+  match split '.' s with
+  | s :: tl ->
+      let root = Exp.apply external_ (nolabel [Exp.constant (Pconst_string (s, Location.none, None))]) in
+      begin match tl with
+      | [] -> root
+      | _ ->
+          let o, x = select_split_path root tl in
+          ojs_get o x
+      end
+  | [] -> assert false
 
 let ojs_variable s =
   get_path ojs_global s
@@ -1602,15 +1618,20 @@ let global_object ~global_attrs =
     | hd :: tl ->
         begin match get_expr_attribute "js.scope" [hd] with
         | None -> traverse tl
-        | Some {pexp_desc=Pexp_constant (Pconst_string (prop, _, _)); _} -> ojs_get (traverse tl) prop
+        | Some {pexp_desc=Pexp_constant (Pconst_string (prop, _, _)); _} ->
+            if String.length prop > 0 && prop.[0] = '@' then
+              runtime (String.sub prop 1 (String.length prop - 1))
+            else
+              get_path (traverse tl) prop
+
         | Some {pexp_desc=Pexp_tuple path; _} ->
-          let init = traverse tl in
-          let folder state pexp =
-            match pexp.pexp_desc with
-            | Pexp_constant (Pconst_string (prop, _, _)) -> ojs_get state prop
-            | _ -> pexp (* global object *)
-          in
-          List.fold_left folder init path
+            let init = traverse tl in
+            let folder state pexp =
+              match pexp.pexp_desc with
+              | Pexp_constant (Pconst_string (prop, _, _)) -> get_path state prop
+              | _ -> pexp (* global object *)
+            in
+            List.fold_left folder init path
         | Some global_object -> global_object
         end
   in
@@ -1908,6 +1929,9 @@ and gen_class_cast = function
 
 and gen_def ~global_object loc decl ty =
   match decl, ty with
+  | Runtime s, _ ->
+      js2ml ty (runtime s)
+
   | Cast, Arrow {ty_args = [{lab=Arg; att=_; typ}]; ty_vararg = None; unit_arg = false; ty_res} ->
       mkfun ~typ (fun this -> js2ml ty_res (ml2js typ this))
 
