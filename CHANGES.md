@@ -1,6 +1,11 @@
 Changelog
 =========
 
+Version 1.1.6
+-------------
+
+- GPR#181: Upgrade ppxlib dependency to 0.37.0 (=> support OCaml 5.4)
+
 Version 1.1.5
 -------------
 
