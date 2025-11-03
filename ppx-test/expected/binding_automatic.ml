@@ -4,53 +4,53 @@
 module M =
   struct
     type t = Ojs.t
-    let rec (t_of_js : Ojs.t -> t) = fun (x2 : Ojs.t) -> x2
-    and (t_to_js : t -> Ojs.t) = fun (x1 : Ojs.t) -> x1
-    let (prop_get_arg : t -> int) =
+    let rec t_of_js : Ojs.t -> t = fun (x2 : Ojs.t) -> x2
+    and t_to_js : t -> Ojs.t = fun (x1 : Ojs.t) -> x1
+    let prop_get_arg : t -> int =
       ((fun (x3 : t) ->
           Ojs.int_of_js (Ojs.get_prop_ascii (t_to_js x3) "propGetArg"))
       [@ocaml.ppwarning
         "Heuristic for automatic binding is deprecated; please add the '@js.get' attribute."])
-    let (prop_get : unit -> int) =
+    let prop_get : unit -> int =
       ((fun () -> Ojs.int_of_js (Ojs.get_prop_ascii Ojs.global "propGet"))
       [@ocaml.ppwarning
         "Heuristic for automatic binding is deprecated; please add the '@js.get' attribute."])
-    let (set_prop : t -> int -> unit) =
+    let set_prop : t -> int -> unit =
       ((fun (x4 : t) ->
           fun (x5 : int) ->
             Ojs.set_prop_ascii (t_to_js x4) "prop" (Ojs.int_to_js x5))
       [@ocaml.ppwarning
         "Heuristic for automatic binding is deprecated; please add the '@js.set' attribute."])
-    let (set_global : int -> unit) =
+    let set_global : int -> unit =
       ((fun (x6 : int) ->
           Ojs.set_prop_ascii Ojs.global "global" (Ojs.int_to_js x6))
       [@ocaml.ppwarning
         "Heuristic for automatic binding is deprecated; please add the '@js.set' attribute."])
-    let (new_thing_unit : unit -> t) =
+    let new_thing_unit : unit -> t =
       ((fun () ->
           t_of_js
             (Ojs.new_obj (Ojs.get_prop_ascii Ojs.global "ThingUnit") [||]))
       [@ocaml.ppwarning
         "Heuristic for automatic binding is deprecated; please add the '@js.new' attribute."])
-    let (new_thing_args : int -> t) =
+    let new_thing_args : int -> t =
       ((fun (x7 : int) ->
           t_of_js
             (Ojs.new_obj (Ojs.get_prop_ascii Ojs.global "ThingArgs")
                [|(Ojs.int_to_js x7)|]))
       [@ocaml.ppwarning
         "Heuristic for automatic binding is deprecated; please add the '@js.new' attribute."])
-    let (method_call_global : t -> unit) =
+    let method_call_global : t -> unit =
       ((fun (x8 : t) ->
           ignore (Ojs.call (t_to_js x8) "methodCallGlobal" [||]))
       [@ocaml.ppwarning
         "Heuristic for automatic binding is deprecated; please add the '@js.call' attribute."])
-    let (method_call_unit : t -> unit -> int) =
+    let method_call_unit : t -> unit -> int =
       ((fun (x9 : t) ->
           fun () ->
             Ojs.int_of_js (Ojs.call (t_to_js x9) "methodCallUnit" [||]))
       [@ocaml.ppwarning
         "Heuristic for automatic binding is deprecated; please add the '@js.call' attribute."])
-    let (method_call_args : t -> int -> int) =
+    let method_call_args : t -> int -> int =
       ((fun (x11 : t) ->
           fun (x10 : int) ->
             Ojs.int_of_js
@@ -58,12 +58,12 @@ module M =
                  [|(Ojs.int_to_js x10)|]))
       [@ocaml.ppwarning
         "Heuristic for automatic binding is deprecated; please add the '@js.call' attribute."])
-    let (method_call_unit_unit : t -> unit -> unit) =
+    let method_call_unit_unit : t -> unit -> unit =
       ((fun (x12 : t) ->
           fun () -> ignore (Ojs.call (t_to_js x12) "methodCallUnitUnit" [||]))
       [@ocaml.ppwarning
         "Heuristic for automatic binding is deprecated; please add the '@js.call' attribute."])
-    let (method_call_args_unit : t -> int -> unit) =
+    let method_call_args_unit : t -> int -> unit =
       ((fun (x14 : t) ->
           fun (x13 : int) ->
             ignore
@@ -71,31 +71,31 @@ module M =
                  [|(Ojs.int_to_js x13)|]))
       [@ocaml.ppwarning
         "Heuristic for automatic binding is deprecated; please add the '@js.call' attribute."])
-    let (global : t) = ((t_of_js (Ojs.get_prop_ascii Ojs.global "global"))
+    let global : t = ((t_of_js (Ojs.get_prop_ascii Ojs.global "global"))
       [@ocaml.ppwarning
         "Heuristic for automatic binding is deprecated; please add the '@js.global' attribute."])
-    let (get : t -> int -> string option) =
+    let get : t -> int -> string option =
       ((fun (x15 : t) ->
           fun (x16 : int) ->
             Ojs.option_of_js Ojs.string_of_js
               (Ojs.array_get (t_to_js x15) x16))
       [@ocaml.ppwarning
         "Heuristic for automatic binding is deprecated; please add the '@js.index_get' attribute."])
-    let (set : t -> int -> string -> unit) =
+    let set : t -> int -> string -> unit =
       ((fun (x18 : t) ->
           fun (x19 : int) ->
             fun (x20 : string) ->
               Ojs.array_set (t_to_js x18) x19 (Ojs.string_to_js x20))
       [@ocaml.ppwarning
         "Heuristic for automatic binding is deprecated; please add the '@js.index_set' attribute."])
-    let (get : t -> string -> string option) =
+    let get : t -> string -> string option =
       ((fun (x21 : t) ->
           fun (x22 : string) ->
             Ojs.option_of_js Ojs.string_of_js
               (Ojs.get_prop (t_to_js x21) (Ojs.string_to_js x22)))
       [@ocaml.ppwarning
         "Heuristic for automatic binding is deprecated; please add the '@js.index_get' attribute."])
-    let (set : t -> string -> string -> unit) =
+    let set : t -> string -> string -> unit =
       ((fun (x24 : t) ->
           fun (x25 : string) ->
             fun (x26 : string) ->
@@ -103,14 +103,14 @@ module M =
                 (Ojs.string_to_js x26))
       [@ocaml.ppwarning
         "Heuristic for automatic binding is deprecated; please add the '@js.index_set' attribute."])
-    let (get : t -> Ojs.t -> string option) =
+    let get : t -> Ojs.t -> string option =
       ((fun (x27 : t) ->
           fun (x28 : Ojs.t) ->
             Ojs.option_of_js Ojs.string_of_js
               (Ojs.get_prop (t_to_js x27) x28))
       [@ocaml.ppwarning
         "Heuristic for automatic binding is deprecated; please add the '@js.index_get' attribute."])
-    let (set : t -> Ojs.t -> string -> unit) =
+    let set : t -> Ojs.t -> string -> unit =
       ((fun (x30 : t) ->
           fun (x31 : Ojs.t) ->
             fun (x32 : string) ->

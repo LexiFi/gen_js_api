@@ -6,7 +6,9 @@
   (pps gen_js_api.ppx))
  (modes byte)
  (js_of_ocaml
-  (javascript_files imports.js)))
+  (javascript_files imports.js))
+ (wasm_of_ocaml
+  (javascript_files imports.js imports.wat)))
 
 (rule
  (targets imports.ml)

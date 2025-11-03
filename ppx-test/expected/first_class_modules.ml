@@ -2,16 +2,16 @@
 [@@@ocaml.warning "-7-32-39"]
 module Console =
   struct
-    let (log : (module Ojs.T with type t = 'a) -> 'a -> unit) =
+    let log : (module Ojs.T with type t = 'a) -> 'a -> unit =
       fun (type a) ->
         fun ((module A)  : (module Ojs.T with type t = a)) ->
           fun (x1 : a) ->
             ignore
               (Ojs.call (Ojs.get_prop_ascii Ojs.global "console") "log"
                  [|(A.t_to_js x1)|])
-    let (log2 :
+    let log2 :
       (module Ojs.T with type t = 'a) ->
-        (module Ojs.T with type t = 'b) -> 'a -> 'b -> unit)
+        (module Ojs.T with type t = 'b) -> 'a -> 'b -> unit
       =
       fun (type a) ->
         fun (type b) ->
@@ -22,10 +22,10 @@ module Console =
                   ignore
                     (Ojs.call (Ojs.get_prop_ascii Ojs.global "console") "log"
                        [|(A.t_to_js x2);(B.t_to_js x3)|])
-    let (log3 :
+    let log3 :
       (module Ojs.T with type t = 'a) ->
         (module Ojs.T with type t = 'b) ->
-          (module Ojs.T with type t = 'c) -> 'a -> 'b -> 'c -> unit)
+          (module Ojs.T with type t = 'c) -> 'a -> 'b -> 'c -> unit
       =
       fun (type a) ->
         fun (type b) ->
@@ -44,17 +44,17 @@ module Console =
 module Console2 =
   struct
     type t = Ojs.t
-    let rec (t_of_js : Ojs.t -> t) = fun (x8 : Ojs.t) -> x8
-    and (t_to_js : t -> Ojs.t) = fun (x7 : Ojs.t) -> x7
-    let (log : (module Ojs.T with type t = 'a) -> t -> 'a -> unit) =
+    let rec t_of_js : Ojs.t -> t = fun (x8 : Ojs.t) -> x8
+    and t_to_js : t -> Ojs.t = fun (x7 : Ojs.t) -> x7
+    let log : (module Ojs.T with type t = 'a) -> t -> 'a -> unit =
       fun (type a) ->
         fun ((module A)  : (module Ojs.T with type t = a)) ->
           fun (x10 : t) ->
             fun (x9 : a) ->
               ignore (Ojs.call (t_to_js x10) "log" [|(A.t_to_js x9)|])
-    let (log2 :
+    let log2 :
       (module Ojs.T with type t = 'a) ->
-        (module Ojs.T with type t = 'b) -> t -> 'a -> 'b -> unit)
+        (module Ojs.T with type t = 'b) -> t -> 'a -> 'b -> unit
       =
       fun (type a) ->
         fun (type b) ->
@@ -66,10 +66,10 @@ module Console2 =
                     ignore
                       (Ojs.call (t_to_js x13) "log"
                          [|(A.t_to_js x11);(B.t_to_js x12)|])
-    let (log3 :
+    let log3 :
       (module Ojs.T with type t = 'a) ->
         (module Ojs.T with type t = 'b) ->
-          (module Ojs.T with type t = 'c) -> t -> 'a -> 'b -> 'c -> unit)
+          (module Ojs.T with type t = 'c) -> t -> 'a -> 'b -> 'c -> unit
       =
       fun (type a) ->
         fun (type b) ->
@@ -90,7 +90,7 @@ module Console3 =
   struct
     module Log =
       struct
-        let (_1 : (module Ojs.T with type t = 'a) -> 'a -> unit) =
+        let _1 : (module Ojs.T with type t = 'a) -> 'a -> unit =
           fun (type a) ->
             fun ((module A)  : (module Ojs.T with type t = a)) ->
               fun (x18 : a) ->
@@ -99,9 +99,9 @@ module Console3 =
                      (Ojs.get_prop_ascii
                         (Ojs.get_prop_ascii Ojs.global "console") "log")
                      [|(A.t_to_js x18)|])
-        let (_2 :
+        let _2 :
           (module Ojs.T with type t = 'a) ->
-            (module Ojs.T with type t = 'b) -> 'a -> 'b -> unit)
+            (module Ojs.T with type t = 'b) -> 'a -> 'b -> unit
           =
           fun (type a) ->
             fun (type b) ->
@@ -114,10 +114,10 @@ module Console3 =
                            (Ojs.get_prop_ascii
                               (Ojs.get_prop_ascii Ojs.global "console") "log")
                            [|(A.t_to_js x19);(B.t_to_js x20)|])
-        let (_3 :
+        let _3 :
           (module Ojs.T with type t = 'a) ->
             (module Ojs.T with type t = 'b) ->
-              (module Ojs.T with type t = 'c) -> 'a -> 'b -> 'c -> unit)
+              (module Ojs.T with type t = 'c) -> 'a -> 'b -> 'c -> unit
           =
           fun (type a) ->
             fun (type b) ->
@@ -146,7 +146,7 @@ module Array =
     and t_to_js : 'a . ('a -> Ojs.t) -> 'a t -> Ojs.t =
       fun (type __a) ->
         fun (__a_to_js : __a -> Ojs.t) -> fun (x24 : Ojs.t) -> x24
-    let (create : (module Ojs.T with type t = 'a) -> 'a list -> 'a t) =
+    let create : (module Ojs.T with type t = 'a) -> 'a list -> 'a t =
       fun (type a) ->
         fun ((module A)  : (module Ojs.T with type t = a)) ->
           fun (x26 : a list) ->
@@ -158,7 +158,7 @@ module Array =
                     (fun (x28 : a) ->
                        ignore (Ojs.call x27 "push" [|(A.t_to_js x28)|])) x26;
                   x27))
-    let (create' : (module Ojs.T with type t = 'a) -> 'a list -> 'a t) =
+    let create' : (module Ojs.T with type t = 'a) -> 'a list -> 'a t =
       fun (type a) ->
         fun ((module A)  : (module Ojs.T with type t = a)) ->
           fun (x30 : a list) ->
@@ -174,14 +174,14 @@ module Array =
                                      (Ojs.call x31 "push" [|(A.t_to_js x32)|]))
                                 x30;
                               x31))|])
-    let (push : (module Ojs.T with type t = 'a) -> 'a t -> 'a -> unit) =
+    let push : (module Ojs.T with type t = 'a) -> 'a t -> 'a -> unit =
       fun (type a) ->
         fun ((module A)  : (module Ojs.T with type t = a)) ->
           fun (x35 : a t) ->
             fun (x34 : a) ->
               ignore
                 (Ojs.call (t_to_js A.t_to_js x35) "push" [|(A.t_to_js x34)|])
-    let (pop : (module Ojs.T with type t = 'a) -> 'a t -> 'a option) =
+    let pop : (module Ojs.T with type t = 'a) -> 'a t -> 'a option =
       fun (type a) ->
         fun ((module A)  : (module Ojs.T with type t = a)) ->
           fun (x37 : a t) ->

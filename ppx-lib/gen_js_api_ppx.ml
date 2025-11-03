@@ -908,10 +908,10 @@ let get_path global_object s =
   ojs_get o x
 
 let runtime s =
-  let external_ = Exp.ident (mknoloc (longident_parse "Jsoo_runtime.Sys.external_")) in
+  let runtime_value = Exp.ident (mknoloc (longident_parse "Jsoo_runtime.Js.runtime_value")) in
   match split '.' s with
   | s :: tl ->
-      let root = Exp.apply external_ (nolabel [Exp.constant (Pconst_string (s, Location.none, None))]) in
+      let root = Exp.apply runtime_value (nolabel [Exp.constant (Pconst_string (s, Location.none, None))]) in
       begin match tl with
       | [] -> root
       | _ ->

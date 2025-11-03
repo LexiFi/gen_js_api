@@ -3,8 +3,10 @@
  (libraries ojs node)
  (preprocess
   (pps gen_js_api.ppx))
- (modes js)
+ (modes js wasm)
  (js_of_ocaml
+  (javascript_files recursive.js))
+ (wasm_of_ocaml
   (javascript_files recursive.js)))
 
 (rule
@@ -18,3 +20,9 @@
  (enabled_if %{bin-available:node})
  (action
   (run node %{dep:./test.bc.js})))
+
+(rule
+ (alias runtest-wasm)
+ (enabled_if %{bin-available:node})
+ (action
+  (run node %{dep:./test.bc.wasm.js})))

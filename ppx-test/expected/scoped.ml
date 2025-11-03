@@ -4,33 +4,33 @@
 module M =
   struct
     type t = Ojs.t
-    let rec (t_of_js : Ojs.t -> t) = fun (x2 : Ojs.t) -> x2
-    and (t_to_js : t -> Ojs.t) = fun (x1 : Ojs.t) -> x1
-    let (prop_get_arg : t -> int) =
+    let rec t_of_js : Ojs.t -> t = fun (x2 : Ojs.t) -> x2
+    and t_to_js : t -> Ojs.t = fun (x1 : Ojs.t) -> x1
+    let prop_get_arg : t -> int =
       ((fun (x3 : t) ->
           Ojs.int_of_js (Ojs.get_prop_ascii (t_to_js x3) "propGetArg"))
       [@ocaml.ppwarning
         "Heuristic for automatic binding is deprecated; please add the '@js.get' attribute."])
-    let (prop_get : unit -> int) =
+    let prop_get : unit -> int =
       ((fun () ->
           Ojs.int_of_js
             (Ojs.get_prop_ascii (Ojs.get_prop_ascii Ojs.global "scope")
                "propGet"))
       [@ocaml.ppwarning
         "Heuristic for automatic binding is deprecated; please add the '@js.get' attribute."])
-    let (set_prop : t -> int -> unit) =
+    let set_prop : t -> int -> unit =
       ((fun (x4 : t) ->
           fun (x5 : int) ->
             Ojs.set_prop_ascii (t_to_js x4) "prop" (Ojs.int_to_js x5))
       [@ocaml.ppwarning
         "Heuristic for automatic binding is deprecated; please add the '@js.set' attribute."])
-    let (set_global : int -> unit) =
+    let set_global : int -> unit =
       ((fun (x6 : int) ->
           Ojs.set_prop_ascii (Ojs.get_prop_ascii Ojs.global "scope") "global"
             (Ojs.int_to_js x6))
       [@ocaml.ppwarning
         "Heuristic for automatic binding is deprecated; please add the '@js.set' attribute."])
-    let (new_thing_unit : unit -> t) =
+    let new_thing_unit : unit -> t =
       ((fun () ->
           t_of_js
             (Ojs.new_obj
@@ -38,7 +38,7 @@ module M =
                   "ThingUnit") [||]))
       [@ocaml.ppwarning
         "Heuristic for automatic binding is deprecated; please add the '@js.new' attribute."])
-    let (new_thing_args : int -> t) =
+    let new_thing_args : int -> t =
       ((fun (x7 : int) ->
           t_of_js
             (Ojs.new_obj
@@ -46,18 +46,18 @@ module M =
                   "ThingArgs") [|(Ojs.int_to_js x7)|]))
       [@ocaml.ppwarning
         "Heuristic for automatic binding is deprecated; please add the '@js.new' attribute."])
-    let (method_call_global : t -> unit) =
+    let method_call_global : t -> unit =
       ((fun (x8 : t) ->
           ignore (Ojs.call (t_to_js x8) "methodCallGlobal" [||]))
       [@ocaml.ppwarning
         "Heuristic for automatic binding is deprecated; please add the '@js.call' attribute."])
-    let (method_call_unit : t -> unit -> int) =
+    let method_call_unit : t -> unit -> int =
       ((fun (x9 : t) ->
           fun () ->
             Ojs.int_of_js (Ojs.call (t_to_js x9) "methodCallUnit" [||]))
       [@ocaml.ppwarning
         "Heuristic for automatic binding is deprecated; please add the '@js.call' attribute."])
-    let (method_call_args : t -> int -> int) =
+    let method_call_args : t -> int -> int =
       ((fun (x11 : t) ->
           fun (x10 : int) ->
             Ojs.int_of_js
@@ -65,12 +65,12 @@ module M =
                  [|(Ojs.int_to_js x10)|]))
       [@ocaml.ppwarning
         "Heuristic for automatic binding is deprecated; please add the '@js.call' attribute."])
-    let (method_call_unit_unit : t -> unit -> unit) =
+    let method_call_unit_unit : t -> unit -> unit =
       ((fun (x12 : t) ->
           fun () -> ignore (Ojs.call (t_to_js x12) "methodCallUnitUnit" [||]))
       [@ocaml.ppwarning
         "Heuristic for automatic binding is deprecated; please add the '@js.call' attribute."])
-    let (method_call_args_unit : t -> int -> unit) =
+    let method_call_args_unit : t -> int -> unit =
       ((fun (x14 : t) ->
           fun (x13 : int) ->
             ignore
@@ -78,18 +78,18 @@ module M =
                  [|(Ojs.int_to_js x13)|]))
       [@ocaml.ppwarning
         "Heuristic for automatic binding is deprecated; please add the '@js.call' attribute."])
-    let (global : t) =
+    let global : t =
       ((t_of_js
           (Ojs.get_prop_ascii (Ojs.get_prop_ascii Ojs.global "scope")
              "global"))
       [@ocaml.ppwarning
         "Heuristic for automatic binding is deprecated; please add the '@js.global' attribute."])
-    let (invoke : unit -> unit) =
+    let invoke : unit -> unit =
       fun () ->
         Ojs.unit_of_js
           (Ojs.apply (Ojs.get_prop_ascii Ojs.global "scope") [||])
   end
-let (d : unit -> unit) =
+let d : unit -> unit =
   fun () ->
     ignore
       (Ojs.call
