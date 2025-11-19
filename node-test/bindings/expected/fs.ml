@@ -52,33 +52,24 @@ module FileHandle =
                                                             (Buffer.t_to_js
                                                                x16.buffer))|]
     let append_file : t -> Buffer.t -> unit Promise.t =
-      fun (x19 : t) ->
-        fun (x18 : Buffer.t) ->
-          Promise.t_of_js Ojs.unit_of_js
-            (Ojs.call (t_to_js x19) "appendFile" [|(Buffer.t_to_js x18)|])
+      fun (x19 : t) (x18 : Buffer.t) ->
+        Promise.t_of_js Ojs.unit_of_js
+          (Ojs.call (t_to_js x19) "appendFile" [|(Buffer.t_to_js x18)|])
     let read : t -> Buffer.t -> int -> int -> int -> read Promise.t =
-      fun (x25 : t) ->
-        fun (x21 : Buffer.t) ->
-          fun (x22 : int) ->
-            fun (x23 : int) ->
-              fun (x24 : int) ->
-                Promise.t_of_js read_of_js
-                  (Ojs.call (t_to_js x25) "read"
-                     [|(Buffer.t_to_js x21);(Ojs.int_to_js x22);(Ojs.int_to_js
-                                                                   x23);(
-                       Ojs.int_to_js x24)|])
+      fun (x25 : t) (x21 : Buffer.t) (x22 : int) (x23 : int) (x24 : int) ->
+        Promise.t_of_js read_of_js
+          (Ojs.call (t_to_js x25) "read"
+             [|(Buffer.t_to_js x21);(Ojs.int_to_js x22);(Ojs.int_to_js x23);(
+               Ojs.int_to_js x24)|])
     let chmod : t -> int -> unit Promise.t =
-      fun (x28 : t) ->
-        fun (x27 : int) ->
-          Promise.t_of_js Ojs.unit_of_js
-            (Ojs.call (t_to_js x28) "chmod" [|(Ojs.int_to_js x27)|])
+      fun (x28 : t) (x27 : int) ->
+        Promise.t_of_js Ojs.unit_of_js
+          (Ojs.call (t_to_js x28) "chmod" [|(Ojs.int_to_js x27)|])
     let chmown : t -> uid:int -> gid:int -> unit Promise.t =
-      fun (x32 : t) ->
-        fun ~uid:(x30 : int) ->
-          fun ~gid:(x31 : int) ->
-            Promise.t_of_js Ojs.unit_of_js
-              (Ojs.call (t_to_js x32) "chmown"
-                 [|(Ojs.int_to_js x30);(Ojs.int_to_js x31)|])
+      fun (x32 : t) ~uid:(x30 : int) ~gid:(x31 : int) ->
+        Promise.t_of_js Ojs.unit_of_js
+          (Ojs.call (t_to_js x32) "chmown"
+             [|(Ojs.int_to_js x30);(Ojs.int_to_js x31)|])
     let close : t -> unit Promise.t =
       fun (x34 : t) ->
         Promise.t_of_js Ojs.unit_of_js (Ojs.call (t_to_js x34) "close" [||])
@@ -97,13 +88,12 @@ let readdir : string -> string list Promise.t =
          (Ojs.get_prop_ascii (Jsoo_runtime.Js.runtime_value "node_fs")
             "promises") "readdir" [|(Ojs.string_to_js x39)|])
 let open_ : string -> flag:string -> FileHandle.t Promise.t =
-  fun (x42 : string) ->
-    fun ~flag:(x43 : string) ->
-      Promise.t_of_js FileHandle.t_of_js
-        (Ojs.call
-           (Ojs.get_prop_ascii (Jsoo_runtime.Js.runtime_value "node_fs")
-              "promises") "open"
-           [|(Ojs.string_to_js x42);(Ojs.string_to_js x43)|])
+  fun (x42 : string) ~flag:(x43 : string) ->
+    Promise.t_of_js FileHandle.t_of_js
+      (Ojs.call
+         (Ojs.get_prop_ascii (Jsoo_runtime.Js.runtime_value "node_fs")
+            "promises") "open"
+         [|(Ojs.string_to_js x42);(Ojs.string_to_js x43)|])
 let rmdir : string -> unit Promise.t =
   fun (x45 : string) ->
     Promise.t_of_js Ojs.unit_of_js
@@ -111,13 +101,12 @@ let rmdir : string -> unit Promise.t =
          (Ojs.get_prop_ascii (Jsoo_runtime.Js.runtime_value "node_fs")
             "promises") "rmdir" [|(Ojs.string_to_js x45)|])
 let rename : string -> string -> unit Promise.t =
-  fun (x47 : string) ->
-    fun (x48 : string) ->
-      Promise.t_of_js Ojs.unit_of_js
-        (Ojs.call
-           (Ojs.get_prop_ascii (Jsoo_runtime.Js.runtime_value "node_fs")
-              "promises") "rename"
-           [|(Ojs.string_to_js x47);(Ojs.string_to_js x48)|])
+  fun (x47 : string) (x48 : string) ->
+    Promise.t_of_js Ojs.unit_of_js
+      (Ojs.call
+         (Ojs.get_prop_ascii (Jsoo_runtime.Js.runtime_value "node_fs")
+            "promises") "rename"
+         [|(Ojs.string_to_js x47);(Ojs.string_to_js x48)|])
 let unlink : string -> unit Promise.t =
   fun (x50 : string) ->
     Promise.t_of_js Ojs.unit_of_js

@@ -14,16 +14,14 @@ module T =
   struct
     let log : (module Ojs.T with type t = 'a) -> 'a -> unit =
       fun (type a) ->
-        fun ((module A)  : (module Ojs.T with type t = a)) ->
-          fun (x3 : a) ->
-            ignore
-              (Ojs.call (Ojs.get_prop_ascii Ojs.global "console") "log"
-                 [|(A.t_to_js x3)|])
+        fun ((module A)  : (module Ojs.T with type t = a)) (x3 : a) ->
+          ignore
+            (Ojs.call (Ojs.get_prop_ascii Ojs.global "console") "log"
+               [|(A.t_to_js x3)|])
     let error : (module Ojs.T with type t = 'a) -> 'a -> unit =
       fun (type a) ->
-        fun ((module A)  : (module Ojs.T with type t = a)) ->
-          fun (x4 : a) ->
-            ignore
-              (Ojs.call (Ojs.get_prop_ascii Ojs.global "console") "error"
-                 [|(A.t_to_js x4)|])
+        fun ((module A)  : (module Ojs.T with type t = a)) (x4 : a) ->
+          ignore
+            (Ojs.call (Ojs.get_prop_ascii Ojs.global "console") "error"
+               [|(A.t_to_js x4)|])
   end

@@ -13,10 +13,9 @@ module UntypedPromise =
         Ojs.call (Ojs.get_prop_ascii Ojs.global "Promise") "reject" [|x4|]
     let then_ :
       Ojs.t -> success:(Ojs.t -> Ojs.t) -> error:(Ojs.t -> Ojs.t) -> Ojs.t =
-      fun (x9 : Ojs.t) ->
-        fun ~success:(x5 : Ojs.t -> Ojs.t) ->
-          fun ~error:(x7 : Ojs.t -> Ojs.t) ->
-            Ojs.call x9 "then" [|(Ojs.fun_to_js 1 x5);(Ojs.fun_to_js 1 x7)|]
+      fun (x9 : Ojs.t) ~success:(x5 : Ojs.t -> Ojs.t)
+        ~error:(x7 : Ojs.t -> Ojs.t) ->
+        Ojs.call x9 "then" [|(Ojs.fun_to_js 1 x5);(Ojs.fun_to_js 1 x7)|]
     let all : Ojs.t list -> Ojs.t =
       fun (x10 : Ojs.t list) ->
         Ojs.call (Ojs.get_prop_ascii Ojs.global "Promise") "all"

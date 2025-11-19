@@ -4,67 +4,53 @@ type t = Ojs.t
 let rec t_of_js : Ojs.t -> t = fun (x2 : Ojs.t) -> x2
 and t_to_js : t -> Ojs.t = fun (x1 : Ojs.t) -> x1
 let toString : t -> ?radix:int -> unit -> float =
-  fun (x6 : t) ->
-    fun ?radix:(x3 : int option) ->
-      fun () ->
-        Ojs.float_of_js
-          (let x7 = t_to_js x6 in
-           Ojs.call (Ojs.get_prop_ascii x7 "toString") "apply"
-             [|x7;((let x4 =
-                      Ojs.new_obj (Ojs.get_prop_ascii Ojs.global "Array")
-                        [||] in
-                    (match x3 with
-                     | Some x5 ->
-                         ignore (Ojs.call x4 "push" [|(Ojs.int_to_js x5)|])
-                     | None -> ());
-                    x4))|])
+  fun (x6 : t) ?radix:(x3 : int option) () ->
+    Ojs.float_of_js
+      (let x7 = t_to_js x6 in
+       Ojs.call (Ojs.get_prop_ascii x7 "toString") "apply"
+         [|x7;((let x4 =
+                  Ojs.new_obj (Ojs.get_prop_ascii Ojs.global "Array") [||] in
+                (match x3 with
+                 | Some x5 ->
+                     ignore (Ojs.call x4 "push" [|(Ojs.int_to_js x5)|])
+                 | None -> ());
+                x4))|])
 let toFixed : t -> ?fractionDigits:int -> unit -> float =
-  fun (x11 : t) ->
-    fun ?fractionDigits:(x8 : int option) ->
-      fun () ->
-        Ojs.float_of_js
-          (let x12 = t_to_js x11 in
-           Ojs.call (Ojs.get_prop_ascii x12 "toFixed") "apply"
-             [|x12;((let x9 =
-                       Ojs.new_obj (Ojs.get_prop_ascii Ojs.global "Array")
-                         [||] in
-                     (match x8 with
-                      | Some x10 ->
-                          ignore (Ojs.call x9 "push" [|(Ojs.int_to_js x10)|])
-                      | None -> ());
-                     x9))|])
+  fun (x11 : t) ?fractionDigits:(x8 : int option) () ->
+    Ojs.float_of_js
+      (let x12 = t_to_js x11 in
+       Ojs.call (Ojs.get_prop_ascii x12 "toFixed") "apply"
+         [|x12;((let x9 =
+                   Ojs.new_obj (Ojs.get_prop_ascii Ojs.global "Array") [||] in
+                 (match x8 with
+                  | Some x10 ->
+                      ignore (Ojs.call x9 "push" [|(Ojs.int_to_js x10)|])
+                  | None -> ());
+                 x9))|])
 let toExponential : t -> ?fractionDigits:int -> unit -> float =
-  fun (x16 : t) ->
-    fun ?fractionDigits:(x13 : int option) ->
-      fun () ->
-        Ojs.float_of_js
-          (let x17 = t_to_js x16 in
-           Ojs.call (Ojs.get_prop_ascii x17 "toExponential") "apply"
-             [|x17;((let x14 =
-                       Ojs.new_obj (Ojs.get_prop_ascii Ojs.global "Array")
-                         [||] in
-                     (match x13 with
-                      | Some x15 ->
-                          ignore
-                            (Ojs.call x14 "push" [|(Ojs.int_to_js x15)|])
-                      | None -> ());
-                     x14))|])
+  fun (x16 : t) ?fractionDigits:(x13 : int option) () ->
+    Ojs.float_of_js
+      (let x17 = t_to_js x16 in
+       Ojs.call (Ojs.get_prop_ascii x17 "toExponential") "apply"
+         [|x17;((let x14 =
+                   Ojs.new_obj (Ojs.get_prop_ascii Ojs.global "Array") [||] in
+                 (match x13 with
+                  | Some x15 ->
+                      ignore (Ojs.call x14 "push" [|(Ojs.int_to_js x15)|])
+                  | None -> ());
+                 x14))|])
 let toPrecision : t -> ?precision:int -> unit -> float =
-  fun (x21 : t) ->
-    fun ?precision:(x18 : int option) ->
-      fun () ->
-        Ojs.float_of_js
-          (let x22 = t_to_js x21 in
-           Ojs.call (Ojs.get_prop_ascii x22 "toPrecision") "apply"
-             [|x22;((let x19 =
-                       Ojs.new_obj (Ojs.get_prop_ascii Ojs.global "Array")
-                         [||] in
-                     (match x18 with
-                      | Some x20 ->
-                          ignore
-                            (Ojs.call x19 "push" [|(Ojs.int_to_js x20)|])
-                      | None -> ());
-                     x19))|])
+  fun (x21 : t) ?precision:(x18 : int option) () ->
+    Ojs.float_of_js
+      (let x22 = t_to_js x21 in
+       Ojs.call (Ojs.get_prop_ascii x22 "toPrecision") "apply"
+         [|x22;((let x19 =
+                   Ojs.new_obj (Ojs.get_prop_ascii Ojs.global "Array") [||] in
+                 (match x18 with
+                  | Some x20 ->
+                      ignore (Ojs.call x19 "push" [|(Ojs.int_to_js x20)|])
+                  | None -> ());
+                 x19))|])
 let valueOf : t -> float =
   fun (x23 : t) -> Ojs.float_of_js (Ojs.call (t_to_js x23) "valueOf" [||])
 module Scoped =
@@ -108,13 +94,11 @@ module Static =
     let rec t_of_js : Ojs.t -> t = fun (x29 : Ojs.t) -> x29
     and t_to_js : t -> Ojs.t = fun (x28 : Ojs.t) -> x28
     let create : t -> 'any -> number =
-      fun (x31 : t) ->
-        fun (x30 : 'any) ->
-          number_of_js (Ojs.new_obj (t_to_js x31) [|(Obj.magic x30)|])
+      fun (x31 : t) (x30 : 'any) ->
+        number_of_js (Ojs.new_obj (t_to_js x31) [|(Obj.magic x30)|])
     let apply : t -> 'any -> float =
-      fun (x33 : t) ->
-        fun (x32 : 'any) ->
-          Ojs.float_of_js (Ojs.apply (t_to_js x33) [|(Obj.magic x32)|])
+      fun (x33 : t) (x32 : 'any) ->
+        Ojs.float_of_js (Ojs.apply (t_to_js x33) [|(Obj.magic x32)|])
     let min_value : t -> float =
       fun (x34 : t) ->
         Ojs.float_of_js (Ojs.get_prop_ascii (t_to_js x34) "MIN_VALUE")

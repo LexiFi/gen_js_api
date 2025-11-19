@@ -10,15 +10,13 @@ module Foo =
   struct
     module E = Event
     let foo : E.t -> string -> unit =
-      fun (x4 : E.t) ->
-        fun (x3 : string) ->
-          ignore (Ojs.call (E.t_to_js x4) "foo" [|(Ojs.string_to_js x3)|])
+      fun (x4 : E.t) (x3 : string) ->
+        ignore (Ojs.call (E.t_to_js x4) "foo" [|(Ojs.string_to_js x3)|])
   end
 module Bar =
   struct
     include Event
     let bar : t -> string -> unit =
-      fun (x6 : t) ->
-        fun (x5 : string) ->
-          ignore (Ojs.call (t_to_js x6) "bar" [|(Ojs.string_to_js x5)|])
+      fun (x6 : t) (x5 : string) ->
+        ignore (Ojs.call (t_to_js x6) "bar" [|(Ojs.string_to_js x5)|])
   end

@@ -19,9 +19,8 @@ module M =
       [@ocaml.ppwarning
         "Heuristic for automatic binding is deprecated; please add the '@js.get' attribute."])
     let set_prop : t -> int -> unit =
-      ((fun (x4 : t) ->
-          fun (x5 : int) ->
-            Ojs.set_prop_ascii (t_to_js x4) "prop" (Ojs.int_to_js x5))
+      ((fun (x4 : t) (x5 : int) ->
+          Ojs.set_prop_ascii (t_to_js x4) "prop" (Ojs.int_to_js x5))
       [@ocaml.ppwarning
         "Heuristic for automatic binding is deprecated; please add the '@js.set' attribute."])
     let set_global : int -> unit =
@@ -52,30 +51,26 @@ module M =
       [@ocaml.ppwarning
         "Heuristic for automatic binding is deprecated; please add the '@js.call' attribute."])
     let method_call_unit : t -> unit -> int =
-      ((fun (x9 : t) ->
-          fun () ->
-            Ojs.int_of_js (Ojs.call (t_to_js x9) "methodCallUnit" [||]))
+      ((fun (x9 : t) () ->
+          Ojs.int_of_js (Ojs.call (t_to_js x9) "methodCallUnit" [||]))
       [@ocaml.ppwarning
         "Heuristic for automatic binding is deprecated; please add the '@js.call' attribute."])
     let method_call_args : t -> int -> int =
-      ((fun (x11 : t) ->
-          fun (x10 : int) ->
-            Ojs.int_of_js
-              (Ojs.call (t_to_js x11) "methodCallArgs"
-                 [|(Ojs.int_to_js x10)|]))
+      ((fun (x11 : t) (x10 : int) ->
+          Ojs.int_of_js
+            (Ojs.call (t_to_js x11) "methodCallArgs" [|(Ojs.int_to_js x10)|]))
       [@ocaml.ppwarning
         "Heuristic for automatic binding is deprecated; please add the '@js.call' attribute."])
     let method_call_unit_unit : t -> unit -> unit =
-      ((fun (x12 : t) ->
-          fun () -> ignore (Ojs.call (t_to_js x12) "methodCallUnitUnit" [||]))
+      ((fun (x12 : t) () ->
+          ignore (Ojs.call (t_to_js x12) "methodCallUnitUnit" [||]))
       [@ocaml.ppwarning
         "Heuristic for automatic binding is deprecated; please add the '@js.call' attribute."])
     let method_call_args_unit : t -> int -> unit =
-      ((fun (x14 : t) ->
-          fun (x13 : int) ->
-            ignore
-              (Ojs.call (t_to_js x14) "methodCallArgsUnit"
-                 [|(Ojs.int_to_js x13)|]))
+      ((fun (x14 : t) (x13 : int) ->
+          ignore
+            (Ojs.call (t_to_js x14) "methodCallArgsUnit"
+               [|(Ojs.int_to_js x13)|]))
       [@ocaml.ppwarning
         "Heuristic for automatic binding is deprecated; please add the '@js.call' attribute."])
     let global : t =

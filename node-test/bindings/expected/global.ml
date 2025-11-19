@@ -7,17 +7,15 @@ type interval_id = Ojs.t
 let rec interval_id_of_js : Ojs.t -> interval_id = fun (x4 : Ojs.t) -> x4
 and interval_id_to_js : interval_id -> Ojs.t = fun (x3 : Ojs.t) -> x3
 let set_interval : (unit -> unit) -> int -> interval_id =
-  fun (x5 : unit -> unit) ->
-    fun (x6 : int) ->
-      interval_id_of_js
-        (Ojs.call Ojs.global "setInterval"
-           [|(Ojs.fun_to_js 1 (fun _ -> x5 ()));(Ojs.int_to_js x6)|])
+  fun (x5 : unit -> unit) (x6 : int) ->
+    interval_id_of_js
+      (Ojs.call Ojs.global "setInterval"
+         [|(Ojs.fun_to_js 1 (fun _ -> x5 ()));(Ojs.int_to_js x6)|])
 let set_timeout : (unit -> unit) -> int -> timeout_id =
-  fun (x7 : unit -> unit) ->
-    fun (x8 : int) ->
-      timeout_id_of_js
-        (Ojs.call Ojs.global "setTimeout"
-           [|(Ojs.fun_to_js 1 (fun _ -> x7 ()));(Ojs.int_to_js x8)|])
+  fun (x7 : unit -> unit) (x8 : int) ->
+    timeout_id_of_js
+      (Ojs.call Ojs.global "setTimeout"
+         [|(Ojs.fun_to_js 1 (fun _ -> x7 ()));(Ojs.int_to_js x8)|])
 let clear_timeout : timeout_id -> unit =
   fun (x9 : timeout_id) ->
     ignore (Ojs.call Ojs.global "clearTimeout" [|(timeout_id_to_js x9)|])

@@ -38,32 +38,28 @@ let _ : (string * int * bool) to_js =
     Ojs.array_set x23 2 (Ojs.bool_to_js x22);
     x23
 let _ : (string -> int) of_js =
-  fun (x24 : Ojs.t) ->
-    fun (x25 : string) ->
-      Ojs.int_of_js (Ojs.apply x24 [|(Ojs.string_to_js x25)|])
+  fun (x24 : Ojs.t) (x25 : string) ->
+    Ojs.int_of_js (Ojs.apply x24 [|(Ojs.string_to_js x25)|])
 let _ : (string -> int) to_js =
   fun (x26 : string -> int) ->
     Ojs.fun_to_js 1
       (fun (x27 : Ojs.t) -> Ojs.int_to_js (x26 (Ojs.string_of_js x27)))
 let _ : ((string -> int) -> bool -> unit) of_js =
-  fun (x28 : Ojs.t) ->
-    fun (x29 : string -> int) ->
-      fun (x31 : bool) ->
-        ignore
-          (Ojs.apply x28
-             [|(Ojs.fun_to_js 1
-                  (fun (x30 : Ojs.t) ->
-                     Ojs.int_to_js (x29 (Ojs.string_of_js x30))));(Ojs.bool_to_js
-                                                                    x31)|])
+  fun (x28 : Ojs.t) (x29 : string -> int) (x31 : bool) ->
+    ignore
+      (Ojs.apply x28
+         [|(Ojs.fun_to_js 1
+              (fun (x30 : Ojs.t) ->
+                 Ojs.int_to_js (x29 (Ojs.string_of_js x30))));(Ojs.bool_to_js
+                                                                 x31)|])
 let _ : ((string -> int) -> bool -> unit) to_js =
   fun (x32 : (string -> int) -> bool -> unit) ->
     Ojs.fun_to_js 2
-      (fun (x33 : Ojs.t) ->
-         fun (x35 : Ojs.t) ->
-           x32
-             (fun (x34 : string) ->
-                Ojs.int_of_js (Ojs.apply x33 [|(Ojs.string_to_js x34)|]))
-             (Ojs.bool_of_js x35))
+      (fun (x33 : Ojs.t) (x35 : Ojs.t) ->
+         x32
+           (fun (x34 : string) ->
+              Ojs.int_of_js (Ojs.apply x33 [|(Ojs.string_to_js x34)|]))
+           (Ojs.bool_of_js x35))
 let _ : string array of_js =
   fun (x36 : Ojs.t) -> Ojs.array_of_js Ojs.string_of_js x36
 let _ : string array to_js =
@@ -77,8 +73,8 @@ let _ : string option of_js =
 let _ : string option to_js =
   fun (x46 : string option) -> Ojs.option_to_js Ojs.string_to_js x46
 let _ : (_ -> _) of_js =
-  fun (x48 : Ojs.t) ->
-    fun (x49 : 'a) -> Obj.magic (Ojs.apply x48 [|(Obj.magic x49)|])
+  fun (x48 : Ojs.t) (x49 : 'a) ->
+    Obj.magic (Ojs.apply x48 [|(Obj.magic x49)|])
 let _ : (_ -> _) to_js =
   fun (x50 : 'a -> 'b) ->
     Ojs.fun_to_js 1 (fun (x51 : Ojs.t) -> Obj.magic (x50 (Obj.magic x51)))
@@ -103,59 +99,45 @@ let _ : [ `foo  | `bar  | `Baz  | `I of int  | `S of string ] to_js =
     | `S x58 -> Ojs.string_to_js x58
 [@@@ocaml.text " Label & Options Value "]
 let _ : (label:int -> ?opt:int -> unit -> unit) of_js =
-  fun (x59 : Ojs.t) ->
-    fun ~label:(x60 : int) ->
-      fun ?opt:(x61 : int option) ->
-        fun () ->
-          ignore
-            (Ojs.call x59 "apply"
-               [|Ojs.null;((let x62 =
-                              Ojs.new_obj
-                                (Ojs.get_prop_ascii Ojs.global "Array") 
-                                [||] in
-                            ignore
-                              (Ojs.call x62 "push" [|(Ojs.int_to_js x60)|]);
-                            (match x61 with
-                             | Some x63 ->
-                                 ignore
-                                   (Ojs.call x62 "push"
-                                      [|(Ojs.int_to_js x63)|])
-                             | None -> ());
-                            x62))|])
+  fun (x59 : Ojs.t) ~label:(x60 : int) ?opt:(x61 : int option) () ->
+    ignore
+      (Ojs.call x59 "apply"
+         [|Ojs.null;((let x62 =
+                        Ojs.new_obj (Ojs.get_prop_ascii Ojs.global "Array")
+                          [||] in
+                      ignore (Ojs.call x62 "push" [|(Ojs.int_to_js x60)|]);
+                      (match x61 with
+                       | Some x63 ->
+                           ignore
+                             (Ojs.call x62 "push" [|(Ojs.int_to_js x63)|])
+                       | None -> ());
+                      x62))|])
 let _ : (label:int -> ?opt:int -> unit -> unit) to_js =
   fun (x64 : label:int -> ?opt:int -> unit -> unit) ->
     Ojs.fun_to_js 2
-      (fun (x65 : Ojs.t) ->
-         fun (x66 : Ojs.t) ->
-           x64 ~label:(Ojs.int_of_js x65)
-             ?opt:(Ojs.option_of_js Ojs.int_of_js x66) ())
+      (fun (x65 : Ojs.t) (x66 : Ojs.t) ->
+         x64 ~label:(Ojs.int_of_js x65)
+           ?opt:(Ojs.option_of_js Ojs.int_of_js x66) ())
 let _ : (label:int -> ?opt:int -> unit -> unit) of_js =
-  fun (x68 : Ojs.t) ->
-    fun ~label:(x69 : int) ->
-      fun ?opt:(x70 : int option) ->
-        fun () ->
-          ignore
-            (Ojs.call x68 "apply"
-               [|Ojs.null;((let x71 =
-                              Ojs.new_obj
-                                (Ojs.get_prop_ascii Ojs.global "Array") 
-                                [||] in
-                            ignore
-                              (Ojs.call x71 "push" [|(Ojs.int_to_js x69)|]);
-                            (match x70 with
-                             | Some x72 ->
-                                 ignore
-                                   (Ojs.call x71 "push"
-                                      [|(Ojs.int_to_js x72)|])
-                             | None -> ());
-                            x71))|])
+  fun (x68 : Ojs.t) ~label:(x69 : int) ?opt:(x70 : int option) () ->
+    ignore
+      (Ojs.call x68 "apply"
+         [|Ojs.null;((let x71 =
+                        Ojs.new_obj (Ojs.get_prop_ascii Ojs.global "Array")
+                          [||] in
+                      ignore (Ojs.call x71 "push" [|(Ojs.int_to_js x69)|]);
+                      (match x70 with
+                       | Some x72 ->
+                           ignore
+                             (Ojs.call x71 "push" [|(Ojs.int_to_js x72)|])
+                       | None -> ());
+                      x71))|])
 let _ : (label:int -> ?opt:int -> unit -> unit) to_js =
   fun (x73 : label:int -> ?opt:int -> unit -> unit) ->
     Ojs.fun_to_js 2
-      (fun (x74 : Ojs.t) ->
-         fun (x75 : Ojs.t) ->
-           x73 ~label:(Ojs.int_of_js x74)
-             ?opt:(Ojs.option_of_js Ojs.int_of_js x75) ())
+      (fun (x74 : Ojs.t) (x75 : Ojs.t) ->
+         x73 ~label:(Ojs.int_of_js x74)
+           ?opt:(Ojs.option_of_js Ojs.int_of_js x75) ())
 [@@@ocaml.text " Functions "]
 module B :
   sig
@@ -174,28 +156,25 @@ module B :
       [@@@js.dummy "!! This code has been generated by gen_js_api !!"]
       [@@@ocaml.warning "-7-32-39"]
       let default0 : ?x:int -> unit -> unit =
-        fun ?x:(x77 : int option) ->
-          fun () ->
-            ignore
-              (let x80 = Ojs.global in
-               Ojs.call (Ojs.get_prop_ascii x80 "default0") "apply"
-                 [|x80;((let x78 =
-                           Ojs.new_obj
-                             (Ojs.get_prop_ascii Ojs.global "Array") 
-                             [||] in
-                         (match x77 with
-                          | Some x79 ->
-                              ignore
-                                (Ojs.call x78 "push" [|(Ojs.int_to_js x79)|])
-                          | None -> ());
-                         x78))|])
+        fun ?x:(x77 : int option) () ->
+          ignore
+            (let x80 = Ojs.global in
+             Ojs.call (Ojs.get_prop_ascii x80 "default0") "apply"
+               [|x80;((let x78 =
+                         Ojs.new_obj (Ojs.get_prop_ascii Ojs.global "Array")
+                           [||] in
+                       (match x77 with
+                        | Some x79 ->
+                            ignore
+                              (Ojs.call x78 "push" [|(Ojs.int_to_js x79)|])
+                        | None -> ());
+                       x78))|])
       let default1 : ?x:int -> unit -> unit =
-        fun ?x:(x81 : int option) ->
-          fun () ->
-            ignore
-              (Ojs.call Ojs.global "default1"
-                 [|(Ojs.int_to_js
-                      (match x81 with | Some x82 -> x82 | None -> 42))|])
+        fun ?x:(x81 : int option) () ->
+          ignore
+            (Ojs.call Ojs.global "default1"
+               [|(Ojs.int_to_js
+                    (match x81 with | Some x82 -> x82 | None -> 42))|])
       let builder0 : unit -> Ojs.t =
         fun () -> let x83 = Ojs.empty_obj () in x83
       let builder1 : x:int -> Ojs.t =
@@ -203,84 +182,67 @@ module B :
           let x85 = Ojs.empty_obj () in
           Ojs.set_prop_ascii x85 "x" (Ojs.int_to_js x84); x85
       let builder2 : ?x:int -> ?y:string -> unit -> Ojs.t =
-        fun ?x:(x86 : int option) ->
-          fun ?y:(x87 : string option) ->
-            fun () ->
-              let x88 = Ojs.empty_obj () in
-              (match x86 with
-               | Some x90 -> Ojs.set_prop_ascii x88 "x" (Ojs.int_to_js x90)
-               | None -> ());
-              (match x87 with
-               | Some x89 ->
-                   Ojs.set_prop_ascii x88 "y" (Ojs.string_to_js x89)
-               | None -> ());
-              x88
+        fun ?x:(x86 : int option) ?y:(x87 : string option) () ->
+          let x88 = Ojs.empty_obj () in
+          (match x86 with
+           | Some x90 -> Ojs.set_prop_ascii x88 "x" (Ojs.int_to_js x90)
+           | None -> ());
+          (match x87 with
+           | Some x89 -> Ojs.set_prop_ascii x88 "y" (Ojs.string_to_js x89)
+           | None -> ());
+          x88
       let builder3 : x:int -> y:string -> unit -> Ojs.t =
-        fun ~x:(x91 : int) ->
-          fun ~y:(x92 : string) ->
-            fun () ->
-              let x93 = Ojs.empty_obj () in
-              Ojs.set_prop_ascii x93 "x" (Ojs.int_to_js x91);
-              Ojs.set_prop_ascii x93 "y" (Ojs.string_to_js x92);
-              x93
+        fun ~x:(x91 : int) ~y:(x92 : string) () ->
+          let x93 = Ojs.empty_obj () in
+          Ojs.set_prop_ascii x93 "x" (Ojs.int_to_js x91);
+          Ojs.set_prop_ascii x93 "y" (Ojs.string_to_js x92);
+          x93
       let builder4 : x:int -> y:string -> z:unit -> Ojs.t =
-        fun ~x:(x94 : int) ->
-          fun ~y:(x95 : string) ->
-            fun ~z:(x96 : unit) ->
-              let x97 = Ojs.empty_obj () in
-              Ojs.set_prop_ascii x97 "x" (Ojs.int_to_js x94);
-              Ojs.set_prop_ascii x97 "y" (Ojs.string_to_js x95);
-              Ojs.set_prop_ascii x97 "z" (Ojs.unit_to_js x96);
-              x97
+        fun ~x:(x94 : int) ~y:(x95 : string) ~z:(x96 : unit) ->
+          let x97 = Ojs.empty_obj () in
+          Ojs.set_prop_ascii x97 "x" (Ojs.int_to_js x94);
+          Ojs.set_prop_ascii x97 "y" (Ojs.string_to_js x95);
+          Ojs.set_prop_ascii x97 "z" (Ojs.unit_to_js x96);
+          x97
       let builder5 : ?x:int -> ?y:string -> unit -> Ojs.t =
-        fun ?x:(x98 : int option) ->
-          fun ?y:(x99 : string option) ->
-            fun () ->
-              let x100 = Ojs.empty_obj () in
-              (match x98 with
-               | Some x102 ->
-                   Ojs.set_prop_ascii x100 "x" (Ojs.int_to_js x102)
-               | None -> ());
-              (match x99 with
-               | Some x101 ->
-                   Ojs.set_prop_ascii x100 "y" (Ojs.string_to_js x101)
-               | None -> ());
-              x100
+        fun ?x:(x98 : int option) ?y:(x99 : string option) () ->
+          let x100 = Ojs.empty_obj () in
+          (match x98 with
+           | Some x102 -> Ojs.set_prop_ascii x100 "x" (Ojs.int_to_js x102)
+           | None -> ());
+          (match x99 with
+           | Some x101 -> Ojs.set_prop_ascii x100 "y" (Ojs.string_to_js x101)
+           | None -> ());
+          x100
       let builder6 : ?x:int -> ?y:string -> ?z:int -> unit -> Ojs.t =
-        fun ?x:(x103 : int option) ->
-          fun ?y:(x104 : string option) ->
-            fun ?z:(x105 : int option) ->
-              fun () ->
-                let x106 = Ojs.empty_obj () in
-                Ojs.set_prop_ascii x106 "x"
-                  (Ojs.int_to_js
-                     (match x103 with | Some x109 -> x109 | None -> 42));
-                Ojs.set_prop_ascii x106 "y"
-                  (Ojs.string_to_js
-                     (match x104 with | Some x108 -> x108 | None -> "42"));
-                (match x105 with
-                 | Some x107 ->
-                     Ojs.set_prop_ascii x106 "z" (Ojs.int_to_js x107)
-                 | None -> ());
-                x106
+        fun ?x:(x103 : int option) ?y:(x104 : string option)
+          ?z:(x105 : int option) () ->
+          let x106 = Ojs.empty_obj () in
+          Ojs.set_prop_ascii x106 "x"
+            (Ojs.int_to_js (match x103 with | Some x109 -> x109 | None -> 42));
+          Ojs.set_prop_ascii x106 "y"
+            (Ojs.string_to_js
+               (match x104 with | Some x108 -> x108 | None -> "42"));
+          (match x105 with
+           | Some x107 -> Ojs.set_prop_ascii x106 "z" (Ojs.int_to_js x107)
+           | None -> ());
+          x106
       let sep : string -> string list -> string =
-        fun (x110 : string) ->
-          fun (x111 : string list) ->
-            Ojs.string_of_js
-              (let x114 = Ojs.global in
-               Ojs.call (Ojs.get_prop_ascii x114 "sep") "apply"
-                 [|x114;((let x112 =
-                            Ojs.new_obj
-                              (Ojs.get_prop_ascii Ojs.global "Array") 
-                              [||] in
-                          ignore
-                            (Ojs.call x112 "push" [|(Ojs.string_to_js x110)|]);
-                          List.iter
-                            (fun (x113 : string) ->
-                               ignore
-                                 (Ojs.call x112 "push"
-                                    [|(Ojs.string_to_js x113)|])) x111;
-                          x112))|])
+        fun (x110 : string) (x111 : string list) ->
+          Ojs.string_of_js
+            (let x114 = Ojs.global in
+             Ojs.call (Ojs.get_prop_ascii x114 "sep") "apply"
+               [|x114;((let x112 =
+                          Ojs.new_obj (Ojs.get_prop_ascii Ojs.global "Array")
+                            [||] in
+                        ignore
+                          (Ojs.call x112 "push" [|(Ojs.string_to_js x110)|]);
+                        List.iter
+                          (fun (x113 : string) ->
+                             ignore
+                               (Ojs.call x112 "push"
+                                  [|(Ojs.string_to_js x113)|])) x111;
+                        x112))|])
     end)[@merlin.hide ]) 
 module T :
   sig
@@ -414,46 +376,38 @@ module T :
         'a 'b .
           (Ojs.t -> 'a) -> (Ojs.t -> 'b) -> Ojs.t -> ('a, 'b) parametrized
         =
-        fun (type __a) ->
-          fun (type __b) ->
-            fun (__a_of_js : Ojs.t -> __a) ->
-              fun (__b_of_js : Ojs.t -> __b) ->
-                fun (x130 : Ojs.t) ->
-                  {
-                    x = (__a_of_js (Ojs.get_prop_ascii x130 "x"));
-                    y = (__b_of_js (Ojs.get_prop_ascii x130 "y"))
-                  }
+        fun (type __a) (type __b) (__a_of_js : Ojs.t -> __a)
+          (__b_of_js : Ojs.t -> __b) ->
+          fun (x130 : Ojs.t) ->
+            {
+              x = (__a_of_js (Ojs.get_prop_ascii x130 "x"));
+              y = (__b_of_js (Ojs.get_prop_ascii x130 "y"))
+            }
       and parametrized_to_js :
         'a 'b .
           ('a -> Ojs.t) -> ('b -> Ojs.t) -> ('a, 'b) parametrized -> Ojs.t
         =
-        fun (type __a) ->
-          fun (type __b) ->
-            fun (__a_to_js : __a -> Ojs.t) ->
-              fun (__b_to_js : __b -> Ojs.t) ->
-                fun (x129 : (__a, __b) parametrized) ->
-                  Ojs.obj
-                    [|("x", (__a_to_js x129.x));("y", (__b_to_js x129.y))|]
+        fun (type __a) (type __b) (__a_to_js : __a -> Ojs.t)
+          (__b_to_js : __b -> Ojs.t) ->
+          fun (x129 : (__a, __b) parametrized) ->
+            Ojs.obj [|("x", (__a_to_js x129.x));("y", (__b_to_js x129.y))|]
       type 'a abs = ('a -> int) -> unit
       let rec abs_of_js : 'a . (Ojs.t -> 'a) -> Ojs.t -> 'a abs =
-        fun (type __a) ->
-          fun (__a_of_js : Ojs.t -> __a) ->
-            fun (x134 : Ojs.t) ->
-              fun (x135 : __a -> int) ->
-                ignore
-                  (Ojs.apply x134
-                     [|(Ojs.fun_to_js 1
-                          (fun (x136 : Ojs.t) ->
-                             Ojs.int_to_js (x135 (__a_of_js x136))))|])
+        fun (type __a) (__a_of_js : Ojs.t -> __a) ->
+          fun (x134 : Ojs.t) (x135 : __a -> int) ->
+            ignore
+              (Ojs.apply x134
+                 [|(Ojs.fun_to_js 1
+                      (fun (x136 : Ojs.t) ->
+                         Ojs.int_to_js (x135 (__a_of_js x136))))|])
       and abs_to_js : 'a . ('a -> Ojs.t) -> 'a abs -> Ojs.t =
-        fun (type __a) ->
-          fun (__a_to_js : __a -> Ojs.t) ->
-            fun (x131 : (__a -> int) -> unit) ->
-              Ojs.fun_to_js 1
-                (fun (x132 : Ojs.t) ->
-                   x131
-                     (fun (x133 : __a) ->
-                        Ojs.int_of_js (Ojs.apply x132 [|(__a_to_js x133)|])))
+        fun (type __a) (__a_to_js : __a -> Ojs.t) ->
+          fun (x131 : (__a -> int) -> unit) ->
+            Ojs.fun_to_js 1
+              (fun (x132 : Ojs.t) ->
+                 x131
+                   (fun (x133 : __a) ->
+                      Ojs.int_of_js (Ojs.apply x132 [|(__a_to_js x133)|])))
       type specialized = (int, int) parametrized
       let rec specialized_of_js : Ojs.t -> specialized =
         fun (x140 : Ojs.t) ->

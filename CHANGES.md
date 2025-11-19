@@ -7,6 +7,11 @@ Unreleased
 - Experimental support for binding to js_of_ocaml runtime primitives via `[@@js.runtime]` and `[@@@js.scope "@..."]`, enabling generated bindings to target values supplied by the JavaScript runtime (such as Node imports and Wasm modules).
 - Test suite updates adapted for wasm_of_ocaml.
 
+Version 1.1.6
+-------------
+
+- GPR#181: Upgrade ppxlib dependency to 0.37.0 (=> support OCaml 5.4)
+
 Version 1.1.5
 -------------
 

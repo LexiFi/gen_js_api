@@ -826,14 +826,14 @@ let fun_ ?(eta = true) (label, s, typ) e =
   | Pexp_apply (f, [Nolabel, {pexp_desc = Pexp_ident {txt = Lident x; loc = _}; _}])
     when x = s && eta -> f
   | _ ->
-      Exp.fun_ label None (Pat.constraint_ (Pat.var (mknoloc s)) typ) e
+      Ast_builder.Default.pexp_fun ~loc:Location.none label None (Pat.constraint_ (Pat.var (mknoloc s)) typ) e
 
 let fun_unit e =
   match e.pexp_desc with
   | Pexp_apply (f, [Nolabel, {pexp_desc = Pexp_construct ({txt = Lident "()"; loc = _}, None); _}]) ->
       f
   | _ ->
-      Exp.fun_ Nolabel None (Pat.construct (mknoloc (Lident "()")) None) e
+      Ast_builder.Default.pexp_fun ~loc:Location.none Nolabel None (Pat.construct (mknoloc (Lident "()")) None) e
 
 let func args unit_arg body =
   let body = if unit_arg then fun_unit body else body in
@@ -947,7 +947,7 @@ let def ?packages s ty body =
               (Pat.unpack (mknoloc (Some module_name)))
               (package true)
           in
-          Exp.fun_ Nolabel None arg body
+          Ast_builder.Default.pexp_fun ~loc:Location.none Nolabel None arg body
         in
         ty, body
       in
@@ -957,7 +957,7 @@ let def ?packages s ty body =
       in
       List.fold_left folder2 (List.fold_left folder1 (ty, body) packages) packages
   in
-  Str.value Nonrecursive [ Vb.mk (Pat.constraint_ (Pat.var (mknoloc s)) ty) body ]
+  Str.value Nonrecursive [ Vb.mk ~value_constraint:(Pvc_constraint { locally_abstract_univars = []; typ = ty}) (Pat.var (mknoloc s)) body ]
 
 let builtin_type = function
   | "int" | "string" | "bool" | "float"
@@ -1320,7 +1320,7 @@ and ml2js ty exp =
       in
       let formal_args, concrete_args = List.map fst args, List.map snd args in
       let res = ml2js_unit ty_res (app exp concrete_args unit_arg) in
-      let body = if formal_args = [] then Exp.fun_ Nolabel None (Pat.any ()) res else res in
+      let body = if formal_args = [] then Ast_builder.Default.pexp_fun ~loc:Location.none Nolabel None (Pat.any ()) res else res in
       let f = List.fold_right (fun (s, _) -> fun_ (Nolabel, s, ojs_typ)) formal_args body in
       ojs "fun_to_js" [int (max 1 (List.length formal_args)); f]
   | Arrow {ty_args; ty_vararg = Some {lab=label_variadic; att=_; typ=ty_variadic};
@@ -1677,7 +1677,7 @@ and gen_funs ~global_attrs p =
                     { txt = Lident "of_js"; loc = loc_of}, of_js ] ), None); _} ->
                 let value_binding suffix loc (body: expression) (ty: core_type) =
                   let name = { txt = Printf.sprintf "%s_%s" name suffix; loc} in
-                  Vb.mk ~loc (Pat.constraint_ (Pat.var name) ty) body
+                  Vb.mk ~loc ~value_constraint:(Pvc_constraint { locally_abstract_univars = []; typ = ty}) (Pat.var name) body
                 in
                 let ty = gen_typ (Name (name, List.map (fun x -> Typ_var x) ctx)) in
                 let fold_types f base =
@@ -1759,18 +1759,31 @@ and gen_funs ~global_attrs p =
     match body with
     | None -> None
     | Some body ->
-        Some
-          (List.fold_right
-             (fun label acc ->
-                Exp.newtype ({ label with txt = local_type_of_type_var label.txt}) acc
-             ) ctx_withloc
-             (List.fold_right
-                (fun label acc ->
-                   let name = (local_type_of_type_var label)^suffix in
-                   let label = Name (local_type_of_type_var label, []) in
-                   Exp.fun_ Nolabel None (Pat.constraint_ (Pat.var (mknoloc name)) (gen_typ (typ label))) acc
-                ) ctx body
-             ))
+       let params =
+         List.concat [
+             List.map
+               (fun label ->
+                 { pparam_loc = loc;
+                   pparam_desc = Pparam_newtype
+                                   ({ label with txt = local_type_of_type_var label.txt})}
+               ) ctx_withloc;
+             List.map
+               (fun label ->
+                 let name = (local_type_of_type_var label)^suffix in
+                 let label = Name (local_type_of_type_var label, []) in
+                 { pparam_loc = loc;
+                   pparam_desc = Pparam_val (Nolabel, None, (Pat.constraint_ (Pat.var (mknoloc name)) (gen_typ (typ label))))}
+               ) ctx
+           ]
+       in
+       match params with
+       | [] -> Some body
+       | params ->
+          Some
+            (
+              Ast_builder.Default.pexp_function ~loc
+                params
+                None (Pfunction_body body))
   in
   let f (name, input_typs, ret_typ, code) =
     match code with
@@ -1778,14 +1791,17 @@ and gen_funs ~global_attrs p =
     | Some code ->
         Some
           (Vb.mk ~loc:p.ptype_loc
-             (Pat.constraint_
-                (Pat.var (mknoloc name))
-                (poly
-                   (gen_typ (Arrow
-                               {
-                                 ty_args = (List.map (fun typ -> {lab=Arg; att=[]; typ}) input_typs);
-                                 ty_vararg = None; unit_arg = false; ty_res = ret_typ
-                               }))))
+             ~value_constraint:(
+               Pvc_constraint {
+                   locally_abstract_univars = [];
+                   typ =
+                     (poly
+                        (gen_typ (Arrow
+                                    {
+                                      ty_args = (List.map (fun typ -> {lab=Arg; att=[]; typ}) input_typs);
+                                      ty_vararg = None; unit_arg = false; ty_res = ret_typ
+             })))})
+             (Pat.var (mknoloc name))
              code)
   in
   let funs =
@@ -1913,14 +1929,14 @@ and gen_class_cast = function
       let to_js =
         let arg = fresh() in
         Vb.mk (Pat.var (mknoloc (class_name ^ "_to_js")))
-          (Exp.fun_ Nolabel None
+          (Ast_builder.Default.pexp_fun ~loc:Location.none Nolabel None
              (Pat.constraint_ (Pat.var (mknoloc arg)) class_typ)
              (Exp.constraint_ (Exp.send (var arg) (mknoloc "to_js")) ojs_typ))
       in
       let of_js =
         let arg = fresh() in
         Vb.mk (Pat.var (mknoloc (class_name ^ "_of_js")))
-          (Exp.fun_ Nolabel None
+          (Ast_builder.Default.pexp_fun ~loc:Location.none Nolabel None
              (Pat.constraint_ (Pat.var (mknoloc arg)) ojs_typ)
              (Exp.constraint_ (Exp.apply (Exp.new_ (mknoloc (Longident.Lident class_name))) [Nolabel, var arg]) class_typ))
       in
