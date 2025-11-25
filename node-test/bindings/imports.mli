@@ -1,1 +1,1 @@
-val path: Ojs.t [@@js.runtime "node_path"]
+val path: Ojs.t [@@js.global "@node_path"]

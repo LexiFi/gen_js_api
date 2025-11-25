@@ -2,7 +2,7 @@
 
 This guide shows how to use the new runtime primitive support in `gen_js_api` to bind Node.js libraries that are usually obtained with `require(...)`. The feature hinges on two additions:
 
-- the `[@@js.runtime "primitive_name"]` attribute returns an `Ojs.t` pointing to a primitive exported by the JavaScript runtime;
+- any `[@@js.global "@primitive_name"]` binding returns an `Ojs.t` pointing to a primitive exported by the JavaScript runtime;
 - a scope string that starts with `@` (for example `[@@@js.scope "@node_fs.promises"]`) resolves the first path component through the runtime primitives before following regular properties.
 
 Together, those tools let you keep your bindings declarative while delegating the actual `require` calls to a tiny JavaScript stub.
@@ -90,15 +90,15 @@ end
 ```
 Each module-level scope starts with `@`, so the ppx turns calls like `Fs.write_file_sync` into direct invocations on the corresponding Node module (`node_fs.writeFileSync` in this case) without requiring you to pass the module object around.
 
-### Step 3 - bind direct values with `[@@js.runtime]`
+### Step 3 - bind direct values with `@`-prefixed `[@@js.global]`
 
-When you only need the primitive itself—such as a constant exported by a Node module—use `[@@js.runtime]` to obtain it directly as an OCaml value.
+When you only need the primitive itself—such as a constant exported by a Node module—use the `@` prefix inside `[@@js.global]` to obtain it directly as an OCaml value.
 
 ```ocaml
 (* runtime_primitives/primitives_bindings.mli continued *)
 
-val node_version : string [@@js.runtime "node_version"]
-val log : string -> unit [@@js.runtime "node_console"]
+val node_version : string [@@js.global "@node_version"]
+val log : string -> unit [@@js.global "@node_console"]
 ```
 
 These expand to `Jsoo_runtime.Js.runtime_value ...` calls and convert the results to the requested OCaml types, so you can expose constants or functions alongside the scoped modules described above.
@@ -147,7 +147,7 @@ let () = run ()
 
 1. Declare each required Node module once in `imports.js` (and mirror them in `imports.wat` for wasm) using the js_of_ocaml `//Provides:` convention.
 2. Export the files through dune so that the js_of_ocaml toolchain registers those primitives at runtime.
-3. Map node modules in OCaml with `module [@js.scope "@primitive"]` blocks, and use `[@@js.runtime]` for direct values.
+3. Map node modules in OCaml with `module [@js.scope "@primitive"]` blocks, and use `@`-prefixed `[@@js.global]` bindings for direct values.
 4. Consume the generated modules from OCaml exactly as you would in JavaScript, as shown in `example.ml`.
 
 With these pieces in place you can keep writing high-level `gen_js_api` bindings while relying on the new runtime primitive support to bridge your OCaml code to Node-specific libraries provided via `require`.

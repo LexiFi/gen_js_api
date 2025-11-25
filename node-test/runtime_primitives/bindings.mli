@@ -10,5 +10,5 @@ module [@js.scope "@node_path"] Path : sig
   val join : (string list [@js.variadic]) -> string [@@js.global "join"]
 end
 
-val node_version : string [@@js.runtime "node_version"]
-val log : string -> unit [@@js.runtime "node_console"]
+val node_version : string [@@js.global "@node_version"]
+val log : string -> unit [@@js.global "@node_console"]
