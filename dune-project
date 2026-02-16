@@ -19,7 +19,7 @@
  (description "To be used in conjunction with gen_js_api")
  (depends
    (ocaml (>= 4.13))
-   (js_of_ocaml-compiler (>= 4.0.0)))
+   (js_of_ocaml-compiler (>= 6.3.2)))
  )
 
 (package
@@ -33,7 +33,7 @@ with a combination of implicit conventions and explicit annotations.
 
 gen_js_api is to be used with the js_of_ocaml compiler.
  ")
- (conflicts (js_of_ocaml-compiler (< 4.0.0)))
+ (conflicts (js_of_ocaml-compiler (< 6.3.2)))
  (depends
   (ocaml (>= 4.13))
   (ppxlib (>= 0.37))
