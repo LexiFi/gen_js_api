@@ -28,7 +28,7 @@ depends: [
   "odoc" {with-doc}
 ]
 conflicts: [
-  "js_of_ocaml-compiler" {< "6.3.2"}
+  "js_of_ocaml-compiler" {< "6.3.0"}
 ]
 build: [
   ["dune" "subst"] {dev}
