@@ -1,6 +1,12 @@
 Changelog
 =========
 
+Unreleased
+----------
+
+- Support for binding to js_of_ocaml runtime primitives via `@`-prefixed payloads on `[@@js.global]` and `[@@@js.scope "@..."]`, enabling generated bindings to target values supplied by the JavaScript runtime.
+- Test suite updates adapted for wasm_of_ocaml.
+
 Version 1.1.6
 -------------
 

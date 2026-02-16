@@ -1,4 +1,5 @@
-globalThis.__LIB__NODE__IMPORTS = {
-  path: require('path'),
-  fs: require('fs'),
-};
+//Provides: node_path
+var node_path = require('path');
+
+//Provides: node_fs
+var node_fs = require('fs');

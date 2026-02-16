@@ -1,3 +1,4 @@
+
 var Foo = /*#__PURE__*/function () {
   "use strict";
 
@@ -17,6 +18,7 @@ var Foo = /*#__PURE__*/function () {
 
   return Foo;
 }();
+
 
 var Bar = /*#__PURE__*/function () {
   "use strict";

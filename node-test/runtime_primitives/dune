@@ -1,0 +1,28 @@
+(rule
+ (targets bindings.ml)
+ (deps bindings.mli)
+ (action
+  (run gen_js_api %{deps})))
+
+(executable
+ (name example)
+ (libraries ojs)
+ (preprocess
+  (pps gen_js_api.ppx))
+ (modes js wasm)
+ (js_of_ocaml
+  (javascript_files imports.js))
+ (wasm_of_ocaml
+  (javascript_files imports.js imports.wat)))
+
+(rule
+ (alias runtest)
+ (enabled_if %{bin-available:node})
+ (action
+  (run node %{dep:./example.bc.js})))
+
+(rule
+ (alias runtest-wasm)
+ (enabled_if %{bin-available:node})
+ (action
+  (run node %{dep:./example.bc.wasm.js})))

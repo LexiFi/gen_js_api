@@ -84,25 +84,32 @@ let readdir : string -> string list Promise.t =
   fun (x39 : string) ->
     Promise.t_of_js
       (fun (x40 : Ojs.t) -> Ojs.list_of_js Ojs.string_of_js x40)
-      (Ojs.call (Ojs.get_prop_ascii Imports.fs "promises") "readdir"
-         [|(Ojs.string_to_js x39)|])
+      (Ojs.call
+         (Ojs.get_prop_ascii (Jsoo_runtime.Js.runtime_value "node_fs")
+            "promises") "readdir" [|(Ojs.string_to_js x39)|])
 let open_ : string -> flag:string -> FileHandle.t Promise.t =
   fun (x42 : string) ~flag:(x43 : string) ->
     Promise.t_of_js FileHandle.t_of_js
-      (Ojs.call (Ojs.get_prop_ascii Imports.fs "promises") "open"
+      (Ojs.call
+         (Ojs.get_prop_ascii (Jsoo_runtime.Js.runtime_value "node_fs")
+            "promises") "open"
          [|(Ojs.string_to_js x42);(Ojs.string_to_js x43)|])
 let rmdir : string -> unit Promise.t =
   fun (x45 : string) ->
     Promise.t_of_js Ojs.unit_of_js
-      (Ojs.call (Ojs.get_prop_ascii Imports.fs "promises") "rmdir"
-         [|(Ojs.string_to_js x45)|])
+      (Ojs.call
+         (Ojs.get_prop_ascii (Jsoo_runtime.Js.runtime_value "node_fs")
+            "promises") "rmdir" [|(Ojs.string_to_js x45)|])
 let rename : string -> string -> unit Promise.t =
   fun (x47 : string) (x48 : string) ->
     Promise.t_of_js Ojs.unit_of_js
-      (Ojs.call (Ojs.get_prop_ascii Imports.fs "promises") "rename"
+      (Ojs.call
+         (Ojs.get_prop_ascii (Jsoo_runtime.Js.runtime_value "node_fs")
+            "promises") "rename"
          [|(Ojs.string_to_js x47);(Ojs.string_to_js x48)|])
 let unlink : string -> unit Promise.t =
   fun (x50 : string) ->
     Promise.t_of_js Ojs.unit_of_js
-      (Ojs.call (Ojs.get_prop_ascii Imports.fs "promises") "unlink"
-         [|(Ojs.string_to_js x50)|])
+      (Ojs.call
+         (Ojs.get_prop_ascii (Jsoo_runtime.Js.runtime_value "node_fs")
+            "promises") "unlink" [|(Ojs.string_to_js x50)|])
